@@ -28,7 +28,6 @@ interface Product {
   category: string;
   location: string;
   condition: string;
-  color: string;
   date: string;
 }
 
@@ -77,7 +76,6 @@ const locations = ["Ikeja",
   "Ayobo",
   "Abule Egba"];
 const conditions = ['Brand New', 'Tokunbo', 'Fairly Used'];
-const colors = ['#000000', '#FFFFFF', '#C8B6A6', '#775522', '#FF0000', '#4287f5', '#28a745'];
 
 export default function ShopPage() {
   // State for filters and pagination
@@ -87,7 +85,6 @@ export default function ShopPage() {
   const [activeCategory, setActiveCategory] = useState('');
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [searchQuery, setSearchQuery] = useState('');
   // New state for mobile sidebar visibility
@@ -125,13 +122,6 @@ export default function ShopPage() {
     setCurrentPage(1); // Reset to first page on filter change
   };
 
-  const handleColorChange = (color: string) => {
-    setSelectedColors((prev) =>
-      prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
-    );
-    setCurrentPage(1); // Reset to first page on filter change
-  };
-
   const handlePriceChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     type: 'min' | 'max'
@@ -159,11 +149,9 @@ export default function ShopPage() {
       const matchesCategory = activeCategory ? p.category === activeCategory : true;
       const matchesLocation = selectedLocations.length ? selectedLocations.includes(p.location) : true;
       const matchesCondition = selectedConditions.length ? selectedConditions.includes(p.condition) : true;
-      // If no colors are selected, all products match. Otherwise, product color must be in selectedColors.
-      const matchesColor = selectedColors.length === 0 || selectedColors.includes(p.color);
       const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
 
-      return matchesSearch && matchesCategory && matchesLocation && matchesCondition && matchesColor && matchesPrice;
+      return matchesSearch && matchesCategory && matchesLocation && matchesCondition && matchesPrice;
     })
     .sort((a: Product, b: Product) => {
       if (sortBy === 'date') {

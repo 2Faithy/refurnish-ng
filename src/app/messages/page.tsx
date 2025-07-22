@@ -545,7 +545,7 @@ export default function MessagesPage() {
                         }
                       }}
                       placeholder="Type your custom message for approval..."
-                      className="flex-1 border border-gray-300 px-4 py-2 sm:px-5 sm:py-3 rounded-xl text-gray-800 // Adjusted rounded-full to rounded-xl for textarea
+                      className="flex-1 border border-gray-300 px-4 py-2 sm:px-5 sm:py-3 text-gray-800 
                                  focus:outline-none focus:ring-3 focus:ring-[#775522]/30 focus:border-[#775522] transition-all duration-200
                                  placeholder-gray-500 text-sm resize-y min-h-[40px] max-h-[150px] overflow-y-auto" // Added resize-y, min-height, max-height, and overflow-y-auto
                     />

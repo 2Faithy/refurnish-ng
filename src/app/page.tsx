@@ -60,11 +60,14 @@ export default function HomePage() {
           {product.name}
         </h3>
         <p className="mb-4 text-[#775522] font-bold text-2xl">
-          ₦{product.price.toLocaleString()}
-          <span className="line-through text-gray-400 text-base ml-2">
-            ₦{product.oldPrice.toLocaleString()}
-          </span>
-        </p>
+  ₦{product.price.toLocaleString()}
+  {product.oldPrice !== undefined && (
+    <span className="line-through text-gray-400 text-base ml-2">
+      ₦{product.oldPrice.toLocaleString()}
+    </span>
+  )}
+</p>
+
         <Link
           href="/shop"
           className="text-white bg-[#775522] px-6 py-3 rounded-full font-semibold text-lg hover:bg-[#5E441B] transition-all duration-300 transform hover:-translate-y-1 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#E8CEB0] focus:ring-offset-2"
