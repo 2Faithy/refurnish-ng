@@ -4,9 +4,9 @@ import React from "react";
 
 export default function CreateListingPage() {
   return (
-    <div>
-      <h1>Create a New Listing</h1>
-      {/* Your form or UI here */}
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Create a New Listing</h1>
+      <p>This is the create listing page. Add your form here.</p>
     </div>
   );
 }
