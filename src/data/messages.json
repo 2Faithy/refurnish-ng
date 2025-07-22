@@ -1,0 +1,34 @@
+[
+  {
+    "thread_id": "t001",
+    "participants": ["ada@example.com", "john@example.com"],
+    "listing_title": "Luxury Wooden Bed Frame",
+    "messages": [
+      {
+        "sender": "john@example.com",
+        "content": "Is the bed still available?",
+        "timestamp": "2025-07-10T10:30:00Z",
+        "read": true
+      },
+      {
+        "sender": "ada@example.com",
+        "content": "Yes, still available!",
+        "timestamp": "2025-07-10T10:35:00Z",
+        "read": false
+      }
+    ]
+  },
+  {
+    "thread_id": "t002",
+    "participants": ["ada@example.com", "sarah@example.com"],
+    "listing_title": "Glass Coffee Table",
+    "messages": [
+      {
+        "sender": "sarah@example.com",
+        "content": "Can you share more pictures?",
+        "timestamp": "2025-07-11T14:20:00Z",
+        "read": false
+      }
+    ]
+  }
+]

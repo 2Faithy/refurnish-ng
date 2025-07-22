@@ -1,26 +1,849 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer utilities {
+  .animate-slide-in-left {
+    animation: slideInLeft 0.5s ease-out both;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out both;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out both;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out both;
+}
+
+/* globals.css or your main CSS file */
+
+/* --- Previous Animations (ensure these are still present) --- */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounceOnce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-5px);
+  }
+  40% {
+    transform: translateY(0);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinSlowReverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+
+@keyframes blob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30% { transform: translate(20px, -30px) scale(1.05); }
+  60% { transform: translate(-10px, 10px) scale(0.95); }
+}
+
+@keyframes blob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(-25px, 15px) scale(1.1); }
+  70% { transform: translate(15px, -10px) scale(0.9); }
+}
+
+@keyframes blob3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(10px, 5px) scale(0.98); }
+  50% { transform: translate(-5px, -10px) scale(1.02); }
+  75% { transform: translate(0, 5px) scale(0.99); }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-left { /* Renamed for clarity, was fadeInLeft */
+  animation: fadeInLeft 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-right { /* Renamed for clarity, was fadeInRight */
+  animation: fadeInRight 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-up-staggered { /* Already defined, but including for context */
+  animation: fadeInUp 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-scale-in { /* Already defined, but including for context */
+  animation: scaleIn 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-bounce-once { /* Already defined, but including for context */
+  animation: bounceOnce 1.5s ease-out 0.5s 1 forwards;
+}
+
+.animate-spin-slow { /* Already defined, but including for context */
+  animation: spinSlow 30s linear infinite;
+}
+
+.animate-spin-slow-reverse { /* Already defined, but including for context */
+  animation: spinSlowReverse 30s linear infinite;
+}
+
+.animate-blob-1 {
+  animation: blob1 15s ease-in-out infinite alternate;
+}
+
+.animate-blob-2 {
+  animation: blob2 18s ease-in-out infinite alternate-reverse;
+}
+
+.animate-blob-3 {
+  animation: blob3 12s ease-in-out infinite alternate;
+}
+
+/* globals.css or your main CSS file */
+
+/* --- Existing animations from previous steps (ensure they are all here) --- */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounceOnce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-5px);
+  }
+  40% {
+    transform: translateY(0);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinSlowReverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes blob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30% { transform: translate(20px, -30px) scale(1.05); }
+  60% { transform: translate(-10px, 10px) scale(0.95); }
+}
+
+@keyframes blob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(-25px, 15px) scale(1.1); }
+  70% { transform: translate(15px, -10px) scale(0.9); }
+}
+
+@keyframes blob3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(10px, 5px) scale(0.98); }
+  50% { transform: translate(-5px, -10px) scale(1.02); }
+  75% { transform: translate(0, 5px) scale(0.99); }
+}
+
+/* --- New / Adjusted Animations for FAQ Page --- */
+
+@keyframes blobSlow {
+  0%, 100% {
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  25% {
+    transform: translateX(10%) translateY(-5%) scale(1.02);
+  }
+  50% {
+    transform: translateX(-15%) translateY(10%) scale(0.98);
+  }
+  75% {
+    transform: translateX(5%) translateY(-10%) scale(1.01);
+  }
+}
+
+@keyframes blobSlowReverse {
+  0%, 100% {
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  25% {
+    transform: translateX(-10%) translateY(5%) scale(0.98);
+  }
+  50% {
+    transform: translateX(15%) translateY(-10%) scale(1.02);
+  }
+  75% {
+    transform: translateX(-5%) translateY(10%) scale(0.99);
+  }
+}
+
+/* --- Animation Utility Classes (ensure these are present and updated) --- */
+
+.animate-fade-in {
+  animation: fadeInUp 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-left {
+  animation: fadeInLeft 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-right {
+  animation: fadeInRight 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-up-staggered {
+  animation: fadeInUp 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-bounce-once {
+  animation: bounceOnce 1.5s ease-out 0.5s 1 forwards;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 30s linear infinite;
+}
+
+.animate-spin-slow-reverse {
+  animation: spinSlowReverse 30s linear infinite;
+}
+
+.animate-blob-1 {
+  animation: blob1 15s ease-in-out infinite alternate;
+}
+
+.animate-blob-2 {
+  animation: blob2 18s ease-in-out infinite alternate-reverse;
+}
+
+.animate-blob-3 {
+  animation: blob3 12s ease-in-out infinite alternate;
+}
+
+.animate-blob-slow {
+  animation: blobSlow 20s ease-in-out infinite alternate;
+}
+
+.animate-blob-slow-reverse {
+  animation: blobSlowReverse 22s ease-in-out infinite alternate-reverse;
+}
+
+/* src/app/globals.css */
+
+/* --- Custom Styles for Price Range Slider Thumb --- */
+input[type="range"].slider-thumb-custom {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent; /* Hide default track */
+  cursor: pointer;
+  width: 100%; /* Ensure it spans full width */
+  height: 20px; /* Make it easier to click */
+  margin: 0; /* Remove default margins */
+  padding: 0; /* Remove default padding */
+}
+
+/* Chrome, Safari, Edge, Opera */
+input[type="range"].slider-thumb-custom::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px; /* Size of the thumb */
+  height: 20px; /* Size of the thumb */
+  background: #775522; /* Primary brand color for thumb */
+  border: 2px solid #FFFFFF; /* White border */
+  border-radius: 50%; /* Makes it circular */
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  transition: background 0.3s ease, transform 0.1s ease;
+  margin-top: -9px; /* Adjusts vertical position to center on track */
+}
+
+input[type="range"].slider-thumb-custom::-webkit-slider-thumb:hover {
+  background: #5E441B; /* Darker on hover */
+  transform: scale(1.1);
+}
+
+input[type="range"].slider-thumb-custom::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Firefox */
+input[type="range"].slider-thumb-custom::-moz-range-thumb {
+  width: 20px; /* Size of the thumb */
+  height: 20px; /* Size of the thumb */
+  background: #775522; /* Primary brand color for thumb */
+  border: 2px solid #FFFFFF; /* White border */
+  border-radius: 50%; /* Makes it circular */
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  transition: background 0.3s ease, transform 0.1s ease;
+}
+
+input[type="range"].slider-thumb-custom::-moz-range-thumb:hover {
+  background: #5E441B; /* Darker on hover */
+  transform: scale(1.1);
+}
+
+input[type="range"].slider-thumb-custom::-moz-range-thumb:active {
+  transform: scale(1.15);
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Remove default track styling - we use a div for the visual track */
+input[type="range"].slider-thumb-custom::-webkit-slider-runnable-track {
+  background: transparent;
+  border: none;
+}
+
+input[type="range"].slider-thumb-custom::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+
+
+/* --- Keyframe Definitions for Animations --- */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* --- Animation Utility Classes --- */
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+  opacity: 0; /* Hidden by default */
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-left {
+  animation: fadeInLeft 0.7s ease-out forwards;
+  opacity: 0;
+}
+
+/* Staggered animation for grid items (handled inline with style attribute `animationDelay`) */
+.animate-fade-in-up-staggered {
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+/* globals.css */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseShadow {
+  0% {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  }
+  100% {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Custom styles for the Google SVG path data, if the original SVG is not fully included */
+/* You might need to adjust these or replace the SVG completely if it doesn't render well */
+.google-svg-path-fill-yellow {
+  fill: #FFC107;
+}
+.google-svg-path-fill-red {
+  fill: #FF3D00;
+}
+.google-svg-path-fill-green {
+  fill: #4CAF50;
+}
+.google-svg-path-fill-blue {
+  fill: #1976D2;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* globals.css */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* For the 'Sell an Item' button */
+.animate-pulse-once {
+  animation: pulse 1.5s ease-in-out 1; /* Runs once */
+}
+
+/* Optional: for icon hover effect */
+.group:hover .group-icon-animate {
+  transform: translateX(5px);
+  transition: transform 0.2s ease-in-out;
+}
+
+/* globals.css */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Optional: for icon hover effect */
+.group:hover .group-icon-animate {
+  transform: translateX(5px);
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Optional: Smooth scrolling for chat */
+html {
+  scroll-behavior: smooth;
+}
+
+/* --- Custom Keyframes (Animations) --- */
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes chatBubbleIn {
+  0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  0% { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+
+/* --- Custom Animation Utility Classes --- */
+/* You'll typically apply these directly as Tailwind classes,
+   but if you want to define them as custom CSS classes: */
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.6s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.5s ease-out forwards;
+}
+
+.animate-chat-bubble-in { /* Note: Tailwind typically uses dashes */
+  animation: chatBubbleIn 0.3s ease-out forwards;
+}
+
+.animate-pop {
+  animation: pop 0.3s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.4s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.4s ease-out forwards;
+}
+
+/* Custom utility to hide scrollbar while allowing scrolling */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera*/
 }

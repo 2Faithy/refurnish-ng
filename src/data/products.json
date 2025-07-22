@@ -1,0 +1,258 @@
+[
+  {
+    "id": 1,
+    "name": "Stylish Sofa",
+    "category": "Furniture",
+    "price": 45000,
+    "oldPrice": 60000,
+    "image": "/stylish-sofa.png",
+    "date": "2024-06-01",
+    "location": "Lekki",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 2,
+    "name": "Modern Table",
+    "category": "Tables",
+    "price": 35000,
+    "oldPrice": 50000,
+    "image": "/modern-table.png",
+    "date": "2024-06-05",
+    "location": "Abuja",
+    "condition": "Brand New"
+  },
+  {
+    "id": 3,
+    "name": "Vintage Chair",
+    "category": "Chairs",
+    "price": 15000,
+    "oldPrice": 20000,
+    "image": "/vintage-chair.png",
+    "date": "2024-06-10",
+    "location": "Kano",
+    "condition": "Fairly Used"
+  },
+  {
+    "id": 4,
+    "name": "Rustic Shelf",
+    "category": "Furniture",
+    "price": 32000,
+    "oldPrice": 40000,
+    "image": "/rustic-shelf.png",
+    "date": "2024-06-12",
+    "location": "Ikeja",
+    "condition": "Brand New"
+  },
+  {
+    "id": 5,
+    "name": "Luxury Bed",
+    "category": "Beds",
+    "price": 125000,
+    "oldPrice": 140000,
+    "image": "/luxury-bed.png",
+    "date": "2024-06-15",
+    "location": "Port Harcourt",
+    "condition": "Brand New"
+  },
+  {
+    "id": 6,
+    "name": "Glass Coffee Table",
+    "category": "Tables",
+    "price": 30000,
+    "oldPrice": 37000,
+    "image": "/glass-coffee-table.png",
+    "date": "2024-06-18",
+    "location": "Abuja",
+    "condition": "Fairly Used"
+  },
+  {
+    "id": 7,
+    "name": "Office Desk",
+    "category": "Tables",
+    "price": 60000,
+    "oldPrice": 75000,
+    "image": "/office-desk.png",
+    "date": "2024-06-20",
+    "location": "Kano",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 8,
+    "name": "Classic Drawer",
+    "category": "Furniture",
+    "price": 25000,
+    "oldPrice": 30000,
+    "image": "/classic-drawer.png",
+    "date": "2024-06-22",
+    "location": "Victoria Island",
+    "condition": "Brand New"
+  },
+  {
+    "id": 9,
+    "name": "Cozy Armchair",
+    "category": "Chairs",
+    "price": 28000,
+    "image": "/cozy-armchair.png",
+    "date": "2024-06-25",
+    "location": "Abuja",
+    "condition": "Fairly Used"
+  },
+  {
+    "id": 10,
+    "name": "Wooden Bench",
+    "category": "Furniture",
+    "price": 18000,
+    "oldPrice": 22000,
+    "image": "/wooden-bench.png",
+    "date": "2024-06-27",
+    "location": "Kano",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 11,
+    "name": "Lounge Set",
+    "category": "Furniture",
+    "price": 70000,
+    "image": "/lounge-set.png",
+    "date": "2024-06-28",
+    "location": "Ajah",
+    "condition": "Brand New"
+  },
+  {
+    "id": 12,
+    "name": "Minimalist Rack",
+    "category": "Furniture",
+    "price": 12000,
+    "image": "/minimalist-rack.png",
+    "date": "2024-07-01",
+    "location": "Port Harcourt",
+    "condition": "Fairly Used"
+  },
+  {
+    "id": 13,
+    "name": "Round Mirror",
+    "category": "Accessories",
+    "price": 15000,
+    "oldPrice": 20000,
+    "image": "/round-mirror.png",
+    "date": "2024-07-02",
+    "location": "Abuja",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 14,
+    "name": "TV Console",
+    "category": "Furniture",
+    "price": 42000,
+    "image": "/tv-console.png",
+    "date": "2024-07-03",
+    "location": "Kano",
+    "condition": "Brand New"
+  },
+  {
+    "id": 15,
+    "name": "Study Table",
+    "category": "Tables",
+    "price": 40000,
+    "image": "/study-table.png",
+    "date": "2024-07-04",
+    "location": "Yaba",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 16,
+    "name": "Wall Frame Set",
+    "category": "Home Deco",
+    "price": 8000,
+    "image": "/wall-frame.png",
+    "date": "2024-07-05",
+    "location": "Port Harcourt",
+    "condition": "Fairly Used"
+  },
+  {
+    "id": 17,
+    "name": "Leather Couch",
+    "category": "Home Deco",
+    "price": 105000,
+    "oldPrice": 125000,
+    "image": "/leather-couch.png",
+    "date": "2024-07-06",
+    "location": "Abuja",
+    "condition": "Brand New"
+  },
+  {
+    "id": 18,
+    "name": "Floating Shelf",
+    "category": "Furniture",
+    "price": 9000,
+    "oldPrice": 12000,
+    "image": "/floating-shelf.png",
+    "date": "2024-07-07",
+    "location": "Kano",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 19,
+    "name": "Bamboo Chair",
+    "category": "Chairs",
+    "price": 22000,
+    "oldPrice": 28000,
+    "image": "/bamboo-chair.png",
+    "date": "2024-07-08",
+    "location": "Surulere",
+    "condition": "Fairly Used"
+  },
+  {
+    "id": 20,
+    "name": "Corner Couch",
+    "category": "Furniture",
+    "price": 65000,
+    "oldPrice": 80000,
+    "image": "/corner-couch.png",
+    "date": "2024-07-09",
+    "location": "Port Harcourt",
+    "condition": "Brand New"
+  },
+  {
+    "id": 21,
+    "name": "Wooden Dining Set",
+    "category": "Furniture",
+    "price": 88000,
+    "oldPrice": 95000,
+    "image": "/wooden-dining.png",
+    "date": "2024-07-10",
+    "location": "Abuja",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 22,
+    "name": "Foldable Table",
+    "category": "Tables",
+    "price": 15000,
+    "image": "/foldable-table.png",
+    "date": "2024-07-11",
+    "location": "Kano",
+    "condition": "Fairly Used"
+  },
+  {
+    "id": 23,
+    "name": "Hammock Stand",
+    "category": "Accessories",
+    "price": 25000,
+    "oldPrice": 30000,
+    "image": "/hammock-stand.png",
+    "date": "2024-07-12",
+    "location": "Ikoyi",
+    "condition": "Tokunbo"
+  },
+  {
+    "id": 24,
+    "name": "Office Cabinet",
+    "category": "Office Furniture",
+    "price": 46000,
+    "image": "/office-cabinet.png",
+    "date": "2024-07-13",
+    "location": "Port Harcourt",
+    "condition": "Brand New"
+  }
+]
