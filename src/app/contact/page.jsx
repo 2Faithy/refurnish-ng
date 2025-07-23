@@ -17,7 +17,7 @@ export default function ContactPage() {
   return (
     <section
       className="relative bg-cover bg-center text-white py-24 px-4 sm:px-8 lg:px-16 overflow-hidden" // Increased vertical padding, added overflow-hidden for animations
-      style={{ backgroundImage: "url('/contact-bg.png')" }}
+      style={{ backgroundImage: "url('/contact-bg2.png')" }}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-black/80 to-[#775522]/60 z-0"></div>
 

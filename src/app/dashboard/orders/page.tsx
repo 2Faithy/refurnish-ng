@@ -1,3 +1,4 @@
+// File: src/app/dashboard/orders/page.tsx
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -24,6 +25,11 @@ export default function MyOrdersPage() {
   const [activeTab, setActiveTab] = useState<'recent' | 'all'>('recent'); // For recent vs all orders
   const [searchQuery, setSearchQuery] = useState(''); // Search functionality
 
+  // You need to import `useRef` and `useCallback` if you were to implement
+  // totalUnreadMessages here as well, similar to messages/page.tsx.
+  // For simplicity, we'll just pass 0 or define a placeholder for now.
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0); // Add state for totalUnreadMessages
+
   useEffect(() => {
     async function fetchOrders() {
       setLoading(true);
@@ -36,6 +42,9 @@ export default function MyOrdersPage() {
           (order) => order.user_email === user.email
         ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date descending
         setOrders(filteredOrders);
+        // In a real app, you might fetch actual unread message count here
+        // For now, we'll keep it at 0 or a value fetched from a global state/context
+        // setTotalUnreadMessages(someGlobalUnreadCount);
       }
       setLoading(false);
     }
@@ -93,9 +102,10 @@ export default function MyOrdersPage() {
   };
 
   return (
-    <DashboardLayout>
+    // Pass the required prop here
+    <DashboardLayout totalUnreadMessages={totalUnreadMessages}>
       <div className="space-y-8 py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-[calc(100vh-64px)] animate-fadeIn">
-        
+
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl shadow-lg border border-gray-100 animate-slideInUp">
           <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
@@ -236,3 +246,7 @@ export default function MyOrdersPage() {
     </DashboardLayout>
   );
 }
+
+const getParticipantEmail = (conversation: any, currentUserEmail: string) => {
+  return conversation.participants.find((p: string) => p !== currentUserEmail) || '';
+};
