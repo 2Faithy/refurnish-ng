@@ -1,3 +1,4 @@
+// File: src/app/help/page.tsx
 'use client';
 
 import React from 'react';
@@ -48,9 +49,9 @@ const faqs = [
   ];
 
 export default function HelpPage() {
-  const [openIndex, setOpenIndex] = React.useState(null);
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null); // Explicitly type as number or null
 
-  const toggleFAQ = (index) => {
+  const toggleFAQ = (index: number) => { // Type 'index' as number
     setOpenIndex(openIndex === index ? null : index);
   };
 

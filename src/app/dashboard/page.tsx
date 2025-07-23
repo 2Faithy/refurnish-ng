@@ -1,10 +1,11 @@
+// File: src/app/dashboard/page.tsx
 'use client';
 
 import { FaUserEdit, FaPlusCircle, FaCog, FaBoxOpen, FaLightbulb } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import VerifyPrompt from '@/components/VerifyPrompt';
-import { getCurrentUser } from '@/utils/auth'; 
+import { getCurrentUser } from '@/utils/auth';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -13,10 +14,11 @@ export default function DashboardHome() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [orderHistory, setOrderHistory] = useState<any[]>([]);
   const [hasMoreOrders, setHasMoreOrders] = useState(false);
-  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false); 
+  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0); // Add state for totalUnreadMessages
 
   useEffect(() => {
-    const currentUser = getCurrentUser(); 
+    const currentUser = getCurrentUser();
     setUser(currentUser);
 
     // Determine if VerifyPrompt should be shown
@@ -49,10 +51,18 @@ export default function DashboardHome() {
         setOrderHistory([]);
         setHasMoreOrders(false);
       });
+
+    // In a real application, you would likely fetch the actual unread message count here
+    // For now, we'll keep it at a default of 0 or a placeholder.
+    // If your DashboardLayout truly needs this for something like a notification badge,
+    // you'll need to implement a way to get this count (e.g., from an API or global state).
+    // Example placeholder:
+    // setTotalUnreadMessages(0); // or fetch from an API
   }, []); // Depend on nothing so it only runs once on mount
 
   return (
-    <DashboardLayout>
+    // Pass the required prop here
+    <DashboardLayout totalUnreadMessages={totalUnreadMessages}>
       <div className="space-y-6 sm:space-y-8 py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-[calc(100vh-64px)] animate-fadeIn ">
 
         {/* Welcome Header */}

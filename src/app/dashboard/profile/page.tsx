@@ -1,3 +1,4 @@
+// File: src/app/dashboard/profile/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -41,6 +42,7 @@ export default function ProfilePage() {
   const [selectedStateLgas, setSelectedStateLgas] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0); // Add this line
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -132,7 +134,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout totalUnreadMessages={totalUnreadMessages}> {/* Pass the prop here */}
       <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-10 sm:p-8 my-8 animate-fadeIn">
         <h1 className="text-3xl font-bold mb-6 text-[#775522] border-b pb-4 border-gray-200">
           Update Profile Information
@@ -176,7 +178,7 @@ export default function ProfilePage() {
                   name="firstName"
                   value={form.firstName}
                   onChange={handleChange}
-                  className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**"
+                  className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200"
                   required
                 />
               </div>
@@ -187,7 +189,7 @@ export default function ProfilePage() {
                   name="surname"
                   value={form.surname}
                   onChange={handleChange}
-                  className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**"
+                  className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200"
                   required
                 />
               </div>
@@ -200,7 +202,7 @@ export default function ProfilePage() {
                 value={form.address}
                 onChange={handleChange}
                 rows={3}
-                className="input-field resize-none **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**"
+                className="input-field resize-none focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200"
                 placeholder="Street, Area, City..."
                 required
               ></textarea>
@@ -209,7 +211,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700">State <span className="text-[#5E441B]">*</span></label>
-                <select name="state" value={form.state} onChange={handleChange} className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**" required>
+                <select name="state" value={form.state} onChange={handleChange} className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200" required>
                   <option value="">Select a state</option>
                   {Object.keys(nigeriaData).map(state => (
                     <option key={state} value={state}>
@@ -220,7 +222,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">LGA <span className="text-[#5E441B]">*</span></label>
-                <select name="lga" value={form.lga} onChange={handleChange} className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**" disabled={!form.state} required>
+                <select name="lga" value={form.lga} onChange={handleChange} className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200" disabled={!form.state} required>
                   <option value="">Select LGA</option>
                   {selectedStateLgas.map(lga => (
                     <option key={lga} value={lga}>
@@ -234,7 +236,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Gender <span className="text-[#5E441B]">*</span></label>
-                <select name="gender" value={form.gender} onChange={handleChange} className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**" required>
+                <select name="gender" value={form.gender} onChange={handleChange} className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200" required>
                   <option value="">Select Gender</option>
                   <option value="Female">Female</option>
                   <option value="Male">Male</option>
@@ -243,7 +245,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date of Birth <span className="text-[#5E441B]">*</span></label>
-                <input type="date" name="dob" value={form.dob} onChange={handleChange} className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**" required />
+                <input type="date" name="dob" value={form.dob} onChange={handleChange} className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200" required />
               </div>
             </div>
 
@@ -267,7 +269,7 @@ export default function ProfilePage() {
             </h2>
             <div>
               <label className="block text-sm font-medium text-gray-700">Verification ID Type <span className="text-[#5E441B]">*</span></label>
-              <select name="idType" value={form.idType} onChange={handleChange} className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**" required>
+              <select name="idType" value={form.idType} onChange={handleChange} className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200" required>
                 <option value="">Select ID</option>
                 <option value="NIN">NIN</option>
                 <option value="Driver’s License">Driver’s License</option>
@@ -283,7 +285,7 @@ export default function ProfilePage() {
                 name="idNumber"
                 value={form.idNumber}
                 onChange={handleChange}
-                className="input-field **focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200**"
+                className="input-field focus:ring-2 focus:ring-[#E8CEB0] focus:border-[#775522] transition-all duration-200"
                 required
               />
             </div>

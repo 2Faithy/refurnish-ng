@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, Dispatch, SetStateAction } from 'react'; // Import Dispatch and SetStateAction
 import {
   FaHome,
   FaBoxOpen,
@@ -16,14 +16,18 @@ import {
 import { FaBarsStaggered } from 'react-icons/fa6';
 import { FaTimes } from 'react-icons/fa';
 
-// Sidebar props
+// Sidebar props - UPDATED
 interface SidebarProps {
   totalUnreadMessages: number;
+  isOpen: boolean; // Add this prop
+  setIsOpen: Dispatch<SetStateAction<boolean>>; // Add this prop
 }
 
-export default function Sidebar({ totalUnreadMessages }: SidebarProps) {
+// Update the function signature to destructure isOpen and setIsOpen
+export default function Sidebar({ totalUnreadMessages, isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(false);
+  // Remove the local isOpen state as it's now managed by DashboardLayout
+  // const [isOpen, setIsOpen] = useState(false); // REMOVE THIS LINE
 
   const navItems = [
     { name: 'Dashboard', icon: FaHome, href: '/dashboard' },
@@ -38,8 +42,8 @@ export default function Sidebar({ totalUnreadMessages }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-150 left-4 z-50">
+      {/* Mobile Menu Button - now correctly uses setIsOpen from props */}
+      <div className="lg:hidden fixed top-4 left-4 z-50"> {/* Adjusted top position slightly for better visual */}
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="p-3 bg-[#775522] text-white rounded-lg shadow-lg hover:bg-[#5E441B] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#775522]"
@@ -48,7 +52,7 @@ export default function Sidebar({ totalUnreadMessages }: SidebarProps) {
         </button>
       </div>
 
-      {/* Overlay for mobile */}
+      {/* Overlay for mobile - now correctly uses setIsOpen from props */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden animate-fadeIn"
@@ -56,20 +60,20 @@ export default function Sidebar({ totalUnreadMessages }: SidebarProps) {
         ></div>
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Conditional classes for responsiveness and animation */}
       <aside
-  className={`fixed top-0 left-0 h-full w-64 pt-[94px] bg-white p-6 shadow-xl border-r border-gray-100 flex flex-col justify-between z-40
-    transform transition-transform duration-300 ease-in-out
-    ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-    lg:translate-x-0 lg:static lg:min-h-screen lg:rounded-r-lg lg:animate-slideInLeft`}
->
+        className={`fixed top-0 left-0 h-full w-64 pt-[94px] bg-white p-6 shadow-xl border-r border-gray-100 flex flex-col justify-between z-40
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0 lg:static lg:min-h-screen lg:rounded-r-lg lg:animate-slideInLeft`}
+      >
         <div className="flex flex-col">
           {/* Logo */}
           <div className="mb-8 text-center mt-4 lg:mt-0">
             <Link
               href="/dashboard"
               className="text-2xl font-extrabold text-[#775522] hover:text-[#5E441B] transition-colors duration-200"
-              onClick={() => setIsOpen(false)}
+              onClick={() => setIsOpen(false)} // Close sidebar on navigation
             >
               Your Dashboard
             </Link>
@@ -118,7 +122,7 @@ export default function Sidebar({ totalUnreadMessages }: SidebarProps) {
                   key={item.name}
                   href={item.href || '#'}
                   className={linkClasses}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => setIsOpen(false)} // Close sidebar on navigation
                 >
                   <div className="relative flex items-center">
                     <item.icon className={iconClasses} />
@@ -134,7 +138,7 @@ export default function Sidebar({ totalUnreadMessages }: SidebarProps) {
             })}
           </nav>
         </div>
-        <div />
+        <div /> {/* This empty div seems to be for spacing at the bottom, kept for consistency */}
       </aside>
     </>
   );
