@@ -119,11 +119,11 @@ export default function MessagesPage() {
       prev.map(conv =>
         conv.thread_id === threadId
           ? {
-            ...conv,
-            messages: conv.messages.map(msg =>
-              msg.sender !== userEmail && !msg.read && msg.status !== 'pending_approval' ? { ...msg, read: true } : msg
-            ),
-          }
+              ...conv,
+              messages: conv.messages.map(msg =>
+                msg.sender !== userEmail && !msg.read && msg.status !== 'pending_approval' ? { ...msg, read: true } : msg
+              ),
+            }
           : conv
       )
     );
@@ -514,24 +514,24 @@ export default function MessagesPage() {
 
                 {/* Predefined Questions */}
         {(!isSmallScreen || showQuickReplies) && !showOtherInput && (
-  <div
-    className={`w-full max-h-40 overflow-y-auto pr-1 ${
-      isSmallScreen
-        ? "flex flex-col gap-2"
-        : "grid grid-cols-2 sm:grid-cols-3 gap-2"
-    }`}
-  >
-    {predefinedQuestions.map((q, idx) => (
-      <button
-        key={idx}
-        onClick={() => handlePredefinedQuestion(q)}
-        className="w-full px-3 py-2 text-sm bg-gray-100 rounded-lg text-gray-700 hover:bg-[#E8CEB0]/50 hover:text-[#775522] transition-colors duration-200 border border-gray-200 text-left"
-      >
-        {q}
-      </button>
-    ))}
-  </div>
-)}
+          <div
+            className={`w-full max-h-40 overflow-y-auto pr-1 ${
+              isSmallScreen
+                ? "flex flex-col gap-2"
+                : "grid grid-cols-2 sm:grid-cols-3 gap-2"
+            }`}
+          >
+            {predefinedQuestions.map((q, idx) => (
+              <button
+                key={idx}
+                onClick={() => handlePredefinedQuestion(q)}
+                className="w-full px-3 py-2 text-sm bg-gray-100 rounded-lg text-gray-700 hover:bg-[#E8CEB0]/50 hover:text-[#775522] transition-colors duration-200 border border-gray-200 text-left"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
                 {/* "Other" Input */}
                 {showOtherInput && (
                   <div className="flex items-center gap-2 sm:gap-3 mt-2">
@@ -545,9 +545,9 @@ export default function MessagesPage() {
                         }
                       }}
                       placeholder="Type your custom message for approval..."
-                      className="flex-1 border border-gray-300 px-4 py-2 sm:px-5 sm:py-3 rounded-xl text-gray-800 // Adjusted rounded-full to rounded-xl for textarea
+                      className="flex-1 border border-gray-300 px-4 py-2 sm:px-5 sm:py-3 rounded-xl text-gray-800
                                  focus:outline-none focus:ring-3 focus:ring-[#775522]/30 focus:border-[#775522] transition-all duration-200
-                                 placeholder-gray-500 text-sm resize-y min-h-[40px] max-h-[150px] overflow-y-auto" // Added resize-y, min-height, max-height, and overflow-y-auto
+                                 placeholder-gray-500 text-sm resize-y min-h-[40px] max-h-[150px] overflow-y-auto"
                     />
                     <button
                       onClick={() => handleSendMessage(messageText, 'pending_approval')}
