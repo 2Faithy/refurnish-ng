@@ -163,7 +163,7 @@ export default function AuthPage() {
 
       {/* === RIGHT === */}
       <div className="hidden lg:flex flex-1 relative">
-        <Image src="/hero.png" alt="Furniture" layout="fill" objectFit="cover" className="brightness-90" priority />
+        <Image src="/login-bg.png" alt="Furniture" layout="fill" objectFit="cover" className="brightness-90" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent text-white flex flex-col justify-end p-12 text-center">
           <h2 className="text-4xl font-extrabold mb-4 animate-slide-in-up">Refurnish NG</h2>
           <p className="text-lg leading-relaxed animate-slide-in-up">Discover and sell exquisite, quality furniture across Nigeria.</p>
