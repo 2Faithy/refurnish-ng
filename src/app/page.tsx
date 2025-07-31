@@ -1,22 +1,35 @@
-"use client"; // <--- Add this line at the very top
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import products from "@/data/products.json";
 import { FaInfoCircle, FaQuestionCircle, FaHeadset, FaEnvelope } from 'react-icons/fa';
-import DiscountModal from '../components/DiscountModal'; // Adjust the path as per your file structure
+import DiscountModal from '../components/DiscountModal';
+
+// Assume these images exist in your public folder or are imported
+const collectionImages = {
+  newArrivals: '/images/collection-new-arrivals.jpg',
+  kidsFashion: '/images/collection-kids-fashion.jpg',
+  womenLingerie: '/images/collection-women-lingerie.jpg',
+  classic: '/images/collection-classic.jpg',
+  vintageFinds: '/images/collection-vintage-finds.jpg',
+  outdoorLiving: '/images/collection-outdoor-living.jpg',
+  homeDecor: '/images/collection-home-decor.jpg',
+  bedroomEssentials: '/images/collection-bedroom-essentials.jpg',
+};
 
 export default function HomePage() {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [showDiscountModal, setShowDiscountModal] = useState(false); // State for modal visibility
+  const [currentSlide, setCurrentSlide] = useState(0); // For hero section
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [currentCollectionIndex, setCurrentCollectionIndex] = useState(0); // New state for collections carousel
 
   const slides = [
     {
       title: "Simplifying Furniture Buying & Selling in Lagos",
       description: "Discover a seamless, safe, and efficient marketplace where you can declutter, furnish, and refresh your space with ease.",
       image: "/hero-bg2.png",
-      textColor: "text-black", // All text for this slide will be black
+      textColor: "text-black",
       buttons: [
         { text: "Shop Now", href: "/shop", bgColor: "bg-[#775522]", hoverBg: "hover:bg-[#5E441B]", textColor: "text-white" },
       ],
@@ -25,9 +38,9 @@ export default function HomePage() {
       title: "Declutter Your Space, Earn Extra Cash!",
       description: "Ready to part with your pre-loved furniture? List it effortlessly and connect with eager buyers in Lagos.",
       image: "/hero-bg3.png",
-      textColor: "text-[#5F7161]", // This is the default color you already had, explicitly set for clarity
+      textColor: "text-[#5F7161]",
       buttons: [
-        { text: "Sell Now", href: "/sell", bgColor: "bg-[#775522]", hoverBg: "hover:bg-[#5E441B]", textColor: "text-white" },
+        { text: "Sell Now", href: "https://forms.gle/41o14xQc4J4kR6Kz7", bgColor: "bg-[#775522]", hoverBg: "hover:bg-[#5E441B]", textColor: "text-white" },
       ],
     },
     {
@@ -37,24 +50,51 @@ export default function HomePage() {
       textColor: "text-white",
       buttons: [
         { text: "Shop Now", href: "/shop", bgColor: "bg-[#775522]", hoverBg: "hover:bg-[#5E441B]", textColor: "text-white" },
-        { text: "Sell Now", href: "/sell", bgColor: "bg-transparent border-2 border-white", hoverBg: "hover:bg-white hover:text-[#775522]", textColor: "text-white" },
+        { text: "Sell Now", href: "https://forms.gle/41o14xQc4J4kR6Kz7", bgColor: "bg-transparent border-2 border-white", hoverBg: "hover:bg-white hover:text-[#775522]", textColor: "text-white" },
       ],
     },
   ];
 
+  const collections = [
+    { name: 'New arrivals', image: collectionImages.newArrivals, alt: 'Man smiling in a light blue shirt', href: '/shop?category=new-arrivals' },
+    { name: 'Kids furniture', image: collectionImages.kidsFashion, alt: 'Young girl in a red dress and hat', href: '/shop?category=kids-furniture' },
+    { name: 'Sofa', image: collectionImages.womenLingerie, alt: 'Woman in red lingerie', href: '/shop?category=women-lingerie' },
+    { name: 'Home Deco', image: collectionImages.classic, alt: 'Boy in a red hoodie and sunglasses', href: '/shop?category=classic' },
+    { name: 'Office Furniture', image: collectionImages.vintageFinds, alt: 'Vintage furniture in a cozy room', href: '/shop?category=vintage-find00s' },
+    { name: 'Beds', image: collectionImages.outdoorLiving, alt: 'Outdoor patio furniture', href: '/shop?category=outdoor-living' },
+    { name: 'Chairs', image: collectionImages.homeDecor, alt: 'Stylish home decor items', href: '/shop?category=home-decor' },
+    { name: 'Tables', image: collectionImages.bedroomEssentials, alt: 'Cozy bedroom setup with bed', href: '/shop?category=bedroom-essentials' },
+  ];
+
+  const collectionsPerPage = 4;
+
+  const nextCollection = () => {
+    setCurrentCollectionIndex((prevIndex) => {
+      const maxIndex = collections.length - collectionsPerPage;
+      return (prevIndex + 1 > maxIndex) ? maxIndex : prevIndex + 1;
+    });
+  };
+
+  const prevCollection = () => {
+    setCurrentCollectionIndex((prevIndex) => {
+      return (prevIndex - 1 < 0) ? 0 : prevIndex - 1;
+    });
+  };
+
+  const isPrevDisabled = currentCollectionIndex === 0;
+  const isNextDisabled = currentCollectionIndex >= collections.length - collectionsPerPage;
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prevSlide) => (prevSlide + 1) % slides.length);
-    }, 5000); // Change slide every 5 seconds
+    }, 5000);
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  // Effect to show the discount modal after a short delay on component mount
   useEffect(() => {
     const modalTimer = setTimeout(() => {
       setShowDiscountModal(true);
-    }, 1000); // Show modal after 1 second
-
+    }, 1000);
     return () => clearTimeout(modalTimer);
   }, []);
 
@@ -64,10 +104,8 @@ export default function HomePage() {
 
   return (
     <div className="font-sans text-[#5F7161]">
-      {/* Discount Pop-up Modal */}
       <DiscountModal show={showDiscountModal} onClose={handleCloseModal} />
 
-      {/* Hero Section */}
       <section
         className="w-full min-h-screen relative bg-cover bg-center transition-all duration-1000 ease-in-out"
         style={{ backgroundImage: `url(${slides[currentSlide].image})` }}
@@ -75,7 +113,6 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[#E8CEB0]/30 z-0"></div>
 
         <div className="relative z-10 max-w-screen-xl mx-auto px-4 sm:px-8 lg:px-16 py-16 flex flex-col items-center justify-center min-h-screen">
-          {/* Slide Content - Apply dynamic text color and fade-in effect */}
           <div key={currentSlide} className={`max-w-xl text-center md:text-left pt-24 pb-16 animate-fade-in-up ${slides[currentSlide].textColor}`}>
             <h1 className={`text-4xl md:text-5xl font-bold mb-6 leading-tight animate-text-fade-in`}>
               {slides[currentSlide].title}
@@ -97,7 +134,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Navigation Dots */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex space-x-2">
           {slides.map((_, index) => (
             <button
@@ -162,6 +198,86 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Shop by collection Section */}
+      <section className="container mx-auto px-4 py-12 overflow-hidden">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-4xl font-semibold text-[#775522]">Shop by collection</h2>
+            <p className="mt-2 text-gray-600">Share information about your brand with your customers.</p>
+          </div>
+          <div className="flex space-x-4">
+            <button
+              onClick={prevCollection}
+              disabled={isPrevDisabled}
+              className={
+                "p-3 border rounded-full focus:outline-none transition-colors duration-200 " +
+                (isPrevDisabled ? 'opacity-50 cursor-not-allowed border-gray-300' : 'hover:bg-gray-100 hover:border-[#775522] border-gray-300')
+              }
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-gray-700 group-hover:text-[#775522]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={nextCollection}
+              disabled={isNextDisabled}
+              className={
+                "p-3 border rounded-full focus:outline-none transition-colors duration-200 " +
+                (isNextDisabled ? 'opacity-50 cursor-not-allowed border-gray-300' : 'hover:bg-gray-100 hover:border-[#775522] border-gray-300')
+              }
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-gray-700 group-hover:text-[#775522]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex overflow-hidden relative">
+          <div
+            className="flex transition-transform duration-500 ease-in-out"
+            style={{ transform: `translateX(-${currentCollectionIndex * (100 / collectionsPerPage)}%)` }}
+          >
+            {collections.map((collection, index) => (
+              <Link
+                href={collection.href}
+                key={index}
+                className="flex-shrink-0 w-1/4 px-4 flex flex-col items-center group"
+              >
+                <div
+                  className="w-48 h-48 rounded-full overflow-hidden flex items-center justify-center mb-4 shadow-lg
+                             transform transition-transform duration-300 group-hover:scale-105
+                             border border-gray-200 group-hover:border-[#E8CEB0] bg-white"
+                >
+                  <Image
+                    src={collection.image}
+                    alt={collection.alt}
+                    width={192}
+                    height={192}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-xl font-medium text-[#5F7161] group-hover:text-[#775522] transition-colors duration-300">
+                  {collection.name}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How It Works Section */}
       <section className="bg-[#E8CEB0]/30 py-16 px-4 sm:px-8 lg:px-16">
         <h2 className="text-3xl font-bold text-center text-[#5F7161] mb-10"> How It Works</h2>
@@ -211,7 +327,6 @@ export default function HomePage() {
       </section>
 
       <section className="py-20 sm:py-24 lg:py-32 px-4 sm:px-8 lg:px-16 bg-[#F9F9F9] overflow-hidden relative">
-        {/* Subtle background element for visual interest */}
         <div className="absolute top-0 left-1/2 w-80 h-80 bg-[#E8CEB0] opacity-10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-blob-slow-reverse"></div>
         <div className="absolute bottom-0 right-1/4 w-60 h-60 bg-[#775522] opacity-5 rounded-full blur-3xl transform translate-x-1/2 translate-y-1/2 animate-blob-slow"></div>
 
@@ -221,7 +336,6 @@ export default function HomePage() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-left">
-            {/* Quick Links with Icons */}
             {[
               {
                 icon: <FaInfoCircle />,
@@ -257,7 +371,7 @@ export default function HomePage() {
                 className="bg-white p-8 rounded-xl shadow-lg flex flex-col items-start
                           transform hover:scale-[1.03] hover:shadow-xl transition-all duration-300 ease-in-out
                           border border-gray-100 animate-fade-in-up-staggered"
-                style={{ animationDelay: `${0.15 * i}s` }} // Staggered animation
+                style={{ animationDelay: `${0.15 * i}s` }}
               >
                 <div className="text-5xl text-[#E8CEB0] mb-4 p-3 rounded-full bg-[#775522]/10 inline-flex items-center justify-center drop-shadow-sm">
                   {item.icon}
