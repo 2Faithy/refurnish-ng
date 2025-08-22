@@ -280,48 +280,48 @@ export default function StartSellingPage() {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
-  const updateFormData = (field: string, value: any) => {
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".");
+ const updateFormData = (field: string, value: any) => {
+  if (field.includes(".")) {
+    const [parent, child] = field.split(".");
 
-      setFormData((prev) => {
-        // Create a new object with the updated nested property
-        const updated = { ...prev };
+    setFormData((prev) => {
+      // Create a new object with the updated nested property
+      const updated = { ...prev };
 
-        // Handle different parent types with type safety
-        if (parent === "dimensions") {
-          updated.dimensions = {
-            ...updated.dimensions,
-            [child]: value,
-          };
-        } else if (parent === "address") {
-          updated.address = {
-            ...updated.address,
-            [child]: value,
-          };
-        } else if (parent === "contact") {
-          updated.contact = {
-            ...updated.contact,
-            [child]: value,
-          };
-        } else if (parent === "delivery") {
-          updated.delivery = {
-            ...updated.delivery,
-            [child]: value,
-          };
-        } else {
-          console.warn(`Unknown parent field: ${parent}`);
-        }
+      // Handle different parent types with type safety
+      if (parent === "dimensions") {
+        updated.dimensions = {
+          ...updated.dimensions,
+          [child]: value,
+        };
+      } else if (parent === "address") {
+        updated.address = {
+          ...updated.address,
+          [child]: value,
+        };
+      } else if (parent === "contact") {
+        updated.contact = {
+          ...updated.contact,
+          [child]: value,
+        };
+      } else if (parent === "delivery") {
+        updated.delivery = {
+          ...updated.delivery,
+          [child]: value,
+        };
+      } else {
+        console.warn(`Unknown parent field: ${parent}`);
+      }
 
-        return updated;
-      });
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-    }
-  };
+      return updated;
+    });
+  } else {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  }
+};
 
   const addFeature = (feature: string) => {
     if (feature && !formData.features.includes(feature)) {
