@@ -12,7 +12,7 @@ import {
   FaArrowRight,
   FaArrowLeft,
   FaStar,
-  FaCheckCircle
+  FaCheckCircle,
 } from "react-icons/fa";
 import DiscountModal from "../components/DiscountModal";
 
@@ -32,10 +32,11 @@ export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [currentCollectionIndex, setCurrentCollectionIndex] = useState(0);
+  const [isSlideTransitioning, setIsSlideTransitioning] = useState(false);
 
   const slides = [
     {
-      title: "Simplifying Furniture Buying & Selling in Lagos",
+      title: "Simplifying  Furniture  Buying  &  Selling  in  Lagos",
       description:
         "Discover a seamless, safe, and efficient marketplace where you can declutter, furnish, and refresh your space with ease.",
       image: "/hero-bg2.png",
@@ -51,7 +52,7 @@ export default function HomePage() {
       ],
     },
     {
-      title: "Declutter Your Space, Earn Extra Cash!",
+      title: "Declutter  Your  Space,  Earn  Extra  Cash!",
       description:
         "Ready to part with your pre-loved furniture? List it effortlessly and connect with eager buyers in Lagos.",
       image: "/hero-bg3.png",
@@ -67,7 +68,7 @@ export default function HomePage() {
       ],
     },
     {
-      title: "Your Ultimate Furniture Marketplace",
+      title: "Your  Ultimate  Furniture  Marketplace",
       description:
         "Whether you're furnishing a new home or giving old pieces a new life, find or sell exactly what you need with ease.",
       image: "/hero-bg4.png",
@@ -82,7 +83,7 @@ export default function HomePage() {
         },
         {
           text: "Sell Now",
-          href: "https://forms.gle/41o14xQc4J4kR6Kz7",
+          href: "./dashboard/sell",
           bgColor: "bg-transparent border-2 border-white",
           hoverBg: "hover:bg-white hover:text-[#775522]",
           textColor: "text-white",
@@ -161,12 +162,22 @@ export default function HomePage() {
   const isNextDisabled =
     currentCollectionIndex >= collections.length - collectionsPerPage;
 
+  const handleSlideChange = (newSlide: number) => {
+    if (newSlide !== currentSlide) {
+      setIsSlideTransitioning(true);
+      setTimeout(() => {
+        setCurrentSlide(newSlide);
+        setIsSlideTransitioning(false);
+      }, 150);
+    }
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prevSlide) => (prevSlide + 1) % slides.length);
-    }, 5000);
+      handleSlideChange((currentSlide + 1) % slides.length);
+    }, 6000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [currentSlide, slides.length]);
 
   useEffect(() => {
     const modalTimer = setTimeout(() => {
@@ -183,59 +194,222 @@ export default function HomePage() {
     <div className="font-sans text-[#5F7161]">
       <DiscountModal show={showDiscountModal} onClose={handleCloseModal} />
 
-      {/* Hero Section - Unchanged */}
-      <section
-        className="w-full min-h-screen relative bg-cover bg-center transition-all duration-1000 ease-in-out"
-        style={{ backgroundImage: `url(${slides[currentSlide].image})` }}
-      >
-        <div className="absolute inset-0 bg-[#E8CEB0]/30 z-0"></div>
+      {/* Enhanced Hero Section */}
+      <section className="w-full min-h-screen relative overflow-hidden">
+        {/* Background Images with Parallax Effect */}
+        <div className="absolute inset-0">
+          {slides.map((slide, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out transform ${
+                currentSlide === index
+                  ? "opacity-100 scale-100"
+                  : "opacity-0 scale-105"
+              }`}
+              style={{
+                backgroundImage: `url(${slide.image})`,
+                filter:
+                  currentSlide === index ? "brightness(1)" : "brightness(0.7)",
+              }}
+            />
+          ))}
 
+          {/* Dynamic Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#E8CEB0]/40 via-transparent to-[#775522]/20 transition-all duration-1000"></div>
+
+          {/* Animated Particles */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-2 h-2 bg-[#775522]/20 rounded-full animate-float"
+                style={{
+                  left: `${20 + i * 15}%`,
+                  top: `${30 + i * 10}%`,
+                  animationDelay: `${i * 0.5}s`,
+                  animationDuration: `${4 + i * 0.5}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Content Container */}
         <div className="relative z-10 max-w-screen-xl mx-auto px-4 sm:px-8 lg:px-16 py-16 flex flex-col items-center justify-center min-h-screen">
           <div
-            key={currentSlide}
-            className={`max-w-xl text-center md:text-left pt-24 pb-16 animate-fade-in-up ${slides[currentSlide].textColor}`}
+            className={`max-w-4xl text-center pt-24 pb-16 transition-all duration-700 ease-out ${
+              isSlideTransitioning
+                ? "opacity-0 transform translate-y-8"
+                : "opacity-100 transform translate-y-0"
+            }`}
           >
+            {/* Animated Title */}
             <h1
-              className={`text-4xl md:text-5xl font-bold mb-6 leading-tight animate-text-fade-in`}
+              className={`text-4xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight ${slides[currentSlide].textColor} transform transition-all duration-1000 ease-out`}
+              style={{
+                textShadow: slides[currentSlide].textColor.includes("white")
+                  ? "2px 2px 4px rgba(0,0,0,0.3)"
+                  : "2px 2px 4px rgba(255,255,255,0.3)",
+                animation: isSlideTransitioning
+                  ? "none"
+                  : "slideInFromLeft 0.8s ease-out 0.2s both",
+              }}
             >
-              {slides[currentSlide].title}
+              {slides[currentSlide].title.split(" ").map((word, index) => (
+                <span
+                  key={index}
+                  className="inline-block mr-2 mb-2 hover:scale-105 transition-transform duration-300"
+                  style={{
+                    animation: isSlideTransitioning
+                      ? "none"
+                      : `fadeInUp 0.6s ease-out ${0.1 * index + 0.3}s both`,
+                  }}
+                >
+                  {word}
+                </span>
+              ))}
             </h1>
-            <p
-              className={`text-lg leading-7 mb-8 animate-text-fade-in`}
-              style={{ animationDelay: "0.2s" }}
-            >
-              {slides[currentSlide].description}
-            </p>
+
+            {/* Animated Description */}
+            <div className="overflow-hidden mb-10">
+              <p
+                className={`text-xl md:text-2xl leading-8 max-w-3xl mx-auto ${slides[currentSlide].textColor} transform transition-all duration-1000 ease-out`}
+                style={{
+                  textShadow: slides[currentSlide].textColor.includes("white")
+                    ? "1px 1px 2px rgba(0,0,0,0.2)"
+                    : "1px 1px 2px rgba(255,255,255,0.2)",
+                  animation: isSlideTransitioning
+                    ? "none"
+                    : "slideInFromRight 0.8s ease-out 0.5s both",
+                }}
+              >
+                {slides[currentSlide].description}
+              </p>
+            </div>
+
+            {/* Animated Buttons */}
             <div
-              className="flex justify-center md:justify-start space-x-4 animate-text-fade-in"
-              style={{ animationDelay: "0.4s" }}
+              className="flex justify-center flex-wrap gap-6"
+              style={{
+                animation: isSlideTransitioning
+                  ? "none"
+                  : "fadeInUp 0.8s ease-out 0.8s both",
+              }}
             >
               {slides[currentSlide].buttons.map((button, index) => (
                 <Link
                   key={index}
                   href={button.href}
-                  className={`inline-block ${button.bgColor} ${button.hoverBg} ${button.textColor} px-6 py-3 rounded-md shadow transition-all duration-300`}
+                  className={`group relative inline-block ${button.bgColor} ${button.hoverBg} ${button.textColor} px-8 py-4 rounded-full shadow-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl overflow-hidden`}
+                  style={{
+                    animation: isSlideTransitioning
+                      ? "none"
+                      : `buttonSlideIn 0.6s ease-out ${0.2 * index + 1}s both`,
+                  }}
                 >
-                  {button.text}
+                  {/* Button Ripple Effect */}
+                  <span className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></span>
+                  <span className="relative z-10 flex items-center">
+                    {button.text}
+                    <FaArrowRight className="ml-2 w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" />
+                  </span>
                 </Link>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex space-x-2">
+        {/* Enhanced Slide Indicators */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex space-x-3">
           {slides.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full ${
-                currentSlide === index ? "bg-[#775522]" : "bg-gray-300"
-              } transition-colors duration-300`}
+              onClick={() => handleSlideChange(index)}
+              className={`group relative w-4 h-4 rounded-full transition-all duration-300 transform hover:scale-125 ${
+                currentSlide === index
+                  ? "bg-[#775522] shadow-lg"
+                  : "bg-white/50 hover:bg-white/80"
+              }`}
               aria-label={`Go to slide ${index + 1}`}
-            ></button>
+            >
+              {currentSlide === index && (
+                <span className="absolute inset-0 rounded-full bg-[#775522] animate-ping opacity-20"></span>
+              )}
+            </button>
           ))}
         </div>
+
+        {/* Slide Progress Bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-20">
+          <div
+            className="h-full bg-[#775522] transition-all duration-300 ease-out"
+            style={{
+              width: `${((currentSlide + 1) / slides.length) * 100}%`,
+            }}
+          ></div>
+        </div>
       </section>
+
+      {/* Add Custom CSS Animations */}
+      <style jsx>{`
+        @keyframes slideInFromLeft {
+          0% {
+            opacity: 0;
+            transform: translateX(-100px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes slideInFromRight {
+          0% {
+            opacity: 0;
+            transform: translateX(100px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes fadeInUp {
+          0% {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes buttonSlideIn {
+          0% {
+            opacity: 0;
+            transform: translateY(50px) scale(0.8);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+      `}</style>
 
       {/* Hot Deals Section */}
       <section className="min-h-screen flex items-center bg-[#F6F1EB] py-16 px-4 sm:px-8 lg:px-16">
@@ -245,7 +419,8 @@ export default function HomePage() {
               Hot Deals
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Limited time offers on premium furniture. Don't miss out on these amazing deals!
+              Limited time offers on premium furniture. Don't miss out on these
+              amazing deals!
             </p>
           </div>
 
@@ -266,21 +441,23 @@ export default function HomePage() {
                     SALE
                   </div>
                 </div>
-                
+
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-[#5F7161] mb-2">
                     {product.name}
                   </h3>
-                  
+
                   <div className="flex items-center mb-4">
                     <div className="flex text-yellow-400">
                       {[...Array(5)].map((_, i) => (
                         <FaStar key={i} className="w-4 h-4 fill-current" />
                       ))}
                     </div>
-                    <span className="ml-2 text-sm text-gray-500">(24 reviews)</span>
+                    <span className="ml-2 text-sm text-gray-500">
+                      (24 reviews)
+                    </span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-2xl font-bold text-[#775522]">
@@ -292,7 +469,7 @@ export default function HomePage() {
                         </p>
                       )}
                     </div>
-                    
+
                     <Link
                       href="/shop"
                       className="bg-[#775522] text-white px-6 py-2 rounded-full hover:bg-[#5E441B] transition-colors duration-300"
@@ -304,7 +481,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          
+
           <div className="text-center mt-12">
             <Link
               href="/shop"
@@ -324,7 +501,8 @@ export default function HomePage() {
               Shop by Collection
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Explore our curated collections to find the perfect pieces for your space
+              Explore our curated collections to find the perfect pieces for
+              your space
             </p>
           </div>
 
@@ -354,23 +532,6 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
-            
-            <div className="flex justify-center mt-12 space-x-4">
-              <button
-                onClick={prevCollection}
-                disabled={isPrevDisabled}
-                className={`p-3 rounded-full border border-[#775522] text-[#775522] hover:bg-[#775522] hover:text-white transition-colors duration-300 ${isPrevDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <FaArrowLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={nextCollection}
-                disabled={isNextDisabled}
-                className={`p-3 rounded-full border border-[#775522] text-[#775522] hover:bg-[#775522] hover:text-white transition-colors duration-300 ${isNextDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <FaArrowRight className="w-5 h-5" />
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -383,7 +544,8 @@ export default function HomePage() {
               How It Works
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Buying and selling furniture has never been easier with our simple process
+              Buying and selling furniture has never been easier with our simple
+              process
             </p>
           </div>
 
@@ -392,9 +554,12 @@ export default function HomePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-[#775522] rounded-full flex items-center justify-center text-white">
                 <span className="text-2xl font-bold">1</span>
               </div>
-              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">Browse or List</h3>
+              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">
+                Browse or List
+              </h3>
               <p className="text-gray-600">
-                Explore thousands of furniture listings or easily list your items for sale in minutes.
+                Explore thousands of furniture listings or easily list your
+                items for sale in minutes.
               </p>
             </div>
 
@@ -402,9 +567,12 @@ export default function HomePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-[#775522] rounded-full flex items-center justify-center text-white">
                 <span className="text-2xl font-bold">2</span>
               </div>
-              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">Connect & Communicate</h3>
+              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">
+                Connect & Communicate
+              </h3>
               <p className="text-gray-600">
-                Chat directly with buyers or sellers to ask questions and arrange viewings.
+                Chat directly with buyers or sellers to ask questions and
+                arrange viewings.
               </p>
             </div>
 
@@ -412,9 +580,12 @@ export default function HomePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-[#775522] rounded-full flex items-center justify-center text-white">
                 <span className="text-2xl font-bold">3</span>
               </div>
-              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">Complete Transaction</h3>
+              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">
+                Complete Transaction
+              </h3>
               <p className="text-gray-600">
-                Finalize your purchase or sale with secure payment options and safe pickup/delivery.
+                Finalize your purchase or sale with secure payment options and
+                safe pickup/delivery.
               </p>
             </div>
           </div>
@@ -422,14 +593,16 @@ export default function HomePage() {
           <div className="mt-16 bg-white rounded-2xl shadow-lg p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div>
-                <h3 className="text-3xl font-bold text-[#775522] mb-4">Why Choose Refurnish NG?</h3>
+                <h3 className="text-3xl font-bold text-[#775522] mb-4">
+                  Why Choose Refurnish NG?
+                </h3>
                 <ul className="space-y-4">
                   {[
                     "Verified sellers and authentic products",
                     "Secure messaging system",
                     "Price comparison tools",
                     "Delivery coordination services",
-                    "Quality assurance guarantee"
+                    "Quality assurance guarantee",
                   ].map((item, index) => (
                     <li key={index} className="flex items-start">
                       <FaCheckCircle className="w-5 h-5 text-green-500 mt-1 mr-3 flex-shrink-0" />
@@ -460,7 +633,8 @@ export default function HomePage() {
               What Our Customers Say
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Hear from people who have transformed their spaces with Refurnish NG
+              Hear from people who have transformed their spaces with Refurnish
+              NG
             </p>
           </div>
 
@@ -469,32 +643,44 @@ export default function HomePage() {
               {
                 name: "Chinedu O.",
                 location: "Lekki, Lagos",
-                content: "I sold my old sofa set in just 2 days! The process was smooth and the buyer was verified. Highly recommend!",
-                rating: 5
+                content:
+                  "I sold my old sofa set in just 2 days! The process was smooth and the buyer was verified. Highly recommend!",
+                rating: 5,
               },
               {
                 name: "Amaka T.",
                 location: "Ikeja, Lagos",
-                content: "Found the perfect dining table for my new apartment at half the price of a new one. Quality was exactly as described!",
-                rating: 5
+                content:
+                  "Found the perfect dining table for my new apartment at half the price of a new one. Quality was exactly as described!",
+                rating: 5,
               },
               {
                 name: "Tunde B.",
                 location: "Victoria Island, Lagos",
-                content: "As a landlord, I regularly furnish apartments with pieces from Refurnish NG. Great quality and amazing prices!",
-                rating: 4
-              }
+                content:
+                  "As a landlord, I regularly furnish apartments with pieces from Refurnish NG. Great quality and amazing prices!",
+                rating: 4,
+              },
             ].map((testimonial, index) => (
-              <div key={index} className="bg-[#F6F1EB] p-8 rounded-2xl shadow-md">
+              <div
+                key={index}
+                className="bg-[#F6F1EB] p-8 rounded-2xl shadow-md"
+              >
                 <div className="flex text-yellow-400 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <FaStar key={i} className="w-5 h-5 fill-current" />
                   ))}
                 </div>
-                <p className="text-gray-700 italic mb-6">"{testimonial.content}"</p>
+                <p className="text-gray-700 italic mb-6">
+                  "{testimonial.content}"
+                </p>
                 <div>
-                  <p className="font-semibold text-[#5F7161]">{testimonial.name}</p>
-                  <p className="text-sm text-gray-500">{testimonial.location}</p>
+                  <p className="font-semibold text-[#5F7161]">
+                    {testimonial.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {testimonial.location}
+                  </p>
                 </div>
               </div>
             ))}
@@ -509,9 +695,10 @@ export default function HomePage() {
             Ready to Transform Your Space?
           </h2>
           <p className="text-xl mb-10 max-w-2xl mx-auto">
-            Join thousands of Lagosians who are buying and selling quality furniture on Refurnish NG
+            Join thousands of Lagosians who are buying and selling quality
+            furniture on Refurnish NG
           </p>
-          
+
           <div className="flex flex-col sm:flex-row justify-center gap-6 mb-16">
             <Link
               href="/shop"
@@ -526,7 +713,7 @@ export default function HomePage() {
               Start Selling
             </Link>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
               <p className="text-4xl font-bold">10,000+</p>
@@ -556,7 +743,8 @@ export default function HomePage() {
               Helpful Resources
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Everything you need to make the most of your Refurnish NG experience
+              Everything you need to make the most of your Refurnish NG
+              experience
             </p>
           </div>
 
@@ -567,40 +755,41 @@ export default function HomePage() {
                 title: "About Us",
                 desc: "Learn about our mission to revolutionize furniture trading in Lagos",
                 href: "/about",
-                linkText: "Our Story"
+                linkText: "Our Story",
               },
               {
                 icon: <FaQuestionCircle className="w-8 h-8" />,
                 title: "FAQs",
                 desc: "Find answers to commonly asked questions about buying and selling",
                 href: "/faqs",
-                linkText: "Get Answers"
+                linkText: "Get Answers",
               },
               {
                 icon: <FaHeadset className="w-8 h-8" />,
                 title: "Support",
                 desc: "Get help from our dedicated customer support team",
                 href: "/support",
-                linkText: "Contact Support"
+                linkText: "Contact Support",
               },
               {
                 icon: <FaEnvelope className="w-8 h-8" />,
                 title: "Contact",
                 desc: "Reach out to us with any questions or feedback",
                 href: "/contact",
-                linkText: "Get In Touch"
-              }
+                linkText: "Get In Touch",
+              },
             ].map((item, index) => (
-              <div key={index} className="bg-[#F6F1EB] p-8 rounded-2xl text-center group hover:bg-[#E8CEB0] transition-colors duration-300">
+              <div
+                key={index}
+                className="bg-[#F6F1EB] p-8 rounded-2xl text-center group hover:bg-[#E8CEB0] transition-colors duration-300"
+              >
                 <div className="text-[#775522] mb-4 flex justify-center">
                   {item.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-[#5F7161] mb-3">
                   {item.title}
                 </h3>
-                <p className="text-gray-600 mb-6">
-                  {item.desc}
-                </p>
+                <p className="text-gray-600 mb-6">{item.desc}</p>
                 <Link
                   href={item.href}
                   className="text-[#775522] font-semibold inline-flex items-center group-hover:underline"

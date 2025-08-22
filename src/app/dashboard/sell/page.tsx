@@ -440,6 +440,11 @@ export default function StartSellingPage() {
                 Add up to 10 high-quality photos. The first photo will be your
                 main image.
               </p>
+              <ul className="text-red-900 text-sm space-y-4">
+                <li>
+                  Lack of clear and high quality can make the listing rejected.
+                </li>
+              </ul>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
                 {images.map((image, index) => (
@@ -490,10 +495,6 @@ export default function StartSellingPage() {
                   <li>• Show the item from multiple angles</li>
                   <li>• Include close-ups of any defects or wear</li>
                   <li>• Take photos in the actual room/setting if possible</li>
-                  <li>
-                    • Lack of clear and high quality can make the listing
-                    rejected.
-                  </li>
                 </ul>
               </div>
             </div>
