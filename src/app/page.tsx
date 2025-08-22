@@ -4,66 +4,142 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import products from "@/data/products.json";
-import { FaInfoCircle, FaQuestionCircle, FaHeadset, FaEnvelope } from 'react-icons/fa';
-import DiscountModal from '../components/DiscountModal';
+import {
+  FaInfoCircle,
+  FaQuestionCircle,
+  FaHeadset,
+  FaEnvelope,
+  FaArrowRight,
+  FaArrowLeft,
+  FaStar,
+  FaCheckCircle
+} from "react-icons/fa";
+import DiscountModal from "../components/DiscountModal";
 
 // Assume these images exist in your public folder or are imported
 const collectionImages = {
-  newArrivals: '/images/collection-new-arrivals.jpg',
-  kidsFashion: '/images/collection-kids-fashion.jpg',
-  womenLingerie: '/images/collection-women-lingerie.jpg',
-  classic: '/images/collection-classic.jpg',
-  vintageFinds: '/images/collection-vintage-finds.jpg',
-  outdoorLiving: '/images/collection-outdoor-living.jpg',
-  homeDecor: '/images/collection-home-decor.jpg',
-  bedroomEssentials: '/images/collection-bedroom-essentials.jpg',
+  newArrivals: "/images/collection-new-arrivals.jpg",
+  kidsFashion: "/images/collection-kids-fashion.jpg",
+  womenLingerie: "/images/collection-women-lingerie.jpg",
+  classic: "/images/collection-classic.jpg",
+  vintageFinds: "/images/collection-vintage-finds.jpg",
+  outdoorLiving: "/images/collection-outdoor-living.jpg",
+  homeDecor: "/images/collection-home-decor.jpg",
+  bedroomEssentials: "/images/collection-bedroom-essentials.jpg",
 };
 
 export default function HomePage() {
-  const [currentSlide, setCurrentSlide] = useState(0); // For hero section
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [currentCollectionIndex, setCurrentCollectionIndex] = useState(0); // New state for collections carousel
+  const [currentCollectionIndex, setCurrentCollectionIndex] = useState(0);
 
   const slides = [
     {
       title: "Simplifying Furniture Buying & Selling in Lagos",
-      description: "Discover a seamless, safe, and efficient marketplace where you can declutter, furnish, and refresh your space with ease.",
+      description:
+        "Discover a seamless, safe, and efficient marketplace where you can declutter, furnish, and refresh your space with ease.",
       image: "/hero-bg2.png",
       textColor: "text-black",
       buttons: [
-        { text: "Shop Now", href: "/shop", bgColor: "bg-[#775522]", hoverBg: "hover:bg-[#5E441B]", textColor: "text-white" },
+        {
+          text: "Shop Now",
+          href: "/shop",
+          bgColor: "bg-[#775522]",
+          hoverBg: "hover:bg-[#5E441B]",
+          textColor: "text-white",
+        },
       ],
     },
     {
       title: "Declutter Your Space, Earn Extra Cash!",
-      description: "Ready to part with your pre-loved furniture? List it effortlessly and connect with eager buyers in Lagos.",
+      description:
+        "Ready to part with your pre-loved furniture? List it effortlessly and connect with eager buyers in Lagos.",
       image: "/hero-bg3.png",
       textColor: "text-[#5F7161]",
       buttons: [
-        { text: "Sell Now", href: "https://forms.gle/41o14xQc4J4kR6Kz7", bgColor: "bg-[#775522]", hoverBg: "hover:bg-[#5E441B]", textColor: "text-white" },
+        {
+          text: "Sell Now",
+          href: "./dashboard/sell",
+          bgColor: "bg-[#775522]",
+          hoverBg: "hover:bg-[#5E441B]",
+          textColor: "text-white",
+        },
       ],
     },
     {
       title: "Your Ultimate Furniture Marketplace",
-      description: "Whether you're furnishing a new home or giving old pieces a new life, find or sell exactly what you need with ease.",
+      description:
+        "Whether you're furnishing a new home or giving old pieces a new life, find or sell exactly what you need with ease.",
       image: "/hero-bg4.png",
       textColor: "text-white",
       buttons: [
-        { text: "Shop Now", href: "/shop", bgColor: "bg-[#775522]", hoverBg: "hover:bg-[#5E441B]", textColor: "text-white" },
-        { text: "Sell Now", href: "https://forms.gle/41o14xQc4J4kR6Kz7", bgColor: "bg-transparent border-2 border-white", hoverBg: "hover:bg-white hover:text-[#775522]", textColor: "text-white" },
+        {
+          text: "Shop Now",
+          href: "/shop",
+          bgColor: "bg-[#775522]",
+          hoverBg: "hover:bg-[#5E441B]",
+          textColor: "text-white",
+        },
+        {
+          text: "Sell Now",
+          href: "https://forms.gle/41o14xQc4J4kR6Kz7",
+          bgColor: "bg-transparent border-2 border-white",
+          hoverBg: "hover:bg-white hover:text-[#775522]",
+          textColor: "text-white",
+        },
       ],
     },
   ];
 
   const collections = [
-    { name: 'New arrivals', image: collectionImages.newArrivals, alt: 'Man smiling in a light blue shirt', href: '/shop?category=new-arrivals' },
-    { name: 'Kids furniture', image: collectionImages.kidsFashion, alt: 'Young girl in a red dress and hat', href: '/shop?category=kids-furniture' },
-    { name: 'Sofa', image: collectionImages.womenLingerie, alt: 'Woman in red lingerie', href: '/shop?category=women-lingerie' },
-    { name: 'Home Deco', image: collectionImages.classic, alt: 'Boy in a red hoodie and sunglasses', href: '/shop?category=classic' },
-    { name: 'Office Furniture', image: collectionImages.vintageFinds, alt: 'Vintage furniture in a cozy room', href: '/shop?category=vintage-find00s' },
-    { name: 'Beds', image: collectionImages.outdoorLiving, alt: 'Outdoor patio furniture', href: '/shop?category=outdoor-living' },
-    { name: 'Chairs', image: collectionImages.homeDecor, alt: 'Stylish home decor items', href: '/shop?category=home-decor' },
-    { name: 'Tables', image: collectionImages.bedroomEssentials, alt: 'Cozy bedroom setup with bed', href: '/shop?category=bedroom-essentials' },
+    {
+      name: "New arrivals",
+      image: collectionImages.newArrivals,
+      alt: "Man smiling in a light blue shirt",
+      href: "/shop?category=new-arrivals",
+    },
+    {
+      name: "Kids furniture",
+      image: collectionImages.kidsFashion,
+      alt: "Young girl in a red dress and hat",
+      href: "/shop?category=kids-furniture",
+    },
+    {
+      name: "Sofa",
+      image: collectionImages.womenLingerie,
+      alt: "Woman in red lingerie",
+      href: "/shop?category=sofa",
+    },
+    {
+      name: "Home Deco",
+      image: collectionImages.classic,
+      alt: "Boy in a red hoodie and sunglasses",
+      href: "/shop?category=home-deco",
+    },
+    {
+      name: "Office Furniture",
+      image: collectionImages.vintageFinds,
+      alt: "Vintage furniture in a cozy room",
+      href: "/shop?category=office-furniture",
+    },
+    {
+      name: "Beds",
+      image: collectionImages.outdoorLiving,
+      alt: "Outdoor patio furniture",
+      href: "/shop?category=beds",
+    },
+    {
+      name: "Chairs",
+      image: collectionImages.homeDecor,
+      alt: "Stylish home decor items",
+      href: "/shop?category=chairs",
+    },
+    {
+      name: "Tables",
+      image: collectionImages.bedroomEssentials,
+      alt: "Cozy bedroom setup with bed",
+      href: "/shop?category=tables",
+    },
   ];
 
   const collectionsPerPage = 4;
@@ -71,18 +147,19 @@ export default function HomePage() {
   const nextCollection = () => {
     setCurrentCollectionIndex((prevIndex) => {
       const maxIndex = collections.length - collectionsPerPage;
-      return (prevIndex + 1 > maxIndex) ? maxIndex : prevIndex + 1;
+      return prevIndex + 1 > maxIndex ? maxIndex : prevIndex + 1;
     });
   };
 
   const prevCollection = () => {
     setCurrentCollectionIndex((prevIndex) => {
-      return (prevIndex - 1 < 0) ? 0 : prevIndex - 1;
+      return prevIndex - 1 < 0 ? 0 : prevIndex - 1;
     });
   };
 
   const isPrevDisabled = currentCollectionIndex === 0;
-  const isNextDisabled = currentCollectionIndex >= collections.length - collectionsPerPage;
+  const isNextDisabled =
+    currentCollectionIndex >= collections.length - collectionsPerPage;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -106,6 +183,7 @@ export default function HomePage() {
     <div className="font-sans text-[#5F7161]">
       <DiscountModal show={showDiscountModal} onClose={handleCloseModal} />
 
+      {/* Hero Section - Unchanged */}
       <section
         className="w-full min-h-screen relative bg-cover bg-center transition-all duration-1000 ease-in-out"
         style={{ backgroundImage: `url(${slides[currentSlide].image})` }}
@@ -113,14 +191,25 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[#E8CEB0]/30 z-0"></div>
 
         <div className="relative z-10 max-w-screen-xl mx-auto px-4 sm:px-8 lg:px-16 py-16 flex flex-col items-center justify-center min-h-screen">
-          <div key={currentSlide} className={`max-w-xl text-center md:text-left pt-24 pb-16 animate-fade-in-up ${slides[currentSlide].textColor}`}>
-            <h1 className={`text-4xl md:text-5xl font-bold mb-6 leading-tight animate-text-fade-in`}>
+          <div
+            key={currentSlide}
+            className={`max-w-xl text-center md:text-left pt-24 pb-16 animate-fade-in-up ${slides[currentSlide].textColor}`}
+          >
+            <h1
+              className={`text-4xl md:text-5xl font-bold mb-6 leading-tight animate-text-fade-in`}
+            >
               {slides[currentSlide].title}
             </h1>
-            <p className={`text-lg leading-7 mb-8 animate-text-fade-in`} style={{ animationDelay: '0.2s' }}>
+            <p
+              className={`text-lg leading-7 mb-8 animate-text-fade-in`}
+              style={{ animationDelay: "0.2s" }}
+            >
               {slides[currentSlide].description}
             </p>
-            <div className="flex justify-center md:justify-start space-x-4 animate-text-fade-in" style={{ animationDelay: '0.4s' }}>
+            <div
+              className="flex justify-center md:justify-start space-x-4 animate-text-fade-in"
+              style={{ animationDelay: "0.4s" }}
+            >
               {slides[currentSlide].buttons.map((button, index) => (
                 <Link
                   key={index}
@@ -149,243 +238,374 @@ export default function HomePage() {
       </section>
 
       {/* Hot Deals Section */}
-      <section className="bg-[#F6F1EB] py-12 px-4 sm:px-8 lg:px-16 overflow-hidden">
-        <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#5F7161] mb-8 animate-fade-in-up">
-          Hot Deals
-        </h2>
+      <section className="min-h-screen flex items-center bg-[#F6F1EB] py-16 px-4 sm:px-8 lg:px-16">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#5F7161] mb-4">
+              Hot Deals
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Limited time offers on premium furniture. Don't miss out on these amazing deals!
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 place-items-center">
-          {products.slice(0, 3).map((product, index) => (
-            <div
-              key={product.id}
-              className={`
-                bg-white shadow-xl rounded-xl p-6 text-center
-                transform transition-all duration-300 ease-in-out
-                hover:scale-105 hover:shadow-2xl hover:border-2 hover:border-[#E8CEB0]
-                flex flex-col items-center animate-fade-in-up
-              `}
-              style={{ animationDelay: `${index * 0.1}s`, animationFillMode: "both" }}
-            >
-              <div className="w-full h-[200px] mb-4 overflow-hidden rounded-lg border border-gray-100 group-hover:border-[#775522] transition-colors duration-300">
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  width={400}
-                  height={200}
-                  className="w-full h-full object-cover object-center transform transition-transform duration-300 hover:scale-110"
-                />
-              </div>
-              <h3 className="font-semibold text-xl text-[#5F7161] mb-2 truncate w-full">
-                {product.name}
-              </h3>
-              <p className="mb-4 text-[#775522] font-bold text-2xl">
-                ₦{product.price.toLocaleString()}
-                {product.oldPrice !== undefined && (
-                  <span className="line-through text-gray-400 text-base ml-2">
-                    ₦{product.oldPrice.toLocaleString()}
-                  </span>
-                )}
-              </p>
-
-              <Link
-                href="/shop"
-                className="text-white bg-[#775522] px-6 py-3 rounded-full font-semibold text-lg hover:bg-[#5E441B] transition-all duration-300 transform hover:-translate-y-1 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#E8CEB0] focus:ring-offset-2"
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            {products.slice(0, 3).map((product, index) => (
+              <div
+                key={product.id}
+                className="bg-white rounded-2xl overflow-hidden shadow-lg transform transition-all duration-500 hover:scale-105 hover:shadow-xl"
               >
-                Grab Deal
-              </Link>
-            </div>
-          ))}
+                <div className="relative h-72 overflow-hidden">
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                    SALE
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-[#5F7161] mb-2">
+                    {product.name}
+                  </h3>
+                  
+                  <div className="flex items-center mb-4">
+                    <div className="flex text-yellow-400">
+                      {[...Array(5)].map((_, i) => (
+                        <FaStar key={i} className="w-4 h-4 fill-current" />
+                      ))}
+                    </div>
+                    <span className="ml-2 text-sm text-gray-500">(24 reviews)</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-bold text-[#775522]">
+                        ₦{product.price.toLocaleString()}
+                      </p>
+                      {product.oldPrice && (
+                        <p className="text-sm text-gray-500 line-through">
+                          ₦{product.oldPrice.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <Link
+                      href="/shop"
+                      className="bg-[#775522] text-white px-6 py-2 rounded-full hover:bg-[#5E441B] transition-colors duration-300"
+                    >
+                      Buy Now
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-center mt-12">
+            <Link
+              href="/shop"
+              className="inline-block border-2 border-[#775522] text-[#775522] px-8 py-3 rounded-full font-semibold hover:bg-[#775522] hover:text-white transition-all duration-300"
+            >
+              View All Deals
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Shop by collection Section */}
-      <section className="container mx-auto px-4 py-12 overflow-hidden">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-4xl font-semibold text-[#775522]">Shop by collection</h2>
-            <p className="mt-2 text-gray-600">Share information about your brand with your customers.</p>
+      {/* Shop by Collection Section */}
+      <section className="min-h-screen flex items-center py-16 px-4 sm:px-8 lg:px-16 bg-white">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#775522] mb-4">
+              Shop by Collection
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Explore our curated collections to find the perfect pieces for your space
+            </p>
           </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={prevCollection}
-              disabled={isPrevDisabled}
-              className={
-                "p-3 border rounded-full focus:outline-none transition-colors duration-200 " +
-                (isPrevDisabled ? 'opacity-50 cursor-not-allowed border-gray-300' : 'hover:bg-gray-100 hover:border-[#775522] border-gray-300')
-              }
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-gray-700 group-hover:text-[#775522]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button
-              onClick={nextCollection}
-              disabled={isNextDisabled}
-              className={
-                "p-3 border rounded-full focus:outline-none transition-colors duration-200 " +
-                (isNextDisabled ? 'opacity-50 cursor-not-allowed border-gray-300' : 'hover:bg-gray-100 hover:border-[#775522] border-gray-300')
-              }
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-gray-700 group-hover:text-[#775522]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
 
-        <div className="flex overflow-hidden relative">
-          <div
-            className="flex transition-transform duration-500 ease-in-out"
-            style={{ transform: `translateX(-${currentCollectionIndex * (100 / collectionsPerPage)}%)` }}
-          >
-            {collections.map((collection, index) => (
-              <Link
-                href={collection.href}
-                key={index}
-                className="flex-shrink-0 w-1/4 px-4 flex flex-col items-center group"
-              >
-                <div
-                  className="w-48 h-48 rounded-full overflow-hidden flex items-center justify-center mb-4 shadow-lg
-                             transform transition-transform duration-300 group-hover:scale-105
-                             border border-gray-200 group-hover:border-[#E8CEB0] bg-white"
+          <div className="relative">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {collections.slice(0, 8).map((collection, index) => (
+                <Link
+                  href={collection.href}
+                  key={index}
+                  className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-xl transition-all duration-500"
                 >
-                  <Image
-                    src={collection.image}
-                    alt={collection.alt}
-                    width={192}
-                    height={192}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <p className="text-xl font-medium text-[#5F7161] group-hover:text-[#775522] transition-colors duration-300">
-                  {collection.name}
-                </p>
-              </Link>
-            ))}
+                  <div className="h-64 overflow-hidden">
+                    <Image
+                      src={collection.image}
+                      alt={collection.alt}
+                      width={400}
+                      height={256}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                  </div>
+                  <div className="absolute inset-0 bg-black bg-opacity-30 group-hover:bg-opacity-10 transition-all duration-300"></div>
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent">
+                    <h3 className="text-white text-xl font-semibold">
+                      {collection.name}
+                    </h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            
+            <div className="flex justify-center mt-12 space-x-4">
+              <button
+                onClick={prevCollection}
+                disabled={isPrevDisabled}
+                className={`p-3 rounded-full border border-[#775522] text-[#775522] hover:bg-[#775522] hover:text-white transition-colors duration-300 ${isPrevDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <FaArrowLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={nextCollection}
+                disabled={isNextDisabled}
+                className={`p-3 rounded-full border border-[#775522] text-[#775522] hover:bg-[#775522] hover:text-white transition-colors duration-300 ${isNextDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <FaArrowRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className="bg-[#E8CEB0]/30 py-16 px-4 sm:px-8 lg:px-16">
-        <h2 className="text-3xl font-bold text-center text-[#5F7161] mb-10"> How It Works</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
-          <div>
-            <Image src="/how1.png" alt="Step 1" width={80} height={80} className="mx-auto mb-4" />
-            <h4 className="text-xl font-semibold mb-2">1. Browse</h4>
-            <p>Explore listings from trusted sellers across Lagos.</p>
+      <section className="min-h-screen flex items-center bg-[#E8CEB0]/20 py-16 px-4 sm:px-8 lg:px-16">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#5F7161] mb-4">
+              How It Works
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Buying and selling furniture has never been easier with our simple process
+            </p>
           </div>
-          <div>
-            <Image src="/how2.png" alt="Step 2" width={80} height={80} className="mx-auto mb-4" />
-            <h4 className="text-xl font-semibold mb-2">2. Connect</h4>
-            <p>Chat directly with sellers and get answers fast.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            <div className="text-center p-8 bg-white rounded-2xl shadow-lg transform transition-all duration-500 hover:-translate-y-2">
+              <div className="w-20 h-20 mx-auto mb-6 bg-[#775522] rounded-full flex items-center justify-center text-white">
+                <span className="text-2xl font-bold">1</span>
+              </div>
+              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">Browse or List</h3>
+              <p className="text-gray-600">
+                Explore thousands of furniture listings or easily list your items for sale in minutes.
+              </p>
+            </div>
+
+            <div className="text-center p-8 bg-white rounded-2xl shadow-lg transform transition-all duration-500 hover:-translate-y-2">
+              <div className="w-20 h-20 mx-auto mb-6 bg-[#775522] rounded-full flex items-center justify-center text-white">
+                <span className="text-2xl font-bold">2</span>
+              </div>
+              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">Connect & Communicate</h3>
+              <p className="text-gray-600">
+                Chat directly with buyers or sellers to ask questions and arrange viewings.
+              </p>
+            </div>
+
+            <div className="text-center p-8 bg-white rounded-2xl shadow-lg transform transition-all duration-500 hover:-translate-y-2">
+              <div className="w-20 h-20 mx-auto mb-6 bg-[#775522] rounded-full flex items-center justify-center text-white">
+                <span className="text-2xl font-bold">3</span>
+              </div>
+              <h3 className="text-2xl font-semibold text-[#5F7161] mb-4">Complete Transaction</h3>
+              <p className="text-gray-600">
+                Finalize your purchase or sale with secure payment options and safe pickup/delivery.
+              </p>
+            </div>
           </div>
-          <div>
-            <Image src="/how3.png" alt="Step 3" width={80} height={80} className="mx-auto mb-4" />
-            <h4 className="text-xl font-semibold mb-2">3. Buy & Enjoy</h4>
-            <p>Secure safe payment and enjoy your new furniture.</p>
+
+          <div className="mt-16 bg-white rounded-2xl shadow-lg p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h3 className="text-3xl font-bold text-[#775522] mb-4">Why Choose Refurnish NG?</h3>
+                <ul className="space-y-4">
+                  {[
+                    "Verified sellers and authentic products",
+                    "Secure messaging system",
+                    "Price comparison tools",
+                    "Delivery coordination services",
+                    "Quality assurance guarantee"
+                  ].map((item, index) => (
+                    <li key={index} className="flex items-start">
+                      <FaCheckCircle className="w-5 h-5 text-green-500 mt-1 mr-3 flex-shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="h-64 bg-gray-200 rounded-xl overflow-hidden">
+                <Image
+                  src="/why-choose-us.jpg"
+                  alt="Why choose Refurnish NG"
+                  width={500}
+                  height={256}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Sign Up Today Section */}
-      <section className="bg-gradient-to-br from-[#775522] to-[#A07B3F] text-white py-16 px-4 sm:px-8 lg:px-24 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-pattern-overlay opacity-10 z-0"></div>
+      {/* Testimonials Section */}
+      <section className="min-h-screen flex items-center py-16 px-4 sm:px-8 lg:px-16 bg-white">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#775522] mb-4">
+              What Our Customers Say
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Hear from people who have transformed their spaces with Refurnish NG
+            </p>
+          </div>
 
-        <div className="relative z-10">
-          <h2 className="text-4xl sm:text-5xl font-extrabold mb-4 animate-scale-in drop-shadow-md">
-            Join Our Thriving Community!
-          </h2>
-          <p className="mb-8 text-lg sm:text-xl max-w-3xl mx-auto leading-relaxed animate-fade-in-up">
-            Unlock <strong className="text-[#E8CEB0]">exclusive deals</strong>, effortlessly sell your beloved furniture, and connect with a trusted network of passionate buyers & sellers.
-          </p>
-          <Link
-            href="/login#signup"
-            className="
-              inline-block bg-white text-[#775522] font-bold text-lg px-8 py-4 rounded-full shadow-lg
-              hover:bg-[#FFD700] hover:text-[#5E441B] transition-all duration-300 ease-in-out
-              transform hover:-translate-y-1 hover:scale-105
-              focus:outline-none focus:ring-4 focus:ring-[#E8CEB0] focus:ring-offset-2 focus:ring-offset-[#775522]
-              animate-pulse-once
-            "
-          >
-            Sign Up Free Today! 🚀
-          </Link>
-        </div>
-      </section>
-
-      <section className="py-20 sm:py-24 lg:py-32 px-4 sm:px-8 lg:px-16 bg-[#F9F9F9] overflow-hidden relative">
-        <div className="absolute top-0 left-1/2 w-80 h-80 bg-[#E8CEB0] opacity-10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-blob-slow-reverse"></div>
-        <div className="absolute bottom-0 right-1/4 w-60 h-60 bg-[#775522] opacity-5 rounded-full blur-3xl transform translate-x-1/2 translate-y-1/2 animate-blob-slow"></div>
-
-        <div className="max-w-7xl mx-auto text-center relative z-10">
-          <h2 className="text-4xl sm:text-5xl font-extrabold text-[#775522] mb-12 drop-shadow-md animate-fade-in-down">
-            Explore Our Resources
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
-                icon: <FaInfoCircle />,
-                title: 'About Us',
-                desc: 'Discover our story, mission, and how Refurnish NG is dedicated to transforming the furniture marketplace.',
-                href: '/about',
-                linkText: 'Learn More',
+                name: "Chinedu O.",
+                location: "Lekki, Lagos",
+                content: "I sold my old sofa set in just 2 days! The process was smooth and the buyer was verified. Highly recommend!",
+                rating: 5
               },
               {
-                icon: <FaQuestionCircle />,
-                title: 'FAQs',
-                desc: 'Get quick answers to the most common questions about buying, selling, and using Refurnish NG.',
-                href: '/help#faqs',
-                linkText: 'Visit FAQs',
+                name: "Amaka T.",
+                location: "Ikeja, Lagos",
+                content: "Found the perfect dining table for my new apartment at half the price of a new one. Quality was exactly as described!",
+                rating: 5
               },
               {
-                icon: <FaHeadset />,
-                title: 'Support',
-                desc: 'Need a hand with an order or an issue? Our friendly support team is here to help you every step of the way.',
-                href: '/help#support',
-                linkText: 'Get Support',
+                name: "Tunde B.",
+                location: "Victoria Island, Lagos",
+                content: "As a landlord, I regularly furnish apartments with pieces from Refurnish NG. Great quality and amazing prices!",
+                rating: 4
+              }
+            ].map((testimonial, index) => (
+              <div key={index} className="bg-[#F6F1EB] p-8 rounded-2xl shadow-md">
+                <div className="flex text-yellow-400 mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <FaStar key={i} className="w-5 h-5 fill-current" />
+                  ))}
+                </div>
+                <p className="text-gray-700 italic mb-6">"{testimonial.content}"</p>
+                <div>
+                  <p className="font-semibold text-[#5F7161]">{testimonial.name}</p>
+                  <p className="text-sm text-gray-500">{testimonial.location}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="min-h-screen flex items-center bg-gradient-to-br from-[#775522] to-[#A07B3F] py-16 px-4 sm:px-8 lg:px-16">
+        <div className="max-w-4xl mx-auto text-center text-white">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            Ready to Transform Your Space?
+          </h2>
+          <p className="text-xl mb-10 max-w-2xl mx-auto">
+            Join thousands of Lagosians who are buying and selling quality furniture on Refurnish NG
+          </p>
+          
+          <div className="flex flex-col sm:flex-row justify-center gap-6 mb-16">
+            <Link
+              href="/shop"
+              className="bg-white text-[#775522] px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors duration-300"
+            >
+              Start Shopping
+            </Link>
+            <Link
+              href="https://forms.gle/41o14xQc4J4kR6Kz7"
+              className="border-2 border-white text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-white hover:text-[#775522] transition-all duration-300"
+            >
+              Start Selling
+            </Link>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <p className="text-4xl font-bold">10,000+</p>
+              <p className="text-sm opacity-80">Active Users</p>
+            </div>
+            <div>
+              <p className="text-4xl font-bold">5,000+</p>
+              <p className="text-sm opacity-80">Listings</p>
+            </div>
+            <div>
+              <p className="text-4xl font-bold">98%</p>
+              <p className="text-sm opacity-80">Satisfaction Rate</p>
+            </div>
+            <div>
+              <p className="text-4xl font-bold">24/7</p>
+              <p className="text-sm opacity-80">Support</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Resources Section */}
+      <section className="min-h-screen flex items-center py-16 px-4 sm:px-8 lg:px-16 bg-white">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#775522] mb-4">
+              Helpful Resources
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Everything you need to make the most of your Refurnish NG experience
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              {
+                icon: <FaInfoCircle className="w-8 h-8" />,
+                title: "About Us",
+                desc: "Learn about our mission to revolutionize furniture trading in Lagos",
+                href: "/about",
+                linkText: "Our Story"
               },
               {
-                icon: <FaEnvelope />,
-                title: 'Contact Us',
-                desc: 'Have a specific inquiry or feedback? Reach out directly through our contact form, email, or social media channels.',
-                href: '/contact',
-                linkText: 'Send a Message',
+                icon: <FaQuestionCircle className="w-8 h-8" />,
+                title: "FAQs",
+                desc: "Find answers to commonly asked questions about buying and selling",
+                href: "/faqs",
+                linkText: "Get Answers"
               },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="bg-white p-8 rounded-xl shadow-lg flex flex-col items-start
-                          transform hover:scale-[1.03] hover:shadow-xl transition-all duration-300 ease-in-out
-                          border border-gray-100 animate-fade-in-up-staggered"
-                style={{ animationDelay: `${0.15 * i}s` }}
-              >
-                <div className="text-5xl text-[#E8CEB0] mb-4 p-3 rounded-full bg-[#775522]/10 inline-flex items-center justify-center drop-shadow-sm">
+              {
+                icon: <FaHeadset className="w-8 h-8" />,
+                title: "Support",
+                desc: "Get help from our dedicated customer support team",
+                href: "/support",
+                linkText: "Contact Support"
+              },
+              {
+                icon: <FaEnvelope className="w-8 h-8" />,
+                title: "Contact",
+                desc: "Reach out to us with any questions or feedback",
+                href: "/contact",
+                linkText: "Get In Touch"
+              }
+            ].map((item, index) => (
+              <div key={index} className="bg-[#F6F1EB] p-8 rounded-2xl text-center group hover:bg-[#E8CEB0] transition-colors duration-300">
+                <div className="text-[#775522] mb-4 flex justify-center">
                   {item.icon}
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-[#5F7161]">{item.title}</h3>
-                <p className="text-gray-600 text-base leading-relaxed mb-6 flex-grow">
+                <h3 className="text-xl font-semibold text-[#5F7161] mb-3">
+                  {item.title}
+                </h3>
+                <p className="text-gray-600 mb-6">
                   {item.desc}
                 </p>
                 <Link
                   href={item.href}
-                  className="inline-flex items-center text-[#775522] font-semibold hover:underline text-lg group"
+                  className="text-[#775522] font-semibold inline-flex items-center group-hover:underline"
                 >
-                  {item.linkText}{' '}
-                  <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">→</span>
+                  {item.linkText} <FaArrowRight className="ml-2 w-3 h-3" />
                 </Link>
               </div>
             ))}
