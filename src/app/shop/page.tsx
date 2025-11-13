@@ -1,12 +1,13 @@
 // src/app/shop/page.tsx
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
   FaChevronDown,
-  FaChevronUp, // Added FaChevronUp for toggling
+  FaChevronUp,
   FaChevronLeft,
   FaChevronRight,
   FaThLarge,
@@ -16,9 +17,17 @@ import {
   FaTimes,
   FaHeart,
   FaShoppingCart,
+  FaTag,
+  FaMapMarkerAlt,
+  FaStar,
+  FaFilter,
+  FaFire,
+  FaPaperPlane,
+  FaPlus,
 } from 'react-icons/fa';
 import productsData from '@/data/products.json';
 
+// --- INTERFACES & CONSTANTS ---
 interface Product {
   id: number;
   name: string;
@@ -29,486 +38,1009 @@ interface Product {
   location: string;
   condition: string;
   date: string;
+  rating?: number;
+  isFeatured?: boolean;
 }
 
 const ITEMS_PER_PAGE = 12;
 
-// Static filter options (can be fetched from an API in a real app)
-const categories = ['Chairs', 'Beds', 'Sofa', 'Kids Furniture', 'Home Deco', 'Office Furniture', 'Tables'];
-const locations = ["Ikeja",
-  "Lekki",
-  "Victoria Island",
-  "Ajah",
-  "Yaba",
-  "Surulere",
-  "Ikoyi",
-  "Maryland",
-  "Ojota",
-  "Oshodi",
-  "Gbagada",
-  "Ikorodu",
-  "Festac Town",
-  "Agege",
-  "Alimosho",
-  "Ojuelegba",
-  "Badagry",
-  "Ojo",
-  "Amuwo Odofin",
-  "Chevron",
-  "Sangotedo",
-  "VGC",
-  "Epe",
-  "Ogudu",
-  "Isolo",
-  "Apapa",
-  "Ilupeju",
-  "Iyana Ipaja",
-  "Magodo",
-  "Mile 2",
-  "Ketu",
-  "Okokomaiko",
-  "Aguda",
-  "Egbeda",
-  "Bariga",
-  "Ajegunle",
-  "Ijesha",
-  "Oregun",
-  "Ayobo",
-  "Abule Egba"];
-const conditions = ['Brand New', 'Tokunbo', 'Fairly Used'];
+// Custom Color Palette
+const PRIMARY_COLOR = '#775522'; // Rich Brown
+const SECONDARY_ACCENT = '#9933BB'; // Vibrant Purple
+const ACTION_COLOR = '#66BB44'; // Fresh Green
+const BACKGROUND_LIGHT = '#FDFBF7';
+const SURFACE_COLOR = '#E8CEB0'; // Warm Beige
+const TEXT_COLOR = '#5F7161'; // Muted Green/Slate
+const TEXT_DARK = '#2D3748';
 
+// Expanded Static filter options
+const mainCategories = ['Living Room', 'Bedroom', 'Dining Room', 'Home Office', 'Kids Furniture', 'Outdoor'];
+const conditions = ['Brand New', 'Tokunbo', 'Fairly Used'];
+const deliveryOptions = ['Free Shipping', 'Local Pickup Only', 'Seller Delivers'];
+const sellerTypes = ['Individual', 'Business'];
+const handlingTimes = ['1 Day', '2 Days', '3-5 Days'];
+const locations = [
+  "Ikeja", "Lekki", "Victoria Island", "Ajah", "Yaba", "Surulere", "Ikoyi", "Maryland"
+];
+const ratings = [5, 4, 3, 2, 1];
+
+// ADVANCED SEARCH CONSTANTS
+const listingTypes = ['Any type', 'Auction', 'Buy now', 'Make an offer', 'Classified'];
+const shippingOptions = ['Standard shipping', 'Allows collection', 'Digital delivery', 'Pickup point', 'Free shipping'];
+const conditionOptions = ['Any', 'New', 'Secondhand', 'Refurbished'];
+const sellerLocations = ['All Locations', 'Lagos Island', 'Lagos Mainland', 'Abuja']; // Mock locations
+// --- HELPER COMPONENTS (Color scheme adjusted) ---
+
+interface FilterSectionProps {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}
+
+const FilterSection: React.FC<FilterSectionProps> = ({ title, isOpen, onToggle, children }) => (
+  <div className={`border border-[${SURFACE_COLOR}] rounded-xl bg-white`}>
+    <button
+      onClick={onToggle}
+      className={`flex justify-between items-center w-full p-4 text-left font-semibold text-[${TEXT_DARK}] hover:text-[${PRIMARY_COLOR}] transition-colors`}
+    >
+      {title}
+      {isOpen ? <FaChevronUp className={`text-[${PRIMARY_COLOR}]`} /> : <FaChevronDown className={`text-[${TEXT_COLOR}]`} />}
+    </button>
+    {isOpen && <div className="px-4 pb-4">{children}</div>}
+  </div>
+);
+
+interface FilterCheckboxProps {
+  label: React.ReactNode;
+  checked: boolean;
+  onChange: () => void;
+  count?: number;
+}
+
+const FilterCheckbox: React.FC<FilterCheckboxProps> = ({ label, checked, onChange, count }) => (
+  <label className="flex items-center justify-between group cursor-pointer">
+    <div className="flex items-center gap-3">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className={`w-4 h-4 text-[${ACTION_COLOR}] border-[${SURFACE_COLOR}] rounded focus:ring-[${ACTION_COLOR}]`}
+      />
+      <span className={`text-[${TEXT_COLOR}] group-hover:text-[${PRIMARY_COLOR}] transition-colors`}>{label}</span>
+    </div>
+    {count !== undefined && (
+      <span className={`text-sm text-[${TEXT_COLOR}] bg-[${SURFACE_COLOR}]/50 px-2 py-1 rounded`}>
+        {count}
+      </span>
+    )}
+  </label>
+);
+
+interface FilterChipProps {
+  label: string;
+  onRemove: () => void;
+}
+
+const FilterChip: React.FC<FilterChipProps> = ({ label, onRemove }) => (
+  <div className={`flex items-center gap-2 bg-[${ACTION_COLOR}]/10 text-[${ACTION_COLOR}] px-3 py-1 rounded-full text-sm font-medium`}>
+    {label}
+    <button onClick={onRemove} className={`hover:text-[${TEXT_DARK}] transition-colors`}>
+      <FaTimes className="text-xs" />
+    </button>
+  </div>
+);
+
+// --- PRODUCT CARDS (Omitted for brevity, kept for context) ---
+const GridProductCard: React.FC<{ product: Product; index: number }> = ({ product, index }) => (
+  <div className={`group relative flex flex-col h-full bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-[${SURFACE_COLOR}] overflow-hidden`}>
+    <div className="absolute top-3 left-3 z-10 flex gap-2">
+      {product.isFeatured && (
+        <span className={`bg-[${SECONDARY_ACCENT}] text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1`}>
+          <FaFire className="text-xs" /> Featured
+        </span>
+      )}
+      {product.oldPrice && (
+        <span className={`bg-[${ACTION_COLOR}] text-white px-2 py-1 rounded-full text-xs font-bold`}>
+          -{Math.round((1 - product.price / product.oldPrice) * 100)}%
+        </span>
+      )}
+    </div>
+    <button
+      onClick={(e) => { e.preventDefault(); console.log('Wishlist:', product.name); }}
+      className="absolute top-3 right-3 z-10 p-2 bg-white/90 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-500 hover:text-white"
+    >
+      <FaHeart />
+    </button>
+    <Link href={`/shop/${product.id}`} className="flex flex-col h-full">
+      <div className="relative w-full aspect-square bg-gray-50 overflow-hidden">
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          className="object-cover transition-transform duration-500 group-hover:scale-110"
+          priority={index < 4}
+        />
+      </div>
+      <div className="p-4 flex flex-col flex-grow">
+        <div className="mb-3">
+          <span className={`text-xs font-medium text-[${SECONDARY_ACCENT}] bg-[${SECONDARY_ACCENT}]/10 px-2 py-1 rounded`}>
+            {product.category}
+          </span>
+        </div>
+        <h3 className={`font-semibold text-[${TEXT_DARK}] mb-2 line-clamp-2 group-hover:text-[${PRIMARY_COLOR}] transition-colors`}>
+          {product.name}
+        </h3>
+        <div className="flex items-center gap-1 mb-3">
+          {product.rating && (
+            <>
+              {[...Array(5)].map((_, i) => (
+                <FaStar
+                  key={i}
+                  className={`text-sm ${
+                    i < product.rating! ? 'text-yellow-400' : 'text-gray-300'
+                  }`}
+                />
+              ))}
+              <span className={`text-xs text-[${TEXT_COLOR}]/70 ml-1`}>({product.rating})</span>
+            </>
+          )}
+        </div>
+        <div className={`flex items-center gap-1 text-xs text-[${TEXT_COLOR}] mb-3`}>
+          <FaMapMarkerAlt className="text-xs" />
+          <span>{product.location}</span>
+          <span className="mx-1">•</span>
+          <span className={`bg-[${SURFACE_COLOR}]/50 px-2 py-1 rounded text-xs`}>{product.condition}</span>
+        </div>
+        <div className="mt-auto flex items-center justify-between pt-2 border-t border-gray-100">
+          <div className="flex items-baseline gap-2">
+            <span className={`text-2xl font-bold text-[${PRIMARY_COLOR}]`}>₦{product.price.toLocaleString()}</span>
+            {product.oldPrice && (
+              <span className={`text-sm text-[${TEXT_COLOR}]/50 line-through`}>
+                ₦{product.oldPrice.toLocaleString()}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              console.log('Add to cart:', product.name);
+            }}
+            className={`p-2 bg-[${ACTION_COLOR}] text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-green-600`}
+          >
+            <FaShoppingCart />
+          </button>
+        </div>
+      </div>
+    </Link>
+  </div>
+);
+
+const ListProductCard: React.FC<{ product: Product; index: number }> = ({ product, index }) => (
+    <div className={`group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-[${SURFACE_COLOR}] overflow-hidden`}>
+      <Link href={`/shop/${product.id}`} className="flex flex-col sm:flex-row">
+        <div className="relative w-full sm:w-64 h-48 sm:h-auto bg-gray-50 overflow-hidden">
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          {product.isFeatured && (
+            <div className={`absolute top-3 left-3 bg-[${SECONDARY_ACCENT}] text-white px-2 py-1 rounded-full text-xs font-bold`}>
+              Featured
+            </div>
+          )}
+        </div>
+        <div className="flex-1 p-6">
+          <div className="flex flex-col h-full">
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className={`text-[${SECONDARY_ACCENT}] bg-[${SECONDARY_ACCENT}]/10 px-3 py-1 rounded-full text-sm font-medium`}>
+                  {product.category}
+                </span>
+                <span className={`text-xs text-[${TEXT_COLOR}] bg-[${SURFACE_COLOR}]/50 px-2 py-1 rounded`}>
+                  {product.condition}
+                </span>
+              </div>
+              <h3 className={`text-xl font-bold text-[${TEXT_DARK}] mb-3 group-hover:text-[${PRIMARY_COLOR}] transition-colors`}>
+                {product.name}
+              </h3>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span className="flex items-center gap-1">
+                  <FaMapMarkerAlt className="text-xs" />
+                  {product.location}
+                </span>
+                {product.rating && (
+                  <span className="flex items-center gap-1">
+                    <FaStar className="text-yellow-400" />
+                    {product.rating}/5
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+              <div className="flex items-baseline gap-3">
+                <span className={`text-3xl font-bold text-[${PRIMARY_COLOR}]`}>
+                  ₦{product.price.toLocaleString()}
+                </span>
+                {product.oldPrice && (
+                  <span className={`text-lg text-[${TEXT_COLOR}]/50 line-through`}>
+                    ₦{product.oldPrice.toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                  <button
+                      onClick={(e) => { e.preventDefault(); console.log('Wishlist:', product.name); }}
+                      className={`p-3 border border-[${SURFACE_COLOR}] rounded-xl hover:border-red-500 hover:text-red-500 transition-colors`}
+                  >
+                      <FaHeart />
+                  </button>
+                  <button
+                      onClick={(e) => { e.preventDefault(); console.log('Add to cart:', product.name); }}
+                      className={`flex items-center gap-2 px-6 py-3 bg-[${ACTION_COLOR}] text-white rounded-xl font-semibold hover:bg-green-600 transition-colors`}
+                  >
+                      <FaShoppingCart /> Add to Cart
+                  </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+// -----------------------------------------------------------------
+
+
+// --- NEW COMPONENT: ADVANCED SEARCH MODAL ---
+const AdvancedSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    // This is a simplified state for demonstration purposes
+    const [pageTitle, setPageTitle] = useState('');
+
+    return (
+        <div className="fixed inset-0 z-[60] bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-start pt-10 pb-10 overflow-y-auto">
+            <div className={`w-full max-w-4xl bg-[${BACKGROUND_LIGHT}] rounded-xl shadow-2xl p-8 transform transition-all duration-300`}>
+                
+                {/* Modal Header */}
+                <div className="flex justify-between items-center mb-6 border-b pb-4">
+                    <h2 className={`text-3xl font-bold text-[${PRIMARY_COLOR}]`}>Advanced Search</h2>
+                    <button onClick={onClose} className={`p-2 rounded-full text-[${TEXT_DARK}] hover:bg-[${SURFACE_COLOR}]`}>
+                        <FaTimes className="text-2xl" />
+                    </button>
+                </div>
+
+                {/* --- Section: Advanced Search --- */}
+                <div className="bg-white p-6 rounded-xl shadow-md mb-6 border border-gray-200">
+                    <h3 className={`text-xl font-semibold mb-4 text-[${TEXT_DARK}]`}>Words to Find</h3>
+                    <div className="flex gap-4 mb-4">
+                        <input type="text" placeholder="Words" className={`flex-1 p-3 border border-[${SURFACE_COLOR}] rounded-lg focus:ring-[${ACTION_COLOR}]`} />
+                        <input type="text" placeholder="Exclude" className={`flex-1 p-3 border border-[${SURFACE_COLOR}] rounded-lg focus:ring-[${ACTION_COLOR}]`} />
+                    </div>
+                    <div className={`space-y-2 text-[${TEXT_COLOR}]`}>
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" defaultChecked className={`text-[${ACTION_COLOR}] rounded`} />
+                            All of these keywords
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" defaultChecked className={`text-[${ACTION_COLOR}] rounded`} />
+                            Search the title only
+                        </label>
+                    </div>
+                </div>
+
+                {/* --- Section: Refine --- */}
+                <div className="bg-white p-6 rounded-xl shadow-md mb-6 border border-gray-200">
+                    <h3 className={`text-xl font-semibold mb-4 text-[${TEXT_DARK}]`}>Refine</h3>
+
+                    {/* Listing Type */}
+                    <div className="mb-4">
+                        <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Listing type</p>
+                        <div className="flex flex-wrap gap-4">
+                            {listingTypes.map(type => (
+                                <label key={type} className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                    <input type="radio" name="listing-type" defaultChecked={type === 'Any type'} className={`text-[${ACTION_COLOR}]`} />
+                                    {type}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* Item Location & Shipping */}
+                    <div className="flex flex-col md:flex-row gap-6 mb-4">
+                        <div className="md:w-1/2">
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Item location</p>
+                            <div className={`flex gap-4 text-[${TEXT_COLOR}]`}>
+                                <label className="flex items-center gap-2">
+                                    <input type="checkbox" className={`text-[${ACTION_COLOR}] rounded`} />
+                                    Nigeria
+                                </label>
+                                <label className="flex items-center gap-2">
+                                    <input type="checkbox" className={`text-[${ACTION_COLOR}] rounded`} />
+                                    International
+                                </label>
+                            </div>
+                        </div>
+                        <div className="md:w-1/2">
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Condition</p>
+                            <div className="flex flex-wrap gap-4">
+                                {conditionOptions.map(cond => (
+                                    <label key={cond} className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                        <input type="radio" name="condition-type" defaultChecked={cond === 'Any'} className={`text-[${ACTION_COLOR}]`} />
+                                        {cond}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Shipping */}
+                    <div className="mb-4">
+                        <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Shipping</p>
+                        <div className="flex flex-wrap gap-4">
+                            {shippingOptions.map(option => (
+                                <label key={option} className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                    <input type="checkbox" className={`text-[${ACTION_COLOR}] rounded`} />
+                                    {option}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Category & Price */}
+                    <div className="flex flex-col sm:flex-row gap-6">
+                        <div className="flex-1">
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Category</p>
+                            <div className="flex gap-2">
+                                <select className={`flex-1 p-3 border border-[${SURFACE_COLOR}] rounded-lg focus:ring-[${ACTION_COLOR}]`}>
+                                    <option>All categories</option>
+                                    {mainCategories.map(cat => <option key={cat}>{cat}</option>)}
+                                </select>
+                                <button className={`px-4 py-3 bg-[${ACTION_COLOR}] text-white rounded-lg hover:bg-green-600`}>Include</button>
+                                <button className={`px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600`}>Exclude</button>
+                            </div>
+                        </div>
+                        <div className="w-full sm:w-48">
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Price</p>
+                            <div className="flex gap-2">
+                                <input type="number" placeholder="Min" className={`w-1/2 p-3 border border-[${SURFACE_COLOR}] rounded-lg`} />
+                                <input type="number" placeholder="Max" className={`w-1/2 p-3 border border-[${SURFACE_COLOR}] rounded-lg`} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- Section: Sellers --- */}
+                <div className="bg-white p-6 rounded-xl shadow-md mb-6 border border-gray-200">
+                    <h3 className={`text-xl font-semibold mb-4 text-[${TEXT_DARK}]`}>Sellers</h3>
+                    
+                    {/* Type & Location */}
+                    <div className="flex flex-col sm:flex-row gap-6 mb-4">
+                        <div className="sm:w-1/2">
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Type</p>
+                            <div className="flex gap-4">
+                                <label className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                    <input type="checkbox" className={`text-[${ACTION_COLOR}] rounded`} />
+                                    Stores
+                                </label>
+                                <label className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                    <input type="checkbox" className={`text-[${ACTION_COLOR}] rounded`} />
+                                    Verified
+                                </label>
+                            </div>
+                        </div>
+                        <div className="sm:w-1/2">
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Location</p>
+                            <select className={`w-full p-3 border border-[${SURFACE_COLOR}] rounded-lg focus:ring-[${ACTION_COLOR}]`}>
+                                {sellerLocations.map(loc => <option key={loc}>{loc}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Include / Exclude Seller */}
+                    <div className="mb-4">
+                        <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Include / exclude</p>
+                        <div className="flex gap-2 items-center">
+                            <input type="text" placeholder="Seller name" className={`flex-1 p-3 border border-[${SURFACE_COLOR}] rounded-lg focus:ring-[${ACTION_COLOR}]`} />
+                            <button className={`px-4 py-3 bg-[${ACTION_COLOR}] text-white rounded-lg hover:bg-green-600 flex items-center gap-1`}><FaPlus /> Include</button>
+                            <button className={`px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-1`}><FaTimes /> Exclude</button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- Section: Results --- */}
+                <div className="bg-white p-6 rounded-xl shadow-md mb-6 border border-gray-200">
+                    <h3 className={`text-xl font-semibold mb-4 text-[${TEXT_DARK}]`}>Results</h3>
+
+                    {/* Page Title */}
+                    <div className="mb-4">
+                        <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Page title</p>
+                        <input 
+                            type="text" 
+                            value={pageTitle}
+                            onChange={(e) => setPageTitle(e.target.value)}
+                            className={`w-full p-3 border border-[${SURFACE_COLOR}] rounded-lg focus:ring-[${ACTION_COLOR}]`} 
+                        />
+                    </div>
+                    
+                    {/* Sort by */}
+                    <div className="mb-4">
+                        <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Sort by</p>
+                        <div className="flex flex-wrap gap-4">
+                            {['Default', 'Lowest price', 'Highest price', 'Ending soon', "What's new", 'Hot selling'].map(sort => (
+                                <label key={sort} className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                    <input type="radio" name="sort-by" defaultChecked={sort === 'Default'} className={`text-[${ACTION_COLOR}]`} />
+                                    {sort}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Layout & Hide */}
+                    <div className="flex gap-8">
+                        <div>
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Layout</p>
+                            <div className="flex gap-4">
+                                <label className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                    <input type="radio" name="layout" defaultChecked className={`text-[${ACTION_COLOR}]`} /> List
+                                </label>
+                                <label className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                    <input type="radio" name="layout" className={`text-[${ACTION_COLOR}]`} /> Grid
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <p className={`font-medium mb-2 text-[${TEXT_DARK}]`}>Hide</p>
+                            <label className={`flex items-center gap-2 text-[${TEXT_COLOR}]`}>
+                                <input type="checkbox" className={`text-[${ACTION_COLOR}] rounded`} /> Search URL
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- Action Buttons --- */}
+                <div className="flex justify-end gap-4 pt-4 border-t">
+                    <button className={`px-6 py-3 border border-gray-300 rounded-xl text-[${TEXT_DARK}] hover:bg-gray-100`}>Reset</button>
+                    <button className={`px-6 py-3 bg-[${SECONDARY_ACCENT}] text-white rounded-xl hover:bg-purple-700`}>Generate links</button>
+                    <button className={`px-6 py-3 bg-[${ACTION_COLOR}] text-white rounded-xl hover:bg-green-600 flex items-center gap-2`} onClick={onClose}><FaSearch /> Search</button>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
+// --- MAIN COMPONENT: SHOP PAGE ---
 export default function ShopPage() {
-  // State for filters and pagination
-  const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  // --- STATE ---
+  const [sortBy, setSortBy] = useState<'date' | 'name' | 'price' | 'rating'>('date');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [activeCategory, setActiveCategory] = useState('');
+  
+  // FILTER STATES
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
+  const [selectedDelivery, setSelectedDelivery] = useState<string[]>([]); 
+  const [selectedSellerType, setSelectedSellerType] = useState<string[]>([]);
+  const [selectedHandlingTime, setSelectedHandlingTime] = useState<string[]>([]); 
+
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [searchQuery, setSearchQuery] = useState('');
-  // New state for mobile sidebar visibility
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false); // New State
 
   // States for collapsible sections
-  const [isCategoriesOpen, setIsCategoriesOpen] = useState(true);
-  const [isLocationsOpen, setIsLocationsOpen] = useState(true);
-  const [isConditionsOpen, setIsConditionsOpen] = useState(true);
-  const [isPriceOpen, setIsPriceOpen] = useState(true);
+  const [openSections, setOpenSections] = useState({
+    searchWithin: true,
+    newSecondhand: true,
+    categories: true,
+    price: true,
+    deliveryOptions: false,
+    typeOfSeller: false,
+    handlingTime: false,
+    itemLocation: false,
+    sellerLocation: false,
+    rating: false,
+  });
 
+  // --- DERIVED DATA & HANDLERS (Omitted for brevity, kept for context) ---
+  const prices = useMemo(() => productsData.map((p: Product) => p.price), []);
+  const minPrice = useMemo(() => prices.length > 0 ? Math.floor(Math.min(...prices) / 1000) * 1000 : 0, [prices]);
+  const maxPrice = useMemo(() => prices.length > 0 ? Math.ceil(Math.max(...prices) / 1000) * 1000 : 1000000, [prices]);
 
-  // Calculate min/max price from actual product data
-  const prices = productsData.map((p: Product) => p.price);
-  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-  const maxPrice = prices.length > 0 ? Math.max(...prices) : 1000000; // Default max if no products
-
-  // Initialize price range on component mount (or when min/max prices change)
   useEffect(() => {
     setPriceRange([minPrice, maxPrice]);
-  }, [minPrice, maxPrice]); // Depend on min/max price from data
+  }, [minPrice, maxPrice]);
 
-  // Helper functions for toggling filter selections
-  const toggleLocation = (location: string) => {
-    setSelectedLocations((prev) =>
-      prev.includes(location) ? prev.filter((l) => l !== location) : [...prev, location]
-    );
-    setCurrentPage(1); // Reset to first page on filter change
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const toggleCondition = (condition: string) => {
-    setSelectedConditions((prev) =>
-      prev.includes(condition) ? prev.filter((c) => c !== condition) : [...prev, condition]
-    );
-    setCurrentPage(1); // Reset to first page on filter change
-  };
-
-  const handlePriceChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: 'min' | 'max'
+  const toggleFilter = (
+    value: string | number,
+    selectedState: any[],
+    setSelectedState: React.Dispatch<React.SetStateAction<any[]>>
   ) => {
+    setSelectedState(prev =>
+      prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
+    );
+    setCurrentPage(1);
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'min' | 'max') => {
     const value = Number(e.target.value);
-    setPriceRange((prev) => {
+    setPriceRange(prev => {
       let newMin = type === 'min' ? value : prev[0];
       let newMax = type === 'max' ? value : prev[1];
 
-      // Ensure min is not greater than max, and max is not less than min
+      newMin = Math.max(minPrice, newMin);
+      newMax = Math.min(maxPrice, newMax);
       if (newMin > newMax) {
         if (type === 'min') newMax = newMin;
         else newMin = newMax;
       }
-
+      setCurrentPage(1);
       return [newMin, newMax];
     });
-    setCurrentPage(1); // Reset to first page on filter change
   };
 
-  // Filter and sort products
-  const filteredAndSortedProducts = productsData
-    .filter((p: Product) => {
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = activeCategory ? p.category === activeCategory : true;
-      const matchesLocation = selectedLocations.length ? selectedLocations.includes(p.location) : true;
-      const matchesCondition = selectedConditions.length ? selectedConditions.includes(p.condition) : true;
-      const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
 
-      return matchesSearch && matchesCategory && matchesLocation && matchesCondition && matchesPrice;
-    })
-    .sort((a: Product, b: Product) => {
-      if (sortBy === 'date') {
-        // Sort by date: newest first
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      }
-      // Sort by name: A-Z
-      return a.name.localeCompare(b.name);
-    });
+  const clearFilters = () => {
+    setSelectedCategories([]);
+    setSelectedLocations([]);
+    setSelectedConditions([]);
+    setSelectedRatings([]);
+    setSelectedDelivery([]);
+    setSelectedSellerType([]);
+    setSelectedHandlingTime([]);
+    setPriceRange([minPrice, maxPrice]);
+    setCurrentPage(1);
+  };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
-  const currentItems = filteredAndSortedProducts.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  // Filtering/Sorting and Pagination logic remain the same
+  const filteredAndSortedProducts = useMemo(() => {
+    return productsData
+      .filter((p: Product) => {
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategories.length ? selectedCategories.includes(p.category) : true;
+        const matchesLocation = selectedLocations.length ? selectedLocations.includes(p.location) : true;
+        const matchesCondition = selectedConditions.length ? selectedConditions.includes(p.condition) : true;
+        const matchesRating = selectedRatings.length ? (p.rating && selectedRatings.includes(p.rating)) : true;
+        const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
 
+        return matchesSearch && matchesCategory && matchesLocation && matchesCondition && matchesRating && matchesPrice;
+      })
+      .sort((a: Product, b: Product) => {
+        switch (sortBy) {
+          case 'name':
+            return a.name.localeCompare(b.name);
+          case 'price':
+            return a.price - b.price;
+          case 'rating':
+            return (b.rating || 0) - (a.rating || 0);
+          case 'date':
+          default:
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+        }
+      });
+  }, [searchQuery, selectedCategories, selectedLocations, selectedConditions, selectedRatings, priceRange, sortBy]);
+
+  const { totalPages, currentItems } = useMemo(() => {
+    const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
+    const currentItems = filteredAndSortedProducts.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
+    return { totalPages, currentItems };
+  }, [filteredAndSortedProducts, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+  // --- END DERIVED DATA & HANDLERS ---
+
+  // --- RENDER START ---
   return (
-    <div className="relative top-[60px] flex flex-col md:flex-row min-h-screen bg-white text-[#5F7161]">
-      {/* Mobile Sidebar Toggle Button */}
+    <div className={`min-h-screen bg-[${BACKGROUND_LIGHT}] pt-20`}>
+
+      {/* -------------------- ADVANCED SEARCH MODAL -------------------- */}
+      {isAdvancedSearchOpen && (
+        <AdvancedSearchModal onClose={() => setIsAdvancedSearchOpen(false)} />
+      )}
+      {/* --------------------------------------------------------------- */}
+
+      {/* PROMOTIONAL BANNER */}
+      <div className={`bg-[${PRIMARY_COLOR}] text-white py-12 mb-8 shadow-inner`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="md:w-1/3">
+            <Image
+              src="/images/promo-banner-furniture.jpg" 
+              alt="Get 10% off your first purchase"
+              width={250}
+              height={150}
+              className="rounded-xl object-cover h-full w-full hidden md:block"
+              style={{ objectFit: 'cover' }}
+            />
+          </div>
+          <div className="text-center md:text-left md:w-2/3">
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">
+              Get <span className={`text-[${ACTION_COLOR}]`}>10% Off</span> Your First Purchase!
+            </h2>
+            <p className={`text-lg font-medium mb-4 text-[${SURFACE_COLOR}]`}>
+              Sign up for the latest updates, exclusive products, and special offers.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto md:mx-0">
+              <input
+                type="email"
+                placeholder="Enter email address"
+                className={`flex-1 px-4 py-3 rounded-xl border-2 border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[${ACTION_COLOR}]`}
+              />
+              <button
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[${ACTION_COLOR}] text-white font-semibold hover:bg-green-600 transition-colors shadow-lg`}
+              >
+                Subscribe <FaPaperPlane />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      {/* Main Content Area */}
       <button
-        className="md:hidden fixed top-100 left-4 z-50 p-3 bg-[#775522] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+        className={`md:hidden fixed top-24 right-6 z-50 p-3 bg-[${PRIMARY_COLOR}] text-white rounded-full shadow-lg`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        aria-label="Toggle filters"
       >
-        {isSidebarOpen ? <FaTimes className="text-xl" /> : <FaSlidersH className="text-xl" />}
+        <FaFilter />
       </button>
 
-      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
-        ></div>
+        />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-5 left-0 h-full w-64 bg-white p-6 md:p-8 border-r border-gray-200 flex-shrink-0 z-50 transform transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:relative md:translate-x-0 md:block md:w-64 md:border-b-0 md:border-r animate-fade-in-left
-          overflow-y-auto`}
-      >
-        {/* Close button for mobile sidebar */}
-        <button
-          className="absolute top-4 right-4 md:hidden text-gray-600 hover:text-[#775522] text-2xl"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-label="Close filters"
-        >
-          <FaTimes />
-        </button>
-
-        {/* Categories */}
-        <div className="mb-8">
-          <button
-            className="flex justify-between items-center w-full text-xl font-bold text-gray-800 pb-2 border-b mb-6 focus:outline-none"
-            onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* -------------------- SIDEBAR FILTERS -------------------- */}
+          <div
+            className={`lg:w-80 flex-shrink-0 ${
+              isSidebarOpen
+                ? `fixed inset-y-0 left-0 z-50 w-80 bg-white p-6 overflow-y-auto shadow-2xl`
+                : 'hidden lg:block'
+            }`}
           >
-            Categories
-            {isCategoriesOpen ? <FaChevronUp /> : <FaChevronDown />}
-          </button>
-          {isCategoriesOpen && (
-            <ul className="space-y-2 animate-accordion-down">
-              {categories.map((category) => (
-                <li key={category}>
-                  <button
-                    onClick={() => {
-                      setActiveCategory(category);
-                      setCurrentPage(1); // Reset page when category changes
-                      // setIsSidebarOpen(false); // Consider whether to close sidebar on category select
-                    }}
-                    className={`w-full text-left py-2 px-3 rounded-md transition-all duration-200
-                      ${activeCategory === category
-                        ? 'bg-[#E8CEB0] text-[#775522] font-semibold shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-                      }`}
-                  >
-                    {category}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Location */}
-        <div className="mb-8">
-          <button
-            className="flex justify-between items-center w-full text-xl font-bold text-gray-800 pb-2 border-b mb-6 focus:outline-none"
-            onClick={() => setIsLocationsOpen(!isLocationsOpen)}
-          >
-            Location
-            {isLocationsOpen ? <FaChevronUp /> : <FaChevronDown />}
-          </button>
-          {isLocationsOpen && (
-            <div className="space-y-2 animate-accordion-down">
-              {locations.map((location) => (
-                <div key={location} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`location-${location}`}
-                    checked={selectedLocations.includes(location)}
-                    onChange={() => toggleLocation(location)}
-                    className="form-checkbox h-4 w-4 text-[#775522] rounded border-gray-300 focus:ring-[#775522] transition-colors duration-200 cursor-pointer"
-                  />
-                  <label htmlFor={`location-${location}`} className="ml-2 text-gray-700 cursor-pointer">
-                    {location}
-                  </label>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Condition */}
-        <div className="mb-8">
-          <button
-            className="flex justify-between items-center w-full text-xl font-bold text-gray-800 pb-2 border-b mb-6 focus:outline-none"
-            onClick={() => setIsConditionsOpen(!isConditionsOpen)}
-          >
-            Condition
-            {isConditionsOpen ? <FaChevronUp /> : <FaChevronDown />}
-          </button>
-          {isConditionsOpen && (
-            <div className="space-y-2 animate-accordion-down">
-              {conditions.map((condition) => (
-                <div key={condition} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`condition-${condition}`}
-                    checked={selectedConditions.includes(condition)}
-                    onChange={() => toggleCondition(condition)}
-                    className="form-checkbox h-4 w-4 text-[#775522] rounded border-gray-300 focus:ring-[#775522] transition-colors duration-200 cursor-pointer"
-                  />
-                  <label htmlFor={`condition-${condition}`} className="ml-2 text-gray-700 cursor-pointer">
-                    {condition}
-                  </label>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Price Filter */}
-        <div className="mb-8">
-          <button
-            className="flex justify-between items-center w-full text-xl font-bold text-gray-800 pb-2 border-b mb-6 focus:outline-none"
-            onClick={() => setIsPriceOpen(!isPriceOpen)}
-          >
-            Price
-            {isPriceOpen ? <FaChevronUp /> : <FaChevronDown />}
-          </button>
-          {isPriceOpen && (
-            <div className="animate-accordion-down">
-              <div className="relative h-2 bg-gray-200 rounded-full mb-4">
-                {/* Filled track for the range */}
-                <div
-                  className="absolute h-full bg-[#E8CEB0] rounded-full"
-                  style={{
-                    left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`,
-                    width: `${((priceRange[1] - priceRange[0]) / (maxPrice - minPrice)) * 100}%`,
-                  }}
-                ></div>
-                {/* Min Price Slider */}
-                <input
-                  type="range"
-                  min={minPrice}
-                  max={maxPrice}
-                  value={priceRange[0]}
-                  onChange={(e) => handlePriceChange(e, 'min')}
-                  className="absolute w-full h-full bg-transparent appearance-none pointer-events-auto z-20 slider-thumb-custom"
-                />
-                {/* Max Price Slider */}
-                <input
-                  type="range"
-                  min={minPrice}
-                  max={maxPrice}
-                  value={priceRange[1]}
-                  onChange={(e) => handlePriceChange(e, 'max')}
-                  className="absolute w-full h-full bg-transparent appearance-none pointer-events-auto z-20 slider-thumb-custom"
-                />
-              </div>
-              <p className="text-lg font-medium text-gray-700">
-                ₦{priceRange[0].toLocaleString()} - ₦{priceRange[1].toLocaleString()}
-              </p>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Main Shop Grid */}
-      <main className="flex-1 p-6 md:p-8 lg:p-10 bg-[#FDFBF7]">
-        {/* Top Bar: Search, View Mode, Sort By */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-6 mb-6 pb-4 border-b border-gray-200 animate-fade-in-down">
-          <h1 className="text-3xl sm:text-4xl font-bold text-[#775522] drop-shadow-sm">Shop Furniture</h1>
-
-          <div className="flex flex-col sm:flex-row gap-4 items-center w-full sm:w-auto">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-64">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1); // Reset to first page on search
-                }}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#775522] transition-all duration-200 text-gray-700"
-              />
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            </div>
-
-            {/* View Mode Buttons */}
-            <div className="flex border border-gray-300 rounded-md overflow-hidden shadow-sm">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-3 transition-all duration-200 ${
-                  viewMode === 'grid' ? 'bg-[#775522] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                aria-label="Grid view"
-                title="Grid View"
-              >
-                <FaThLarge className="text-lg" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-3 transition-all duration-200 ${
-                  viewMode === 'list' ? 'bg-[#775522] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                aria-label="List view"
-                title="List View"
-              >
-                <FaList className="text-lg" />
-              </button>
-            </div>
-
-            {/* Sort By Dropdown */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value as 'date' | 'name');
-                  setCurrentPage(1); // Reset to first page on sort change
-                }}
-                className="block appearance-none w-full bg-gray-100 border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-md leading-tight focus:outline-none focus:bg-white focus:border-[#775522] shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <option value="date">Sort by: Newest</option>
-                <option value="name">Sort by: Name (A-Z)</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <FaChevronDown className="text-sm" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Display "No products found" if filtered list is empty */}
-        {currentItems.length === 0 ? (
-          <div className="text-center py-20 text-gray-600">
-            <p className="text-2xl font-medium mb-4">😔 No products found matching your criteria.</p>
-            <p className="text-lg">Try adjusting your filters or search query.</p>
-          </div>
-        ) : (
-          <>
-            {/* Products Grid */}
-            <div className={`grid gap-8 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
-              {currentItems.map((product, index) => (
-                <div
-                  key={product.id}
-                  className={`relative bg-white rounded-lg shadow-lg overflow-hidden transform transition-transform duration-300 hover:scale-[1.02] hover:shadow-xl animate-fade-in-up-staggered ${
-                    viewMode === 'list' ? 'flex flex-col sm:flex-row' : ''
-                  }`}
-                  style={{ animationDelay: `${index * 0.05}s` }}
+            <div className="space-y-4">
+              {/* Header and Clear button */}
+              <div className="flex items-center justify-between">
+                <h2 className={`text-2xl font-bold text-[${PRIMARY_COLOR}]`}>Filters</h2>
+                <button
+                  onClick={clearFilters}
+                  className={`text-sm text-[${SECONDARY_ACCENT}] hover:text-[${PRIMARY_COLOR}] font-medium`}
                 >
-                  {/* Icons: Add to Cart & Wishlist */}
-                  <div className="absolute top-3 right-3 flex gap-2 z-10">
-                    <button
-                      onClick={() => console.log('Add to wishlist:', product.name)}
-                      className="p-2 rounded-full bg-white text-gray-600 hover:text-red-500 hover:bg-gray-100 shadow transition"
-                      title="Save item"
-                    >
-                      <FaHeart />
-                    </button>
-                    <button
-                      onClick={() => console.log('Add to cart:', product.name)}
-                      className="p-2 rounded-full bg-white text-gray-600 hover:text-green-600 hover:bg-gray-100 shadow transition"
-                      title="Add to cart"
-                    >
-                      <FaShoppingCart />
-                    </button>
-                  </div>
-                  <div className={`${viewMode === 'list' ? 'w-full sm:w-1/3 flex-shrink-0' : 'w-full h-48'} relative`}>
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      layout="fill"
-                      objectFit="cover"
-                      className="transition-transform duration-300 hover:scale-110"
-                      priority={index < 4} // Prioritize first few images
+                  Clear All
+                </button>
+              </div>
+
+              {/* Search Within Results */}
+              <FilterSection
+                title="Search within results"
+                isOpen={openSections.searchWithin}
+                onToggle={() => toggleSection('searchWithin')}
+              >
+                 <div className="relative">
+                  <FaSearch className={`absolute left-3 top-3 text-[${TEXT_COLOR}]`} />
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border border-[${SURFACE_COLOR}] rounded-lg focus:ring-2 focus:ring-[${ACTION_COLOR}] focus:border-transparent text-[${TEXT_DARK}]`}
+                  />
+                </div>
+              </FilterSection>
+
+              {/* New / Secondhand */}
+              <FilterSection
+                title="New / Secondhand"
+                isOpen={openSections.newSecondhand}
+                onToggle={() => toggleSection('newSecondhand')}
+              >
+                <div className="space-y-2">
+                  {conditions.map(condition => (
+                    <FilterCheckbox
+                      key={condition}
+                      label={condition}
+                      checked={selectedConditions.includes(condition)}
+                      onChange={() => toggleFilter(condition, selectedConditions, setSelectedConditions)}
                     />
+                  ))}
+                </div>
+              </FilterSection>
+
+              {/* Categories */}
+              <FilterSection
+                title="Categories"
+                isOpen={openSections.categories}
+                onToggle={() => toggleSection('categories')}
+              >
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  {mainCategories.map(category => (
+                    <FilterCheckbox
+                      key={category}
+                      label={category}
+                      checked={selectedCategories.includes(category)}
+                      onChange={() => toggleFilter(category, selectedCategories, setSelectedCategories)}
+                      count={productsData.filter(p => p.category.includes(category.split(' ')[0])).length}
+                    />
+                  ))}
+                </div>
+              </FilterSection>
+              
+              {/* Price */}
+              <FilterSection
+                title="Price"
+                isOpen={openSections.price}
+                onToggle={() => toggleSection('price')}
+              >
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className={`block text-sm text-[${TEXT_COLOR}] mb-1`}>Min</label>
+                      <input
+                        type="number"
+                        value={priceRange[0]}
+                        onChange={(e) => handlePriceChange(e, 'min')}
+                        className={`w-full px-3 py-2 border border-[${SURFACE_COLOR}] rounded-lg text-[${TEXT_DARK}]`}
+                        min={minPrice} max={maxPrice}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className={`block text-sm text-[${TEXT_COLOR}] mb-1`}>Max</label>
+                      <input
+                        type="number"
+                        value={priceRange[1]}
+                        onChange={(e) => handlePriceChange(e, 'max')}
+                        className={`w-full px-3 py-2 border border-[${SURFACE_COLOR}] rounded-lg text-[${TEXT_DARK}]`}
+                        min={minPrice} max={maxPrice}
+                      />
+                    </div>
                   </div>
-                  <div className="p-5 flex flex-col justify-between flex-grow">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2 truncate" title={product.name}>
-                      {product.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 mb-1">Category: {product.category}</p>
-                    <p className="text-sm text-gray-500 mb-3">Location: {product.location}</p>
-                    <p className="text-2xl font-bold text-[#775522] mb-3">
-                      ₦{product.price.toLocaleString()}
-                      {product.oldPrice && (
-                        <span className="text-base line-through text-gray-400 ml-3">
-                          ₦{product.oldPrice.toLocaleString()}
-                        </span>
-                      )}
-                    </p>
-                    <Link
-                      href={`/shop/${product.id}`}
-                      className="inline-block w-full text-center bg-[#E8CEB0] text-[#775522] px-6 py-3 rounded-full text-md font-semibold hover:bg-[#775522] hover:text-white transition-colors duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                      View Details
-                    </Link>
+                  <div className={`flex justify-between text-sm font-semibold text-[${PRIMARY_COLOR}]`}>
+                    <span>₦{priceRange[0].toLocaleString()}</span>
+                    <span>₦{priceRange[1].toLocaleString()}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              </FilterSection>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-12 animate-fade-in-up">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                  className="flex items-center gap-2 px-5 py-3 text-md font-medium border border-gray-300 rounded-full text-gray-700
-                             disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 hover:border-[#775522] transition-all duration-300
-                             shadow-sm hover:shadow-md"
+              {/* Delivery Options (Placeholder) */}
+              <FilterSection
+                title="Delivery options"
+                isOpen={openSections.deliveryOptions}
+                onToggle={() => toggleSection('deliveryOptions')}
+              >
+                 <div className="space-y-2">
+                  {deliveryOptions.map(option => (
+                    <FilterCheckbox
+                      key={option}
+                      label={option}
+                      checked={selectedDelivery.includes(option)}
+                      onChange={() => toggleFilter(option, selectedDelivery, setSelectedDelivery)}
+                    />
+                  ))}
+                </div>
+              </FilterSection>
+              
+              {/* Type of seller (Placeholder) */}
+              <FilterSection
+                title="Type of seller"
+                isOpen={openSections.typeOfSeller}
+                onToggle={() => toggleSection('typeOfSeller')}
+              >
+                 <div className="space-y-2">
+                  {sellerTypes.map(type => (
+                    <FilterCheckbox
+                      key={type}
+                      label={type}
+                      checked={selectedSellerType.includes(type)}
+                      onChange={() => toggleFilter(type, selectedSellerType, setSelectedSellerType)}
+                    />
+                  ))}
+                </div>
+              </FilterSection>
+
+              {/* Item location */}
+              <FilterSection
+                title="Item location"
+                isOpen={openSections.itemLocation}
+                onToggle={() => toggleSection('itemLocation')}
+              >
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  {locations.map(location => (
+                    <FilterCheckbox
+                      key={location}
+                      label={location}
+                      checked={selectedLocations.includes(location)}
+                      onChange={() => toggleFilter(location, selectedLocations, setSelectedLocations)}
+                    />
+                  ))}
+                </div>
+              </FilterSection>
+
+              {/* Rating */}
+              <FilterSection
+                title="Rating"
+                isOpen={openSections.rating}
+                onToggle={() => toggleSection('rating')}
+              >
+                <div className="space-y-2">
+                  {ratings.map(rating => (
+                    <FilterCheckbox
+                      key={rating}
+                      label={
+                        <div className="flex items-center gap-2">
+                          {[...Array(5)].map((_, i) => (
+                            <FaStar
+                              key={i}
+                              className={`text-sm ${
+                                i < rating ? 'text-yellow-400' : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                          <span className={`text-[${TEXT_COLOR}]`}>& up</span>
+                        </div>
+                      }
+                      checked={selectedRatings.includes(rating)}
+                      onChange={() => toggleFilter(rating, selectedRatings, setSelectedRatings)}
+                    />
+                  ))}
+                </div>
+              </FilterSection>
+
+              {/* Advanced Search Link - NOW A BUTTON TO OPEN MODAL */}
+              <div className={`pt-4 border-t border-[${SURFACE_COLOR}]`}>
+                <button 
+                  onClick={() => setIsAdvancedSearchOpen(true)}
+                  className={`flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-semibold rounded-xl bg-[${SECONDARY_ACCENT}] text-white hover:bg-purple-700 transition-colors shadow-md`}
                 >
-                  <FaChevronLeft className="text-sm" /> Previous
-                </button>
-
-                <span className="text-md font-medium text-gray-700">
-                  Page <span className="font-semibold text-[#775522]">{currentPage}</span> of <span className="font-semibold text-[#775522]">{totalPages}</span>
-                </span>
-
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                  className="flex items-center gap-2 px-5 py-3 text-md font-medium border border-gray-300 rounded-full text-gray-700
-                             disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 hover:border-[#775522] transition-all duration-300
-                             shadow-sm hover:shadow-md"
-                >
-                  Next <FaChevronRight className="text-sm" />
+                  <FaSlidersH /> Advanced Search
                 </button>
               </div>
+
+            </div>
+          </div>
+
+          {/* -------------------- MAIN CONTENT -------------------- */}
+          <div className="flex-1">
+             <div className="mb-8">
+              <h1 className={`text-4xl font-bold text-[${TEXT_DARK}] mb-2`}>Our Furniture Collection</h1>
+              <p className={`text-[${TEXT_COLOR}] mb-6`}>
+                Found **{filteredAndSortedProducts.length}** products matching your criteria.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                {/* View Controls */}
+                <div className="flex items-center gap-4">
+                  <div className={`flex bg-white rounded-xl border border-[${SURFACE_COLOR}] p-1`}>
+                    <button
+                      onClick={() => setViewMode('grid')}
+                      className={`p-2 rounded-lg ${
+                        viewMode === 'grid' ? `bg-[${ACTION_COLOR}] text-white` : `text-[${TEXT_COLOR}]`
+                      }`}
+                    >
+                      <FaThLarge />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`p-2 rounded-lg ${
+                        viewMode === 'list' ? `bg-[${ACTION_COLOR}] text-white` : `text-[${TEXT_COLOR}]`
+                      }`}
+                    >
+                      <FaList />
+                    </button>
+                  </div>
+
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className={`border border-[${SURFACE_COLOR}] rounded-xl px-4 py-2 focus:ring-2 focus:ring-[${ACTION_COLOR}] text-[${TEXT_DARK}]`}
+                  >
+                    <option value="date">Newest First</option>
+                    <option value="name">Name A-Z</option>
+                    <option value="price">Price Low-High</option>
+                    <option value="rating">Highest Rated</option>
+                  </select>
+                </div>
+
+                {/* Active Filters */}
+                <div className="flex flex-wrap gap-2">
+                  {[...selectedCategories, ...selectedLocations, ...selectedConditions].map(item => (
+                    <FilterChip
+                      key={item}
+                      label={item}
+                      onRemove={() => {
+                        if (selectedCategories.includes(item)) toggleFilter(item, selectedCategories, setSelectedCategories);
+                        else if (selectedLocations.includes(item)) toggleFilter(item, selectedLocations, setSelectedLocations);
+                        else if (selectedConditions.includes(item)) toggleFilter(item, selectedConditions, setSelectedConditions);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Products Grid */}
+            {currentItems.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="text-6xl mb-4">😔</div>
+                <h3 className={`text-xl font-semibold text-[${TEXT_DARK}] mb-2`}>No products found</h3>
+                <p className={`text-[${TEXT_COLOR}]`}>Try adjusting your search or filters</p>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={`grid gap-6 ${
+                    viewMode === 'grid'
+                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                      : 'grid-cols-1'
+                  }`}
+                >
+                  {currentItems.map((product, index) =>
+                    viewMode === 'grid' ? (
+                      <GridProductCard key={product.id} product={product} index={index} />
+                    ) : (
+                      <ListProductCard key={product.id} product={product} index={index} />
+                    )
+                  )}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                   <div className="flex justify-center items-center gap-4 mt-12">
+                   <button
+                     disabled={currentPage === 1}
+                     onClick={() => setCurrentPage(p => p - 1)}
+                     className={`flex items-center gap-2 px-4 py-2 border border-[${SURFACE_COLOR}] rounded-xl disabled:opacity-50 hover:bg-gray-50 text-[${TEXT_DARK}]`}
+                   >
+                     <FaChevronLeft /> Previous
+                   </button>
+                   
+                   <div className="flex gap-2">
+                     {[...Array(totalPages)].map((_, i) => (
+                       <button
+                         key={i + 1}
+                         onClick={() => setCurrentPage(i + 1)}
+                         className={`w-10 h-10 rounded-lg ${
+                           currentPage === i + 1
+                             ? `bg-[${ACTION_COLOR}] text-white`
+                             : `border border-[${SURFACE_COLOR}] hover:bg-gray-50 text-[${TEXT_DARK}]`
+                         }`}
+                       >
+                         {i + 1}
+                       </button>
+                     ))}
+                   </div>
+
+                   <button
+                     disabled={currentPage === totalPages}
+                     onClick={() => setCurrentPage(p => p + 1)}
+                     className={`flex items-center gap-2 px-4 py-2 border border-[${SURFACE_COLOR}] rounded-xl disabled:opacity-50 hover:bg-gray-50 text-[${TEXT_DARK}]`}
+                   >
+                     Next <FaChevronRight />
+                   </button>
+                 </div>
+                )}
+              </>
             )}
-          </>
-        )}
-      </main>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

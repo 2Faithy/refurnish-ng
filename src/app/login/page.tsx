@@ -1,11 +1,55 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { FaGoogle } from 'react-icons/fa';
+import { FaGoogle, FaEnvelope, FaPhoneAlt, FaLock, FaUser, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa';
+
+// --- DEFINED COLOR PALETTE ---
+const PRIMARY_BRAND = '#775522'; // Deep Gold/Brown - Main Buttons, Active Tabs, Focus
+const ACCENT_GREEN = '#5F7161'; // Muted Forest Green/Sage - Hover, Secondary Accent
+const LIGHT_BG = '#FBFBFB'; // Near White Base Background
+const CONTAINER_BG = '#E8CEB0'; // Muted Cream/Tan - Card Background
+
+// Custom Toast System (To replace react-toastify's default look)
+// =============================================================
+
+interface CustomToastProps {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  isVisible: boolean;
+}
+
+const CustomToast: React.FC<CustomToastProps> = ({ message, type, isVisible }) => {
+  const colors = {
+    success: { bg: ACCENT_GREEN, icon: FaCheckCircle },
+    error: { bg: '#A50000', icon: FaTimesCircle }, // Rich Red for strong error
+    info: { bg: PRIMARY_BRAND, icon: FaInfoCircle },
+  };
+
+  const { bg, icon: Icon } = colors[type];
+
+  // Only render if a message exists
+  if (!message) return null;
+
+  return (
+    <div 
+        className={`fixed top-6 right-6 z-[9999] p-4 pr-6 rounded-xl shadow-2xl transition-all duration-500 ease-out transform
+        ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-[150%] opacity-0'}
+        `}
+        style={{ backgroundColor: bg, minWidth: '320px', transitionProperty: 'opacity, transform', transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
+    >
+      <div className="flex items-center">
+        <Icon className="text-white text-xl mr-4 flex-shrink-0" />
+        <p className="text-white font-semibold text-sm tracking-wide">{message}</p>
+      </div>
+    </div>
+  );
+};
+
+
+// Main Auth Page Component
+// =============================================================
 
 export default function AuthPage() {
   const router = useRouter();
@@ -17,6 +61,26 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Toast State
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+  const [isToastVisible, setIsToastVisible] = useState(false);
+  
+  const showCustomToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
+      setToastMessage(message);
+      setToastType(type);
+      setIsToastVisible(true);
+
+      const timer = setTimeout(() => {
+          setIsToastVisible(false);
+          // Optional: clear message after animation
+          setTimeout(() => setToastMessage(''), 500); 
+      }, 4000); // 4 seconds visible
+
+      return () => clearTimeout(timer);
+  }, []);
+
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -32,7 +96,6 @@ export default function AuthPage() {
 
   const handleTabChange = (tab: 'login' | 'signup') => {
     setActiveTab(tab);
-    // Reset form fields when changing tabs
     setIdentifier('');
     setPassword('');
     setFullName('');
@@ -47,15 +110,22 @@ export default function AuthPage() {
   };
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission
+    e.preventDefault();
 
     if (loginMethod === 'google') {
-      toast.info('Google sign-in is coming soon!');
+      showCustomToast('Google Sign-In: feature coming soon.', 'info');
       return;
     }
 
+    // Basic Validation
+    if (!identifier || !password) {
+        showCustomToast('Email/Phone and Password are required.', 'error');
+        return;
+    }
+
     try {
-      const res = await fetch('/users.json');
+      // NOTE: Using local JSON file for demo
+      const res = await fetch('/users.json'); 
       const users = await res.json();
 
       const user = users.find((u: any) =>
@@ -66,112 +136,108 @@ export default function AuthPage() {
 
       if (user) {
         localStorage.setItem('current_user', JSON.stringify(user));
-        toast.success('Login successful! Redirecting to dashboard...');
+        showCustomToast('Login successful! Welcome back.', 'success');
         setTimeout(() => {
           router.push('/dashboard');
         }, 1500);
       } else {
-        toast.error('Invalid credentials');
+        showCustomToast('Authentication failed: Invalid credentials.', 'error');
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Something went wrong during login.');
+      showCustomToast('Error connecting to server. Please try again later.', 'error');
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission
+    e.preventDefault();
 
     if (signupMethod === 'google') {
-      toast.info('Google sign-up is coming soon!');
+      showCustomToast('Google Sign-Up: feature coming soon.', 'info');
       return;
     }
 
     if (!agreedToTerms) {
-      toast.error('You must agree to the terms and conditions.');
+      showCustomToast('You must agree to the terms and privacy policy to continue.', 'error');
       return;
+    }
+
+    if (password.length < 6) {
+        showCustomToast('Password must be at least 6 characters long.', 'error');
+        return;
     }
 
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match.');
+      showCustomToast('Password mismatch: Please ensure both fields match.', 'error');
       return;
     }
 
-    // Basic client-side validation for demonstration
     if (fullName.trim() === '' || identifier.trim() === '' || password.trim() === '') {
-      toast.error('Please fill in all required fields.');
+      showCustomToast('Please fill in all required fields.', 'error');
       return;
     }
 
-    // In a real application, you'd send this data to your backend
-    console.log('Signup data:', {
-      fullName,
-      identifier, // email or phone
-      password,
-      signupMethod,
-    });
-
-    // Simulate API call
     try {
-      // const res = await fetch('/api/signup', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ fullName, identifier, password, signupMethod }),
-      // });
-      // const data = await res.json();
-
-      // if (res.ok) {
-        toast.success('Account created successfully! Please log in.');
-        setTimeout(() => {
-            handleTabChange('login'); // Redirect to login tab after successful signup
-        }, 1500);
-      // } else {
-      //   toast.error(data.message || 'Signup failed. Please try again.');
-      // }
+      // Simulate successful API call for signup
+      showCustomToast('Account successfully created! Please log in now.', 'success');
+      setTimeout(() => {
+          handleTabChange('login');
+      }, 1500);
     } catch (error) {
       console.error('Signup error:', error);
-      toast.error('Something went wrong during signup.');
+      showCustomToast('Something went wrong during account creation.', 'error');
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row font-sans bg-gradient-to-br from-[#FDFBF7] to-[#F6F6F6] animate-gradientShift">
-      <ToastContainer />
-      {/* === LEFT: Auth Form === */}
-      <div className="relative flex-1 flex items-center justify-center p-8 md:p-12 lg:p-16 z-10">
-        <div className="w-full max-w-lg bg-white p-8 md:p-10 rounded-2xl shadow-2xl hover:scale-[1.005] transition-all duration-300">
-          <h2 className="text-4xl font-extrabold text-[#775522] text-center mb-8">
-            {activeTab === 'login' ? 'Welcome Back!' : 'Join Refurnish NG!'}
+    // Only applied pt-20 to the main container to push content down
+    <div className={`min-h-screen flex flex-col lg:flex-row font-serif bg-[${LIGHT_BG}] pt-20`}> 
+      
+      {/* Custom Toast Display */}
+      <CustomToast 
+          message={toastMessage} 
+          type={toastType}
+          isVisible={isToastVisible}
+      />
+      
+      {/* === LEFT: Auth Form (Earthy/Premium Container) === */}
+      <div className="relative flex-1 flex items-center justify-center p-6 md:p-12 lg:p-16 z-10">
+        <div className={`w-full max-w-xl p-10 md:p-12 lg:p-14 rounded-3xl shadow-2xl transition-all duration-500 border-t-8 border-r-4 border-[${PRIMARY_BRAND}]`}
+             style={{ backgroundColor: CONTAINER_BG }}>
+          <h2 className={`text-4xl font-extrabold text-[${PRIMARY_BRAND}] text-center mb-2 tracking-wide`}>
+            {activeTab === 'login' ? 'Access Your Space' : 'Begin Your Collection'}
           </h2>
+          <p className="text-center text-gray-700 mb-10 font-light">
+            {activeTab === 'login' ? 'Sign in below for a tailored experience.' : 'Curate your space today with sustainable luxury.'}
+          </p>
 
-          {/* Tab Navigation */}
-          <div className="flex bg-gray-100 rounded-lg overflow-hidden mb-8 shadow-inner" role="tablist">
-            <button
-              onClick={() => handleTabChange('login')}
-              className={`flex-1 py-3 font-bold text-lg ${activeTab === 'login' ? 'bg-[#775522] text-white shadow-md' : 'text-gray-700 hover:bg-gray-200'} rounded-l-lg transition-all duration-300`}
-              role="tab"
-              aria-selected={activeTab === 'login'}
-              id="login-tab"
-              aria-controls="login-panel"
-            >
-              LOGIN
-            </button>
-            <button
-              onClick={() => handleTabChange('signup')}
-              className={`flex-1 py-3 font-bold text-lg ${activeTab === 'signup' ? 'bg-[#775522] text-white shadow-md' : 'text-gray-700 hover:bg-gray-200'} rounded-r-lg transition-all duration-300`}
-              role="tab"
-              aria-selected={activeTab === 'signup'}
-              id="signup-tab"
-              aria-controls="signup-panel"
-            >
-              SIGN UP
-            </button>
+          {/* Tab Navigation (Pill-shaped, high contrast) */}
+          <div className="flex rounded-full overflow-hidden mb-10 p-1 shadow-inner bg-white/70" role="tablist">
+            <TabButton 
+                label="LOG IN" 
+                isActive={activeTab === 'login'} 
+                onClick={() => handleTabChange('login')} 
+                primary={PRIMARY_BRAND}
+                accent={ACCENT_GREEN}
+            />
+            <TabButton 
+                label="SIGN UP" 
+                isActive={activeTab === 'signup'} 
+                onClick={() => handleTabChange('signup')} 
+                primary={PRIMARY_BRAND}
+                accent={ACCENT_GREEN}
+            />
           </div>
 
-          {/* === LOGIN FORM === */}
+          {/* === FORM CONTAINER === */}
           {activeTab === 'login' && (
-            <div className="animate-fade-in-up" role="tabpanel" id="login-panel" aria-labelledby="login-tab">
-              <MethodTabs current={loginMethod} setMethod={setLoginMethod} />
+            <div className="animate-fade-in" role="tabpanel" id="login-panel" aria-labelledby="login-tab">
+              <MethodTabs 
+                current={loginMethod} 
+                setMethod={setLoginMethod} 
+                primary={PRIMARY_BRAND}
+                accent={ACCENT_GREEN}
+              />
 
               <form onSubmit={handleLogin} className="space-y-6">
                 {loginMethod !== 'google' ? (
@@ -183,6 +249,8 @@ export default function AuthPage() {
                       onChange={(e) => setIdentifier(e.target.value)}
                       required
                       autoComplete={loginMethod === 'email' ? 'email' : 'tel'}
+                      icon={loginMethod === 'email' ? FaEnvelope : FaPhoneAlt}
+                      primary={PRIMARY_BRAND}
                     />
                     <InputField
                       type="password"
@@ -191,28 +259,36 @@ export default function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       autoComplete="current-password"
+                      icon={FaLock}
+                      primary={PRIMARY_BRAND}
                     />
-                    <button
-                      type="submit"
-                      className="w-full bg-[#775522] text-white py-3.5 font-semibold rounded-lg hover:bg-[#5E441B] transition-all duration-300 hover:-translate-y-1 shadow-lg"
-                    >
-                      Login
-                    </button>
-                    <div className="text-right mt-2">
-                      <a href="#" className="text-sm text-[#775522] hover:underline hover:text-[#5E441B] transition-colors">Forgot password?</a>
+                    <div className="flex justify-between items-center text-sm pt-1">
+                      <a href="#" className={`font-medium text-[${ACCENT_GREEN}] hover:text-[${PRIMARY_BRAND}] transition-colors`}>
+                        Forgot Password?
+                      </a>
                     </div>
+                    <SubmitButton 
+                        label="Log In Securely" 
+                        primary={PRIMARY_BRAND}
+                        accent={ACCENT_GREEN}
+                        isPrimary
+                    />
                   </>
                 ) : (
-                  <GoogleButton label="Login with Google" onClick={() => toast.info('Google sign-in is coming soon!')} />
+                  <GoogleButton label="Login with Google" onClick={() => showCustomToast('Google Sign-In: feature coming soon.', 'info')} />
                 )}
               </form>
             </div>
           )}
 
-          {/* === SIGN UP FORM === */}
           {activeTab === 'signup' && (
-            <div className="animate-fade-in-up" role="tabpanel" id="signup-panel" aria-labelledby="signup-tab">
-              <MethodTabs current={signupMethod} setMethod={setSignupMethod} />
+            <div className="animate-fade-in" role="tabpanel" id="signup-panel" aria-labelledby="signup-tab">
+              <MethodTabs 
+                current={signupMethod} 
+                setMethod={setSignupMethod} 
+                primary={PRIMARY_BRAND}
+                accent={ACCENT_GREEN}
+              />
               <form className="space-y-6" onSubmit={handleSignup}>
                 <InputField
                   type="text"
@@ -221,6 +297,8 @@ export default function AuthPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   autoComplete="name"
+                  icon={FaUser}
+                  primary={PRIMARY_BRAND}
                 />
                 {signupMethod !== 'google' ? (
                   <>
@@ -231,14 +309,18 @@ export default function AuthPage() {
                       onChange={(e) => setIdentifier(e.target.value)}
                       required
                       autoComplete={signupMethod === 'email' ? 'email' : 'tel'}
+                      icon={signupMethod === 'email' ? FaEnvelope : FaPhoneAlt}
+                      primary={PRIMARY_BRAND}
                     />
                     <InputField
                       type="password"
-                      placeholder="Password"
+                      placeholder="Create Password (Min 6 characters)"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       autoComplete="new-password"
+                      icon={FaLock}
+                      primary={PRIMARY_BRAND}
                     />
                     <InputField
                       type="password"
@@ -247,30 +329,31 @@ export default function AuthPage() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                       autoComplete="new-password"
+                      icon={FaLock}
+                      primary={PRIMARY_BRAND}
                     />
-                    <div className="flex items-start">
+                    <div className="flex items-start pt-2">
                       <input
                         type="checkbox"
                         id="terms"
-                        className="w-4 h-4 mt-1 mr-2 accent-[#775522] cursor-pointer"
+                        className={`w-4 h-4 mt-1 mr-2 accent-[${PRIMARY_BRAND}] cursor-pointer`}
                         checked={agreedToTerms}
                         onChange={(e) => setAgreedToTerms(e.target.checked)}
-                        required
                       />
-                      <label htmlFor="terms" className="text-sm text-gray-700 cursor-pointer">
+                      <label htmlFor="terms" className="text-sm text-gray-700 cursor-pointer select-none">
                         I agree to the{' '}
-                        <a href="/terms" className="text-[#775522] underline hover:text-[#5E441B] transition-colors">terms and conditions</a>
+                        <a href="/terms" className={`text-[${PRIMARY_BRAND}] underline hover:text-[${ACCENT_GREEN}] font-medium transition-colors`}>terms and privacy policy</a>.
                       </label>
                     </div>
-                    <button
-                      type="submit"
-                      className="w-full bg-[#E8CEB0] text-[#775522] py-3.5 font-semibold rounded-lg hover:bg-[#D4B598] transition-all duration-300 hover:-translate-y-1 shadow-lg"
-                    >
-                      Sign Up
-                    </button>
+                    <SubmitButton 
+                        label="Create My Account" 
+                        primary={PRIMARY_BRAND}
+                        accent={ACCENT_GREEN}
+                        isPrimary={false}
+                    />
                   </>
                 ) : (
-                  <GoogleButton label="Sign up with Google" onClick={() => toast.info('Google sign-up is coming soon!')} />
+                  <GoogleButton label="Sign up with Google" onClick={() => showCustomToast('Google Sign-Up: feature coming soon.', 'info')} />
                 )}
               </form>
             </div>
@@ -278,23 +361,26 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* === RIGHT: Decorative Section with Image and Write-up === */}
-      <div className="hidden lg:flex flex-1 relative">
+      {/* === RIGHT: Decorative Section (Dark, Premium Background) === */}
+      <div className={`hidden lg:flex flex-1 relative bg-[${PRIMARY_BRAND}]`}>
         <Image
           src="/login-bg.png"
-          alt="Beautifully furnished room"
+          alt="Earthy and premium furniture setting"
           layout="fill"
           objectFit="cover"
-          className="brightness-90 animate-zoomIn"
+          className="opacity-60"
           priority
         />
-        {/* Subtle overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white flex flex-col justify-end p-12 text-center">
-          <h2 className="text-5xl font-extrabold mb-4 animate-slide-in-up drop-shadow-lg">
+        {/* Dark, subtle overlay with premium typography */}
+        <div className="absolute inset-0 bg-black/50 text-white flex flex-col justify-end p-12 lg:p-20 text-center">
+          <h2 className="text-6xl font-serif font-bold italic mb-4 tracking-tight drop-shadow-xl">
             Refurnish NG
           </h2>
-          <p className="text-sm mt-4 italic opacity-80 animate-fade-in delay-300">
-            &quot;Bringing elegance and comfort to every home.&quot;
+          <p className="text-xl font-light mb-8 opacity-90">
+            **Timeless Design. Sustainable Future.**
+          </p>
+          <p className="text-sm opacity-70 border-t border-white/30 pt-4 max-w-sm mx-auto">
+            "We believe in furniture that tells a story and lasts a lifetime, blending Nigerian craftsmanship with global style."
           </p>
         </div>
       </div>
@@ -302,41 +388,78 @@ export default function AuthPage() {
   );
 }
 
+// --------------------------------------------------------------------------------------------------------------------------------
 // Reusable Components
+// --------------------------------------------------------------------------------------------------------------------------------
 
-interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+interface TabButtonProps {
+    label: string;
+    isActive: boolean;
+    onClick: () => void;
+    primary: string;
+    accent: string;
+}
 
-const InputField: React.FC<InputFieldProps> = ({ className, ...props }) => (
-  <input
-    {...props}
-    className={`w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#775522] placeholder-gray-500 text-gray-800 transition-all duration-200 ${className || ''}`}
-  />
+const TabButton: React.FC<TabButtonProps> = ({ label, isActive, onClick, primary, accent }) => (
+    <button
+        onClick={onClick}
+        className={`flex-1 py-3 font-bold text-base transition-all duration-300 rounded-full tracking-wider ${
+            isActive ? `bg-[${primary}] text-white shadow-lg` : `text-gray-600 hover:bg-white`
+        }`}
+        role="tab"
+        aria-selected={isActive}
+    >
+        {label}
+    </button>
+);
+
+
+interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  icon: React.ElementType;
+  primary: string;
+}
+
+const InputField: React.FC<InputFieldProps> = ({ className, icon: Icon, primary, ...props }) => (
+  <div className="relative">
+    <Icon className={`absolute left-4 top-1/2 transform -translate-y-1/2 text-[${primary}] text-lg`} />
+    <input
+      {...props}
+      className={`w-full pl-12 pr-5 py-3.5 border-2 border-gray-300 rounded-xl focus:border-[${primary}] placeholder-gray-500 text-gray-800 transition-all duration-200 outline-none shadow-sm font-light bg-white`}
+    />
+  </div>
 );
 
 interface MethodTabsProps {
   current: 'email' | 'phone' | 'google';
   setMethod: (method: 'email' | 'phone' | 'google') => void;
+  primary: string;
+  accent: string;
 }
 
 const MethodTabs: React.FC<MethodTabsProps> = ({
   current,
   setMethod,
+  primary,
+  accent,
 }) => (
-  <div className="flex bg-gray-50 rounded-md overflow-hidden mb-6" role="tablist">
-    {['email', 'phone', 'google'].map((method, i) => (
+  <div className="flex bg-white/70 rounded-full overflow-hidden mb-8 p-1 border border-gray-300" role="tablist">
+    {[
+      { method: 'email', Icon: FaEnvelope },
+      { method: 'phone', Icon: FaPhoneAlt },
+      { method: 'google', Icon: FaGoogle }
+    ].map(({ method, Icon }, i) => (
       <button
         key={method}
         onClick={() => setMethod(method as any)}
-        className={`flex-1 py-2 text-sm font-medium transition-all duration-200 ${
+        className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold transition-all duration-200 rounded-full tracking-tight ${
           current === method
-            ? 'bg-[#E8CEB0] text-[#775522] shadow-inner'
-            : 'text-gray-600 hover:bg-gray-100'
-        } ${i === 0 ? 'rounded-l-md' : i === 2 ? 'rounded-r-md' : ''}`}
+            ? `bg-[${primary}] text-white shadow-md`
+            : `text-gray-700 hover:bg-white`
+        }`}
         role="tab"
         aria-selected={current === method}
-        id={`${method}-method-tab`}
-        aria-controls={`${method}-method-panel`}
       >
+        <Icon className="text-base" />
         {method.charAt(0).toUpperCase() + method.slice(1)}
       </button>
     ))}
@@ -352,9 +475,33 @@ const GoogleButton: React.FC<GoogleButtonProps> = ({ label, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className="w-full flex justify-center items-center gap-3 bg-[#775522] text-white py-3 font-semibold rounded-lg hover:bg-[#5E441B] transition-all duration-300 hover:-translate-y-1 shadow-lg"
+    className="w-full flex justify-center items-center gap-3 bg-white text-gray-700 py-3.5 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-md"
   >
-    <FaGoogle className="text-xl" />
+    <FaGoogle className="text-xl text-red-500" />
     {label}
   </button>
 );
+
+interface SubmitButtonProps {
+    label: string;
+    primary: string;
+    accent: string;
+    isPrimary: boolean;
+}
+
+const SubmitButton: React.FC<SubmitButtonProps> = ({ label, primary, accent, isPrimary }) => {
+    const bg = isPrimary ? primary : accent;
+    const hoverBg = isPrimary ? accent : primary;
+    
+    return (
+        <button
+          type="submit"
+          className={`w-full text-white py-4 font-extrabold rounded-xl transition-all duration-300 shadow-lg transform hover:scale-[1.01] tracking-wider`}
+          style={{ backgroundColor: bg, boxShadow: `0 6px 20px rgba(0, 0, 0, 0.2)` }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverBg)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
+        >
+          {label}
+        </button>
+    );
+};
