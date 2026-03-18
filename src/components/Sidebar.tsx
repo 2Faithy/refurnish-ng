@@ -1,245 +1,301 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState, Dispatch, SetStateAction } from 'react';
-import {
-  FaHome,
-  FaBoxOpen,
-  FaCommentDots,
-  FaHeart,
-  FaListAlt,
-  FaPlusCircle,
-  FaSignOutAlt,
-  FaCog,
-  FaEllipsisH, // Icon for 'More'
-  FaTimes, // For closing the full-screen overlay
-} from 'react-icons/fa';
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 
-// Sidebar props - No changes here
-interface SidebarProps {
-  totalUnreadMessages: number; // This prop will still be passed, but not used visually for count
-  isOpen: boolean;
-  setIsOpen: Dispatch<SetStateAction<boolean>>;
-}
+// ── Icons ─────────────────────────────────────────────────────
+const IcGrid = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+  </svg>
+);
+const IcPackage = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+);
+const IcTag = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  </svg>
+);
+const IcMessage = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </svg>
+);
+const IcHeart = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+  </svg>
+);
+const IcUser = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+const IcSettings = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+  </svg>
+);
+const IcHelp = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+const IcPlus = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+const IcCheck = () => (
+  <svg
+    width="9"
+    height="9"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
 
-export default function Sidebar({ totalUnreadMessages, isOpen, setIsOpen }: SidebarProps) {
+// ── Nav config ────────────────────────────────────────────────
+const NAV_GROUPS = [
+  {
+    label: "Main",
+    items: [
+      { label: "Overview", icon: IcGrid, href: "/dashboard" },
+      {
+        label: "Orders",
+        icon: IcPackage,
+        href: "/dashboard/orders",
+        badge: null,
+      },
+      { label: "Listings", icon: IcTag, href: "/dashboard/sell" },
+      {
+        label: "Messages",
+        icon: IcMessage,
+        href: "/dashboard/messages",
+        badge: "4",
+      },
+      { label: "Saved", icon: IcHeart, href: "/dashboard/saved" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Profile", icon: IcUser, href: "/dashboard/profile" },
+      { label: "Settings", icon: IcSettings, href: "/dashboard/settings" },
+      { label: "Help", icon: IcHelp, href: "/help" },
+    ],
+  },
+];
+
+export default function Sidebar() {
   const pathname = usePathname();
-  // State to control the full-screen "More" overlay visibility
-  const [isMoreOverlayOpen, setIsMoreOverlayOpen] = useState(false);
-
-  const navItems = [
-    { name: 'Dashboard', icon: FaHome, href: '/dashboard' },
-    { name: 'My Orders', icon: FaBoxOpen, href: '/dashboard/orders' },
-    { name: 'Messages', icon: FaCommentDots, href: '/dashboard/messages', unreadCount: totalUnreadMessages }, // unreadCount still exists in data, but not rendered
-    { name: 'Saved Items', icon: FaHeart, href: '/dashboard/saved-items' },
-    { name: 'My Listings', icon: FaListAlt, href: '/dashboard/listings' },
-    { name: 'Settings', icon: FaCog, href: '/dashboard/settings' },
-    { name: 'Sell an Item', icon: FaPlusCircle, href: '/dashboard/sell', isCallToAction: true },
-    { name: 'Logout', icon: FaSignOutAlt, isLogout: true },
-  ];
-
-  const bottomBarItems = [
-    { name: 'Home', icon: FaHome, href: '/dashboard' },
-    { name: 'Orders', icon: FaBoxOpen, href: '/dashboard/orders' },
-    { name: 'Messages', icon: FaCommentDots, href: '/dashboard/messages', unreadCount: totalUnreadMessages }, // unreadCount still exists in data, but not rendered
-    { name: 'More', icon: FaEllipsisH, action: () => setIsMoreOverlayOpen(true) }, // Special 'More' item
-  ];
-
-  const handleLinkClick = () => {
-    // Close the full-screen overlay if a link is clicked within it
-    setIsMoreOverlayOpen(false);
-    // If the parent DashboardLayout also controls a sidebar, you might want to close it too
-    setIsOpen(false);
-  };
 
   return (
-    <>
-      {/* Desktop Sidebar Content (visible always on large screens) */}
-      <aside
-        className={`hidden lg:block fixed top-0 left-0 h-full w-64 pt-[94px] bg-white p-6 shadow-xl border-r border-gray-100 flex flex-col justify-between z-40
-          lg:translate-x-0 lg:static lg:min-h-screen lg:rounded-r-lg lg:animate-slideInLeft`}
-      >
-        <div className="flex flex-col">
-          {/* Logo/Title for Desktop Sidebar */}
-          <div className="mb-8 text-center mt-4">
-            <Link
-              href="/dashboard"
-              className="text-2xl font-extrabold text-[#775522] hover:text-[#5E441B] transition-colors duration-200"
-            >
-              Your Dashboard
-            </Link>
+    <aside className="hidden lg:flex w-60 flex-shrink-0 flex-col bg-white border-r border-[#EDE0CF] fixed top-16 left-0 bottom-0 z-40 overflow-y-auto">
+      {/* ── Navbar gap spacer ── */}
+      <div className="h-10 flex-shrink-0 bg-[#FDF8F3] border-b border-[#EDE0CF]" />
+
+      {/* ── Profile mini ── */}
+      <div className="px-5 pt-5 pb-5 border-b border-[#EDE0CF]">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-[#E8CEB0]">
+              <Image
+                src="/john-doe.png"
+                alt="Ada Obi"
+                width={40}
+                height={40}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#33B64B] border-2 border-white flex items-center justify-center">
+              <IcCheck />
+            </div>
           </div>
-
-          {/* Navigation with text and icons for Desktop Sidebar */}
-          <nav className="space-y-2">
-            {navItems.map((item) => {
-              const isActive =
-                item.href && (pathname === item.href || (item.href === '/dashboard' && pathname === '/dashboard/home'));
-
-              let linkClasses = 'flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-200 ease-in-out group';
-              let iconClasses = 'text-lg group-icon-animate';
-
-              if (item.isLogout) {
-                linkClasses += ' text-[#775522] hover:bg-[#F7F1E5]';
-                iconClasses += ' text-[#775522]';
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => {
-                      localStorage.removeItem('currentUser');
-                      window.location.href = '/login';
-                    }}
-                    className={linkClasses + ' w-full text-left'}
-                  >
-                    <item.icon className={iconClasses} />
-                    <span>{item.name}</span>
-                  </button>
-                );
-              }
-
-              if (item.isCallToAction) {
-                linkClasses += ' bg-[#775522] text-white shadow-lg hover:bg-[#5E441B] transform hover:scale-[1.02] hover:shadow-xl justify-center';
-                iconClasses += ' text-white';
-              } else if (isActive) {
-                linkClasses += ' bg-[#E8CEB0] text-[#775522] shadow-md border border-[#775522]/20';
-                iconClasses += ' text-[#775522]';
-              } else {
-                linkClasses += ' text-gray-700 hover:bg-gray-100 hover:text-gray-900';
-                iconClasses += ' text-gray-500 group-hover:text-gray-700';
-              }
-
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href || '#'}
-                  className={linkClasses}
-                >
-                  <div className="relative flex items-center">
-                    <item.icon className={iconClasses} />
-                    {/* Removed unread count span */}
-                  </div>
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#2C1F0E] truncate leading-tight">
+              Ada Obi
+            </p>
+            <p className="text-[10px] text-[#5F7161] font-medium mt-0.5 truncate">
+              ada@example.com
+            </p>
+          </div>
         </div>
-        <div />
-      </aside>
 
-      {/* --- */}
+        {/* Trust score */}
+        <div>
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] font-semibold text-[#8C7A6B] uppercase tracking-wide">
+              Trust Score
+            </span>
+            <span className="text-[10px] font-bold text-[#755210]">72/100</span>
+          </div>
+          <div className="h-1.5 bg-[#F4E8D8] rounded-full overflow-hidden">
+            <div className="h-full w-[72%] bg-gradient-to-r from-[#755210] to-[#9A7235] rounded-full transition-all duration-700" />
+          </div>
+        </div>
+      </div>
 
-      {/* Mobile Bottom Navigation Bar (visible only on small screens) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-[#775522] text-white h-16 flex items-center justify-around shadow-lg z-50">
-        {bottomBarItems.map((item) => {
-          const isActive = item.href && (pathname === item.href || (item.href === '/dashboard' && pathname === '/dashboard/home'));
-          const itemClasses = `flex flex-col items-center justify-center p-2 text-xs font-medium transition-colors duration-200
-            ${isActive ? 'text-[#E8CEB0]' : 'text-white hover:text-gray-200'}`;
-
-          if (item.action) { // For the 'More' button
-            return (
-              <button
-                key={item.name}
-                onClick={item.action}
-                className={itemClasses}
-                aria-label={item.name}
-              >
-                <item.icon className="text-2xl" />
-                <span>{item.name}</span>
-              </button>
-            );
-          }
-
-          return (
-            <Link
-              key={item.name}
-              href={item.href || '#'}
-              className={itemClasses}
-              onClick={handleLinkClick} // Close overlay if open when navigating
-            >
-              <div className="relative">
-                <item.icon className="text-2xl" />
-                {/* Removed unread count span */}
-              </div>
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
+      {/* ── Nav groups ── */}
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-5 overflow-y-auto">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="text-[9.5px] font-bold text-[#B8A898] uppercase tracking-widest px-3 mb-1.5">
+              {group.label}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {group.items.map(({ label, icon: Icon, href, badge }) => {
+                const active =
+                  pathname === href ||
+                  (href !== "/dashboard" && pathname.startsWith(href));
+                return (
+                  <Link
+                    key={label}
+                    href={href}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                      active
+                        ? "bg-[#F4E8D8] text-[#755210]"
+                        : "text-[#6B5A4E] hover:bg-[#FAF4EC] hover:text-[#755210]"
+                    }`}
+                  >
+                    <span
+                      className={`flex-shrink-0 ${
+                        active ? "text-[#755210]" : "text-[#A08060]"
+                      }`}
+                    >
+                      <Icon />
+                    </span>
+                    <span className="flex-1">{label}</span>
+                    {badge && (
+                      <span className="w-5 h-5 rounded-full bg-[#755210] text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                        {badge}
+                      </span>
+                    )}
+                    {active && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#755210] flex-shrink-0" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* --- */}
-
-      {/* Full-Screen "More" Overlay for Mobile */}
-      {isMoreOverlayOpen && (
-        <div className="lg:hidden fixed inset-0 bg-white z-[60] flex flex-col items-center py-8 animate-fadeIn">
-          {/* Close Button */}
-          <button
-            onClick={() => setIsMoreOverlayOpen(false)}
-            className="absolute top-4 right-4 p-2 text-gray-700 hover:text-gray-900 text-3xl"
-            aria-label="Close menu"
-          >
-            <FaTimes />
-          </button>
-
-          {/* Overlay Title */}
-          <h2 className="text-3xl font-extrabold text-[#775522] mb-8 mt-4">More Options</h2>
-
-          {/* Navigation Items in Overlay */}
-          <nav className="flex flex-col gap-4 w-full px-6">
-            {navItems.map((item) => {
-              const isActive = item.href && (pathname === item.href || (item.href === '/dashboard' && pathname === '/dashboard/home'));
-
-              let linkClasses = 'flex items-center gap-4 px-6 py-3 rounded-lg font-medium text-lg transition-all duration-200 ease-in-out group w-full justify-start';
-              let iconClasses = 'text-2xl group-icon-animate';
-
-              if (item.isLogout) {
-                linkClasses += ' text-[#775522] hover:bg-[#F7F1E5]';
-                iconClasses += ' text-[#775522]';
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => {
-                      localStorage.removeItem('currentUser');
-                      window.location.href = '/login';
-                    }}
-                    className={linkClasses}
-                  >
-                    <item.icon className={iconClasses} />
-                    <span>{item.name}</span>
-                  </button>
-                );
-              }
-
-              if (item.isCallToAction) {
-                linkClasses += ' bg-[#775522] text-white shadow-lg hover:bg-[#5E441B] transform hover:scale-[1.02] hover:shadow-xl justify-center';
-                iconClasses += ' text-white';
-              } else if (isActive) {
-                linkClasses += ' bg-[#E8CEB0] text-[#775522] shadow-md border border-[#775522]/20';
-                iconClasses += ' text-[#775522]';
-              } else {
-                linkClasses += ' text-gray-700 hover:bg-gray-100 hover:text-gray-900';
-                iconClasses += ' text-gray-500 group-hover:text-gray-700';
-              }
-
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href || '#'}
-                  className={linkClasses}
-                  onClick={handleLinkClick}
-                >
-                  <div className="relative flex items-center">
-                    <item.icon className={iconClasses} />
-                    {/* Removed unread count span */}
-                  </div>
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      )}
-    </>
+      {/* ── Sell CTA ── */}
+      <div className="px-4 pb-6 pt-2 border-t border-[#EDE0CF]">
+        <Link
+          href="/create-listing"
+          className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#755210] hover:bg-[#9A7235] text-white text-sm font-bold rounded-xl transition-all shadow-sm hover:shadow-md"
+        >
+          <IcPlus /> Sell an Item
+        </Link>
+        <p className="text-center text-[10px] text-[#B8A898] mt-2 leading-snug">
+          List furniture in under 2 minutes
+        </p>
+      </div>
+    </aside>
   );
 }

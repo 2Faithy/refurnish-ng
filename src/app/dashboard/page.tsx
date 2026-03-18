@@ -1,224 +1,807 @@
-// File: src/app/dashboard/page.tsx
-'use client';
+"use client";
 
-import { FaUserEdit, FaPlusCircle, FaCog, FaBoxOpen, FaLightbulb } from 'react-icons/fa';
-import { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
-import VerifyPrompt from '@/components/VerifyPrompt';
-import { getCurrentUser } from '@/utils/auth';
-import Link from 'next/link';
-import Image from 'next/image';
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
 
-export default function DashboardHome() {
-  const [user, setUser] = useState<any>(null);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [orderHistory, setOrderHistory] = useState<any[]>([]);
-  const [hasMoreOrders, setHasMoreOrders] = useState(false);
-  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
-  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0); // Add state for totalUnreadMessages
+// ── Icons ─────────────────────────────────────────────────────
+const IcPackage = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+);
+const IcHeart = ({ filled }: { filled?: boolean }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+  </svg>
+);
+const IcMessage = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </svg>
+);
+const IcTag = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  </svg>
+);
+const IcShield = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+const IcPlus = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+const IcArrow = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </svg>
+);
+const IcStar = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+const IcPin = () => (
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+const IcBell = () => (
+  <svg
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 01-3.46 0" />
+  </svg>
+);
+const IcCheck = () => (
+  <svg
+    width="9"
+    height="9"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const IcTrend = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+    <polyline points="17 6 23 6 23 12" />
+  </svg>
+);
+const IcUser = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+const IcSettings = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+  </svg>
+);
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
+// ── Mobile bottom tab icons ───────────────────────────────────
+const IcGrid = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+  </svg>
+);
+const IcPackageMob = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+  </svg>
+);
+const IcPlusMob = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+const IcHeartMob = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+  </svg>
+);
+const IcUserMob = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
 
-    // Determine if VerifyPrompt should be shown
-    if (currentUser && !currentUser.id_uploaded) {
-      setShowVerifyPrompt(true);
-    } else {
-      setShowVerifyPrompt(false);
-    }
+// ── Data ──────────────────────────────────────────────────────
+const ORDERS = [
+  {
+    id: "111",
+    name: "Minimalist Rack",
+    date: "2024-07-14",
+    status: "Pending",
+    img: "/modern-table.png",
+  },
+  {
+    id: "106",
+    name: "Cozy Armchair",
+    date: "2024-07-12",
+    status: "Pending",
+    img: "/vintage-chair.png",
+  },
+  {
+    id: "102",
+    name: "Rustic Shelf",
+    date: "2024-07-05",
+    status: "Processing",
+    img: "/stylish-sofa.png",
+  },
+];
 
-    // Dynamic import for product suggestions
-    import('@/data/products.json')
-      .then(module => {
-        setSuggestions(module.default.slice(-3).reverse());
-      })
-      .catch(error => {
-        console.error("Failed to load product suggestions:", error);
-        setSuggestions([]);
-      });
+const SUGGESTIONS = [
+  {
+    id: 1,
+    name: "Office Cabinet",
+    price: 46000,
+    old: null,
+    img: "/modern-table.png",
+    loc: "Ikeja, Lagos",
+    rating: 4.5,
+  },
+  {
+    id: 2,
+    name: "Hammock Stand",
+    price: 25000,
+    old: 30000,
+    img: "/stylish-sofa.png",
+    loc: "Lekki, Lagos",
+    rating: 4.8,
+  },
+  {
+    id: 3,
+    name: "Foldable Table",
+    price: 15000,
+    old: null,
+    img: "/vintage-chair.png",
+    loc: "Surulere, Lagos",
+    rating: 4.2,
+  },
+];
 
-    // Dynamic import for order history
-    import('@/data/orders.json')
-      .then(module => {
-        const allOrders = module.default.filter((order: any) => order.user_email === currentUser?.email);
-        const sortedOrders = allOrders.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setHasMoreOrders(allOrders.length > 3);
-        setOrderHistory(sortedOrders.slice(0, 3));
-      })
-      .catch(error => {
-        console.error("Failed to load order history:", error);
-        setOrderHistory([]);
-        setHasMoreOrders(false);
-      });
+const STATS = [
+  {
+    label: "Active Listings",
+    value: "3",
+    icon: IcTag,
+    bg: "bg-[#F4E8D8]",
+    tc: "text-[#755210]",
+  },
+  {
+    label: "Total Orders",
+    value: "12",
+    icon: IcPackage,
+    bg: "bg-[#EDF7EF]",
+    tc: "text-[#2D6A4F]",
+  },
+  {
+    label: "Saved Items",
+    value: "7",
+    icon: IcHeart,
+    bg: "bg-[#FEF2F2]",
+    tc: "text-[#C0392B]",
+  },
+  {
+    label: "Messages",
+    value: "4",
+    icon: IcMessage,
+    bg: "bg-[#EEF2FF]",
+    tc: "text-[#6366F1]",
+  },
+];
 
-    // In a real application, you would likely fetch the actual unread message count here
-    // For now, we'll keep it at a default of 0 or a placeholder.
-    // If your DashboardLayout truly needs this for something like a notification badge,
-    // you'll need to implement a way to get this count (e.g., from an API or global state).
-    // Example placeholder:
-    // setTotalUnreadMessages(0); // or fetch from an API
-  }, []); // Depend on nothing so it only runs once on mount
+const STATUS: Record<string, string> = {
+  Pending: "bg-amber-50 text-amber-700 border border-amber-200",
+  Processing: "bg-blue-50  text-blue-700  border border-blue-200",
+  Delivered: "bg-green-50 text-green-700 border border-green-200",
+  Cancelled: "bg-red-50   text-red-700   border border-red-200",
+};
+
+const RECENT_ACTIVITY = [
+  {
+    text: "Your order #111 is awaiting pickup",
+    time: "2h ago",
+    dot: "bg-amber-400",
+  },
+  {
+    text: "New message from Seller on Armchair",
+    time: "5h ago",
+    dot: "bg-[#6366F1]",
+  },
+  { text: "Rustic Shelf order confirmed", time: "2d ago", dot: "bg-[#33B64B]" },
+  {
+    text: "Profile verified successfully",
+    time: "3d ago",
+    dot: "bg-[#755210]",
+  },
+];
+
+const MOB_TABS = [
+  { label: "Home", icon: IcGrid, href: "/dashboard" },
+  { label: "Orders", icon: IcPackageMob, href: "/dashboard/orders" },
+  { label: "Sell", icon: IcPlusMob, href: "/create-listing", special: true },
+  { label: "Saved", icon: IcHeartMob, href: "/dashboard/saved" },
+  { label: "Profile", icon: IcUserMob, href: "/dashboard/profile" },
+];
+
+// ── Page ──────────────────────────────────────────────────────
+export default function DashboardPage() {
+  const pathname = usePathname();
+  const fmt = (n: number) => "₦" + n.toLocaleString("en-NG");
 
   return (
-    // Pass the required prop here
-    <DashboardLayout totalUnreadMessages={totalUnreadMessages}>
-      <div className="space-y-6 sm:space-y-8 py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-[calc(100vh-64px)] animate-fadeIn ">
+    // pt-16 = navbar height; pb-20 on mobile for bottom tab bar
+    <div className="min-h-screen flex bg-[#FDF8F3] pt-26 pb-10 lg:pb-0 lg:pl-60 font-sans">
+      {/* Sidebar renders fixed — outside flex flow, imported globally or here */}
+      <Sidebar />
 
-        {/* Welcome Header */}
-        {user && (
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 md:p-6 bg-white rounded-xl shadow-lg border border-gray-100 animate-slideInUp">
-            <div className="flex items-center gap-4">
-              {/* Display User Profile Image */}
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-[#E8CEB0] shadow-sm">
+      {/* ── Main ── */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {/* ── TOPBAR ── */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-[10px] text-[#B8A898] font-semibold uppercase tracking-widest mb-0.5">
+                Dashboard
+              </p>
+              <h1 className="font-serif text-xl sm:text-2xl font-semibold text-[#2C1F0E]">
+                Welcome back, Ada Obi 👋
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Notification bell */}
+              <button className="relative w-9 h-9 rounded-xl bg-white border border-[#EDE0CF] flex items-center justify-center text-[#755210] hover:bg-[#F4E8D8] transition-colors">
+                <IcBell />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#33B64B] border border-white" />
+              </button>
+              {/* Avatar (mobile only — sidebar hidden) */}
+              <div className="lg:hidden w-9 h-9 rounded-xl overflow-hidden ring-2 ring-[#E8CEB0]">
                 <Image
-                  src={user.profileImage || '/default-profile.png'} // Use user.profileImage or a default
-                  alt={`${user.name}'s profile`}
-                  layout="fill"
-                  objectFit="cover"
-                  className="transition-transform duration-300 hover:scale-105"
-                  priority // Prioritize loading for visible content
+                  src="/john-doe.png"
+                  alt="Ada Obi"
+                  width={36}
+                  height={36}
+                  className="object-cover w-full h-full"
                 />
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">
-                  Welcome back, <span className="text-[#775522]">{user.name}</span> 👋
-                </h2>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  {user.email}
+            </div>
+          </div>
+
+          {/* ── PROFILE HERO ── */}
+          <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden mb-5 bg-[#755210]">
+            <div className="absolute inset-0">
+              <Image
+                src="/bedroom.jpg"
+                alt=""
+                fill
+                className="object-cover opacity-[0.18]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#2C1A07]/85 via-[#755210]/60 to-transparent" />
+            </div>
+            <div className="relative z-10 flex items-center gap-4 sm:gap-6 px-5 py-5 sm:px-7 sm:py-6">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl overflow-hidden ring-[3px] ring-[#E8CEB0]/50">
+                  <Image
+                    src="/john-doe.png"
+                    alt="Ada Obi"
+                    width={80}
+                    height={80}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#33B64B] border-2 border-white flex items-center justify-center text-white">
+                  <IcCheck />
+                </div>
+              </div>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <h2 className="font-serif text-lg sm:text-xl text-white font-semibold">
+                    Ada Obi
+                  </h2>
+                  <span className="text-[9px] sm:text-[10px] font-bold bg-[#33B64B] text-white px-2 py-0.5 rounded-full tracking-wide">
+                    Verified
+                  </span>
+                </div>
+                <p className="text-white/55 text-xs sm:text-sm mb-3">
+                  ada@example.com
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Link
+                    href="/dashboard/profile"
+                    className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/15 hover:bg-white/25 border border-white/25 text-white text-[11px] sm:text-xs font-semibold rounded-xl transition-all"
+                  >
+                    <IcUser /> Update Profile
+                  </Link>
+                  <Link
+                    href="/dashboard/settings"
+                    className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/15 text-white/80 text-[11px] sm:text-xs font-medium rounded-xl transition-all"
+                  >
+                    <IcSettings /> Settings
+                  </Link>
+                </div>
+              </div>
+              {/* Escrow badge — hidden on small mobile */}
+              <div className="hidden sm:flex flex-col items-center gap-1 pr-1">
+                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-[#E8CEB0]">
+                  <IcShield />
+                </div>
+                <p className="text-[9px] text-white/45 text-center leading-tight">
+                  Escrow
+                  <br />
+                  Protected
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 sm:gap-3 mt-3 md:mt-0">
-              <Link
-                href="/dashboard/profile"
-                className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-[#775522] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-md hover:bg-[#5E441B] transition-all duration-300 transform hover:-translate-y-0.5 hover:scale-105 group"
-              >
-                <FaUserEdit className="text-base group-hover:rotate-6 transition-transform duration-300" />
-                Update Profile
-              </Link>
-              <Link
-                href="/dashboard/settings"
-                className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-[#775522] border border-[#775522] rounded-lg text-xs sm:text-sm font-semibold hover:bg-[#E8CEB0] transition-all duration-300 transform hover:-translate-y-0.5 hover:scale-105 group"
-              >
-                <FaCog className="text-base group-hover:animate-spin-slow transition-transform duration-700" />
-                Settings
-              </Link>
-            </div>
           </div>
-        )}
 
-        {/* Verify Prompt - Conditionally rendered */}
-        {showVerifyPrompt && <VerifyPrompt />}
-
-        {/* Recent Orders - Now fully responsive */}
-        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-100 animate-slideInUp" style={{ animationDelay: '0.1s' }}>
-          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5 flex items-center gap-2 sm:gap-3 text-gray-800">
-            <FaBoxOpen className="text-[#775522]" /> Recent Orders
-          </h3>
-          {orderHistory.length > 0 ? (
-            <>
-              <ul className="space-y-3 text-sm text-gray-700">
-                {orderHistory.map((order, index) => (
-                  <li key={order.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-gray-100 animate-scaleIn" style={{ animationDelay: `${0.1 + index * 0.05}s` }}>
-                    <div className="flex-grow">
-                      <p className="font-semibold text-sm sm:text-base text-gray-800">{order.product}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Order ID: {order.id}</p>
-                      <p className="text-xs text-gray-500">{order.date}</p>
-                    </div>
-                    <span
-                      className={`mt-2 sm:mt-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs font-bold self-start sm:self-auto ${
-                        order.status === 'Delivered'
-                          ? 'bg-refurnishBrown-light text-refurnishBrown' // Harmonized: Light brown background, brand brown text
-                          : order.status === 'Processing'
-                          ? 'bg-yellow-50 text-yellow-800' // Keeping yellow, but softer shades for "Processing" as it's a common convention and less jarring.
-                          : 'bg-red-50 text-red-800' // Keeping red, but softer shades for "Cancelled/Failed" for clarity on issues.
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {hasMoreOrders && (
-                <div className="mt-4 sm:mt-6 text-right">
-                  <Link
-                    href="/dashboard/orders"
-                    className="text-sm sm:text-base text-[#775522] hover:underline font-medium hover:text-[#5E441B] transition-colors duration-200"
-                  >
-                    View Full History →
-                  </Link>
+          {/* ── STAT CARDS ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-5">
+            {STATS.map(({ label, value, icon: Icon, bg, tc }) => (
+              <div
+                key={label}
+                className="bg-white border border-[#EDE0CF] rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 hover:shadow-sm transition-shadow"
+              >
+                <div
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${bg} ${tc}`}
+                >
+                  <Icon />
                 </div>
-              )}
-            </>
-          ) : (
-            <p className="text-gray-500 italic text-sm sm:text-base py-3 sm:py-4 text-center">You have no orders yet. Start shopping now!</p>
-          )}
-        </div>
+                <div className="min-w-0">
+                  <p className="font-serif text-lg sm:text-xl font-semibold text-[#2C1F0E] leading-none">
+                    {value}
+                  </p>
+                  <p className="text-[10px] text-[#8C7A6B] font-medium leading-snug mt-0.5 truncate">
+                    {label}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
 
-        {/* Suggestions - Now fully responsive */}
-        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-100 animate-slideInUp" style={{ animationDelay: '0.2s' }}>
-          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5 flex items-center gap-2 sm:gap-3 text-gray-800">
-            <FaLightbulb className="text-[#E8CEB0]" /> Things You Might Like
-          </h3>
-          {suggestions.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {suggestions.map((item, index) => (
-                  <div key={item.id} className="border border-gray-200 rounded-lg p-3 sm:p-4 shadow-md bg-white hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 animate-scaleIn" style={{ animationDelay: `${0.2 + index * 0.07}s` }}>
-                    <div className="relative w-full h-36 sm:h-48 mb-3 sm:mb-4 overflow-hidden rounded-md">
+          {/* ── MAIN GRID ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 mb-5">
+            {/* Recent Orders — 2/3 */}
+            <div className="lg:col-span-2 bg-white border border-[#EDE0CF] rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-[#F4EBE0]">
+                <div className="flex items-center gap-2 text-[#2C1F0E]">
+                  <IcPackage />
+                  <h2 className="font-semibold text-sm">Recent Orders</h2>
+                </div>
+                <Link
+                  href="/dashboard/orders"
+                  className="flex items-center gap-1 text-xs text-[#755210] font-semibold hover:text-[#9A7235] transition-colors"
+                >
+                  View all <IcArrow />
+                </Link>
+              </div>
+              <div className="divide-y divide-[#F8F1E9]">
+                {ORDERS.map((o) => (
+                  <div
+                    key={o.id}
+                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-[#FDFAF6] transition-colors"
+                  >
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-[#F4E8D8] flex-shrink-0">
                       <Image
-                        src={item.image || '/placeholder.jpg'}
-                        alt={item.name}
-                        layout="fill"
-                        objectFit="cover"
-                        className="rounded-md transition-transform duration-300 hover:scale-105"
+                        src={o.img}
+                        alt={o.name}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
                       />
                     </div>
-                    <h4 className="font-bold text-base sm:text-lg text-gray-800 mb-0.5 truncate">{item.name}</h4>
-                    <p className="text-xs text-gray-600 mb-1.5 line-clamp-2">{item.description || 'No description available.'}</p>
-                    <div className="text-sm sm:text-base text-gray-600 mb-2 flex flex-wrap items-center gap-1.5">
-                      {item.oldPrice && (
-                        <span className="line-through text-gray-400 text-xs sm:text-sm">₦{item.oldPrice.toLocaleString()}</span>
-                      )}
-                      {/* Harmonized price color */}
-                      <span className="text-[#775522] font-bold text-base sm:text-lg">₦{item.price?.toLocaleString()}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#2C1F0E] truncate">
+                        {o.name}
+                      </p>
+                      <p className="text-[10.5px] text-[#8C7A6B] mt-0.5">
+                        <span className="font-medium text-[#6B5A4E]">
+                          #{o.id}
+                        </span>
+                        <span className="mx-1 text-[#D5C4B0]">·</span>
+                        {o.date}
+                      </p>
                     </div>
-                    <Link
-                      href={`/shop/${item.id}`}
-                      className="mt-1.5 inline-block w-full text-center bg-[#775522] text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg hover:bg-[#5E441B] transition-all duration-300 text-xs sm:text-sm font-semibold shadow-md transform hover:scale-105"
+                    <span
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${
+                        STATUS[o.status]
+                      }`}
                     >
-                      View Product
-                    </Link>
+                      {o.status}
+                    </span>
                   </div>
                 ))}
               </div>
-              <div className="text-center mt-6 sm:mt-8">
-                <Link
-                  href="/shop"
-                  className="inline-flex items-center gap-1.5 text-sm sm:text-base font-medium text-[#775522] hover:underline hover:text-[#5E441B] transition-colors duration-200 group"
-                >
-                  Discover More in Shop <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
-                </Link>
-              </div>
-            </>
-          ) : (
-            <p className="text-gray-500 text-sm sm:text-base italic py-3 sm:py-4 text-center">No new suggestions available at the moment. Check back later!</p>
-          )}
-        </div>
+            </div>
 
-        {/* Sell Item CTA - Always visible, but adjusted for mobile */}
-        <div className="text-center py-4 sm:py-6">
-          <Link
-            href="/dashboard/sell"
-            // Harmonized CTA button color
-            className="inline-flex items-center gap-2 sm:gap-3 bg-[#775522] text-white px-5 py-3 sm:px-7 sm:py-4 rounded-full text-base sm:text-lg font-bold shadow-xl hover:bg-[#5E441B] transition-all duration-300 transform hover:scale-105 hover:shadow-2xl animate-pulse-once"
-          >
-            <FaPlusCircle className="text-xl sm:text-2xl" />
-            Sell an Item
-          </Link>
+            {/* Right column — 1/3 */}
+            <div className="flex flex-col gap-3 sm:gap-4">
+              {/* Sell CTA */}
+              <div className="relative bg-[#755210] rounded-2xl overflow-hidden p-5">
+                <div className="absolute inset-0 pointer-events-none">
+                  <Image
+                    src="/living.jpg"
+                    alt=""
+                    fill
+                    className="object-cover opacity-[0.14]"
+                  />
+                </div>
+                <div className="relative z-10">
+                  <div className="w-8 h-8 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center text-[#E8CEB0] mb-3">
+                    <IcTag />
+                  </div>
+                  <p className="font-serif text-white text-base font-semibold mb-1">
+                    Sell an Item
+                  </p>
+                  <p className="text-white/55 text-xs leading-relaxed mb-4">
+                    Turn furniture you no longer need into cash.
+                  </p>
+                  <Link
+                    href="/create-listing"
+                    className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-[#E8CEB0] hover:bg-white text-[#755210] text-xs font-bold rounded-xl transition-all"
+                  >
+                    <IcPlus /> Create Listing
+                  </Link>
+                </div>
+              </div>
+
+              {/* Activity feed */}
+              <div className="bg-white border border-[#EDE0CF] rounded-2xl overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3.5 border-b border-[#F4EBE0] text-[#2C1F0E]">
+                  <IcTrend />
+                  <h2 className="font-semibold text-sm">Recent Activity</h2>
+                </div>
+                <div className="px-4 py-3 flex flex-col gap-3">
+                  {RECENT_ACTIVITY.map((a, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <div
+                        className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${a.dot}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-[#2C1F0E] leading-snug">
+                          {a.text}
+                        </p>
+                        <p className="text-[10px] text-[#B8A898] mt-0.5">
+                          {a.time}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── THINGS YOU MIGHT LIKE ── */}
+          <div className="bg-white border border-[#EDE0CF] rounded-2xl overflow-hidden mb-5">
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-[#F4EBE0]">
+              <div>
+                <h2 className="font-semibold text-sm text-[#2C1F0E]">
+                  Things You Might Like
+                </h2>
+                <p className="text-[10.5px] text-[#8C7A6B] mt-0.5">
+                  Curated picks near you in Lagos
+                </p>
+              </div>
+              <Link
+                href="/shop"
+                className="flex items-center gap-1 text-xs text-[#755210] font-semibold hover:text-[#9A7235] whitespace-nowrap"
+              >
+                Shop more <IcArrow />
+              </Link>
+            </div>
+            {/* Horizontal scroll on mobile, grid on sm+ */}
+            <div className="flex sm:grid sm:grid-cols-3 gap-0 overflow-x-auto sm:overflow-visible divide-x divide-[#F4EBE0] sm:divide-y-0">
+              {SUGGESTIONS.map((item) => (
+                <div
+                  key={item.id}
+                  className="min-w-[220px] sm:min-w-0 p-4 flex flex-col hover:bg-[#FDFAF6] transition-colors group flex-shrink-0"
+                >
+                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-[#F4E8D8] mb-3">
+                    <Image
+                      src={item.img}
+                      alt={item.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    {item.old && (
+                      <span className="absolute top-2 left-2 bg-[#C0392B] text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                        SALE
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mb-1 text-[#8C7A6B]">
+                    <IcPin />
+                    <span className="text-[10px]">{item.loc}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-[#2C1F0E] mb-1.5 leading-snug">
+                    {item.name}
+                  </p>
+                  <div className="flex items-center gap-0.5 mb-2">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <span
+                        key={s}
+                        className={
+                          s <= Math.floor(item.rating)
+                            ? "text-[#755210]"
+                            : "text-[#E5D5C0]"
+                        }
+                      >
+                        <IcStar />
+                      </span>
+                    ))}
+                    <span className="text-[10px] text-[#8C7A6B] ml-1">
+                      {item.rating}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5 mb-3 mt-auto">
+                    <span className="font-serif text-base font-semibold text-[#755210]">
+                      {fmt(item.price)}
+                    </span>
+                    {item.old && (
+                      <span className="text-xs text-[#B8A898] line-through">
+                        {fmt(item.old)}
+                      </span>
+                    )}
+                  </div>
+                  <Link
+                    href="/product"
+                    className="flex items-center justify-center gap-1 w-full py-2 border-[1.5px] border-[#E5D5C0] hover:border-[#755210] hover:bg-[#F4E8D8] text-[#755210] text-xs font-bold rounded-xl transition-all"
+                  >
+                    View Product <IcArrow />
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── ESCROW BANNER ── */}
+          <div className="flex items-center gap-4 bg-[#EDF7EF] border border-[#C3E6CB] rounded-2xl px-5 py-4">
+            <div className="w-9 h-9 rounded-xl bg-[#33B64B]/15 flex items-center justify-center text-[#2D6A4F] flex-shrink-0">
+              <IcShield />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-[#2D6A4F]">
+                Your money is always protected
+              </p>
+              <p className="text-xs text-[#3D8A5E] leading-relaxed mt-0.5">
+                Every purchase on Fûrnit uses escrow — your payment is held
+                securely until you confirm delivery.
+              </p>
+            </div>
+            <Link
+              href="/help"
+              className="hidden sm:flex items-center gap-1 text-xs text-[#2D6A4F] font-semibold hover:underline flex-shrink-0"
+            >
+              Learn more <IcArrow />
+            </Link>
+          </div>
         </div>
-      </div>
-    </DashboardLayout>
+      </main>
+
+      {/* ══ MOBILE BOTTOM TAB BAR ══════════════════════════════ */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#EDE0CF] flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {MOB_TABS.map(({ label, icon: Icon, href, special }) => {
+          const active =
+            pathname === href ||
+            (href !== "/dashboard" &&
+              href !== "/create-listing" &&
+              pathname.startsWith(href));
+          if (special) {
+            return (
+              <Link
+                key={label}
+                href={href}
+                className="flex-1 flex flex-col items-center justify-center py-2 -mt-5"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-[#755210] flex items-center justify-center text-white shadow-lg shadow-[#755210]/30">
+                  <Icon />
+                </div>
+                <span className="text-[9px] font-semibold text-[#755210] mt-1">
+                  {label}
+                </span>
+              </Link>
+            );
+          }
+          return (
+            <Link
+              key={label}
+              href={href}
+              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
+                active
+                  ? "text-[#755210]"
+                  : "text-[#B8A898] hover:text-[#755210]"
+              }`}
+            >
+              <Icon />
+              <span className="text-[9px] font-semibold">{label}</span>
+              {active && <div className="w-1 h-1 rounded-full bg-[#755210]" />}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
