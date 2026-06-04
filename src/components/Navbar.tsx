@@ -226,12 +226,12 @@ export default function Navbar() {
             {/* Right Side Icons */}
             <div className="flex items-center space-x-4 text-gray-600 flex-shrink-0">
               {/* Start Selling Button */}
-              <Link href="/dashboard/sell" passHref legacyBehavior>
-                <a
-                  className={`hidden sm:inline-block ${BRAND_BUTTON_BG} ${BRAND_BUTTON_HOVER} text-white px-5 py-2 rounded-lg font-semibold text-sm transition-colors duration-300 ml-4 shadow-md`}
-                >
+              <Link
+                href="/dashboard/sell"
+                className={`hidden sm:inline-block ${BRAND_BUTTON_BG} ${BRAND_BUTTON_HOVER} text-white px-5 py-2 rounded-lg font-semibold text-sm transition-colors duration-300 ml-4 shadow-md`}>
+                
                   START SELLING
-                </a>
+                
               </Link>
 
               {/* Mobile Search Icon */}
@@ -247,13 +247,10 @@ export default function Navbar() {
               </button>
 
               {/* Wishlist Icon (FaHeart) */}
-              <Link href="/wishlist" passHref legacyBehavior>
-                <a
-                  className={`w-6 h-6 ${BRAND_TEXT_COLOR} hover:${BRAND_COLOR} transition-colors duration-200`}
-                  aria-label="Wishlist"
-                >
-                  <FaHeart className="w-full h-full" />
-                </a>
+              <Link href="/wishlist" className={`w-6 h-6 ${BRAND_TEXT_COLOR} hover:${BRAND_COLOR} transition-colors duration-200`} aria-label="Wishlist">
+
+                <FaHeart className="w-full h-full" />
+
               </Link>
 
               {/* User Profile - Using Custom SVG */}
@@ -282,21 +279,15 @@ export default function Navbar() {
                           Sign in to access your account
                         </p>
                         <div className="flex space-x-2">
-                          <Link href="/login" passHref legacyBehavior>
-                            <a
-                              onClick={() => setProfileDropdownOpen(false)}
-                              className={`flex-1 text-center ${BRAND_BUTTON_BG} text-white px-3 py-2 rounded-md text-sm font-semibold ${BRAND_BUTTON_HOVER} transition-colors`}
-                            >
+                          <Link href="/login" onClick={() => setProfileDropdownOpen(false)} className={`flex-1 text-center ${BRAND_BUTTON_BG} text-white px-3 py-2 rounded-md text-sm font-semibold ${BRAND_BUTTON_HOVER} transition-colors`}>
+                            
                               Log In
-                            </a>
+                            
                           </Link>
-                          <Link href="/login" passHref legacyBehavior>
-                            <a
-                              onClick={() => setProfileDropdownOpen(false)}
-                              className="flex-1 text-center border border-gray-700 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-50 transition-colors"
-                            >
+                          <Link href="/login" onClick={() => setProfileDropdownOpen(false)} className="flex-1 text-center border border-gray-700 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-50 transition-colors">
+                            
                               Sign Up
-                            </a>
+                            
                           </Link>
                         </div>
                       </div>
@@ -315,18 +306,15 @@ export default function Navbar() {
                           return null;
                         const IconComponent = item.icon;
                         return (
-                          <Link href={item.href} key={index} passHref legacyBehavior>
-                            <a
-                              className={`flex items-center gap-3 w-full px-4 py-3 text-sm transition-colors duration-200 hover:bg-gray-50 text-left ${
-                                item.color || "text-gray-700"
-                              }`}
-                              onClick={() => setProfileDropdownOpen(false)}
-                            >
-                              {IconComponent && (
-                                <IconComponent className="text-xl text-gray-500 flex-shrink-0" />
-                              )}
-                              <span className="font-medium">{item.name}</span>
-                            </a>
+                          <Link href={item.href} key={index} className={`flex items-center gap-3 w-full px-4 py-3 text-sm transition-colors duration-200 hover:bg-gray-50 text-left ${
+                            item.color || "text-gray-700"
+                          }`} onClick={() => setProfileDropdownOpen(false)}>
+
+                            {IconComponent && (
+                              <IconComponent className="text-xl text-gray-500 flex-shrink-0" />
+                            )}
+                            <span className="font-medium">{item.name}</span>
+
                           </Link>
                         );
                       })}
@@ -336,14 +324,11 @@ export default function Navbar() {
                       <>
                         <div className="border-t border-gray-200"></div>
                         <div className="p-3">
-                          <Link href="/dashboard/sell" passHref legacyBehavior>
-                            <a
-                              className={`flex items-center justify-center gap-2 w-full px-4 py-2 text-sm ${BRAND_BUTTON_BG} text-white rounded-md font-semibold ${BRAND_BUTTON_HOVER} transition-colors mb-2`}
-                              onClick={() => setProfileDropdownOpen(false)}
-                            >
-                              <FaPlusCircle className="text-lg" />
-                              <span>Start Selling</span>
-                            </a>
+                          <Link href="/dashboard/sell" className={`flex items-center justify-center gap-2 w-full px-4 py-2 text-sm ${BRAND_BUTTON_BG} text-white rounded-md font-semibold ${BRAND_BUTTON_HOVER} transition-colors mb-2`} onClick={() => setProfileDropdownOpen(false)}>
+
+                            <FaPlusCircle className="text-lg" />
+                            <span>Start Selling</span>
+
                           </Link>
                           <button
                             onClick={handleLogout}
@@ -360,13 +345,10 @@ export default function Navbar() {
               </div>
 
               {/* Cart Icon - Using Custom SVG */}
-              <Link href="/cart" passHref legacyBehavior>
-                <a
-                  className={`w-6 h-6 ${BRAND_TEXT_COLOR} hover:${BRAND_COLOR} transition-colors duration-200`}
-                  aria-label="Shopping Cart"
-                >
-                  <CartIconSVG className="w-full h-full" />
-                </a>
+              <Link href="/cart" className={`w-6 h-6 ${BRAND_TEXT_COLOR} hover:${BRAND_COLOR} transition-colors duration-200`} aria-label="Shopping Cart">
+
+                <CartIconSVG className="w-full h-full" />
+
               </Link>
             </div>
           </div>
@@ -408,24 +390,20 @@ export default function Navbar() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <nav className="flex items-center justify-start space-x-8 py-3 overflow-x-auto whitespace-nowrap">
               {navItems.map((item, index) => (
-                <Link href={item.href} key={index} passHref legacyBehavior>
-                  <a
-                    onClick={() => setActiveNavItem(item.name)}
-                    className={`text-sm font-medium transition-colors duration-200 relative uppercase py-1 ${
-                      activeNavItem === item.name
-                        ? `border-b-2 border-[#5F7161] ${BRAND_TEXT_COLOR}`
-                        : `text-gray-700 hover:${BRAND_COLOR}`
-                    } ${item.name === "SALE" ? `${BRAND_COLOR} font-bold` : ""}`}
-                  >
-                    {item.name}
-                  </a>
+                <Link href={item.href} key={index} onClick={() => setActiveNavItem(item.name)} className={`text-sm font-medium transition-colors duration-200 relative uppercase py-1 ${
+                  activeNavItem === item.name
+                    ? `border-b-2 border-[#5F7161] ${BRAND_TEXT_COLOR}`
+                    : `text-gray-700 hover:${BRAND_COLOR}`
+                } ${item.name === "SALE" ? `${BRAND_COLOR} font-bold` : ""}`}>
+
+                  {item.name}
+
                 </Link>
               ))}
             </nav>
           </div>
         </div>
       </header>
-
       {/* Mobile Menu Overlay (unchanged logic) */}
       <div
         className={`lg:hidden fixed inset-0 z-[1000] transition-opacity duration-300 ${
@@ -467,30 +445,24 @@ export default function Navbar() {
             {/* Main Nav Links */}
             <div className="p-4 space-y-1 border-b border-gray-100">
               {navItems.map((item, index) => (
-                <Link href={item.href} key={index} passHref legacyBehavior>
-                  <a
-                    onClick={() => {
-                      setActiveNavItem(item.name);
-                      closeMobileMenu();
-                    }}
-                    className={`block w-full text-left py-3 px-4 rounded-md font-semibold text-base uppercase transition-colors duration-200 ${
-                      activeNavItem === item.name
-                        ? `bg-gray-100 ${BRAND_TEXT_COLOR}`
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {item.name}
-                  </a>
+                <Link href={item.href} key={index} onClick={() => {
+                  setActiveNavItem(item.name);
+                  closeMobileMenu();
+                }} className={`block w-full text-left py-3 px-4 rounded-md font-semibold text-base uppercase transition-colors duration-200 ${
+                  activeNavItem === item.name
+                    ? `bg-gray-100 ${BRAND_TEXT_COLOR}`
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}>
+
+                  {item.name}
+
                 </Link>
               ))}
 
-              <Link href="/dashboard/sell" passHref legacyBehavior>
-                <a
-                  className={`block w-full text-center py-3 px-4 mt-4 ${BRAND_BUTTON_BG} text-white rounded-md font-semibold ${BRAND_BUTTON_HOVER} transition-colors duration-200 uppercase`}
-                  onClick={closeMobileMenu}
-                >
+              <Link href="/dashboard/sell" className={`block w-full text-center py-3 px-4 mt-4 ${BRAND_BUTTON_BG} text-white rounded-md font-semibold ${BRAND_BUTTON_HOVER} transition-colors duration-200 uppercase`} onClick={closeMobileMenu}>
+                
                   START SELLING
-                </a>
+                
               </Link>
             </div>
 
@@ -501,21 +473,15 @@ export default function Navbar() {
               </p>
               {!isLoggedIn ? (
                 <div className="space-y-3 px-4">
-                  <Link href="/login" passHref legacyBehavior>
-                    <a
-                      onClick={closeMobileMenu}
-                      className={`block text-center w-full py-3 px-4 ${BRAND_BUTTON_BG} text-white rounded-md font-semibold ${BRAND_BUTTON_HOVER} transition-colors`}
-                    >
+                  <Link href="/login" onClick={closeMobileMenu} className={`block text-center w-full py-3 px-4 ${BRAND_BUTTON_BG} text-white rounded-md font-semibold ${BRAND_BUTTON_HOVER} transition-colors`}>
+                    
                       Log In
-                    </a>
+                    
                   </Link>
-                  <Link href="/login" passHref legacyBehavior>
-                    <a
-                      onClick={closeMobileMenu}
-                      className="block text-center w-full py-3 px-4 border border-gray-700 text-gray-700 rounded-md font-semibold hover:bg-gray-50 transition-colors"
-                    >
+                  <Link href="/login" onClick={closeMobileMenu} className="block text-center w-full py-3 px-4 border border-gray-700 text-gray-700 rounded-md font-semibold hover:bg-gray-50 transition-colors">
+                    
                       Create Account
-                    </a>
+                    
                   </Link>
                 </div>
               ) : (
@@ -527,27 +493,21 @@ export default function Navbar() {
                     .map((item, index) => {
                       const IconComponent = item.icon;
                       return (
-                        <Link href={item.href} key={index} passHref legacyBehavior>
-                          <a
-                            className="flex items-center gap-3 w-full text-left py-3 px-4 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                            onClick={closeMobileMenu}
-                          >
-                            {IconComponent && (
-                              <IconComponent className="text-xl text-gray-500" />
-                            )}
-                            <span className="font-medium">{item.name}</span>
-                          </a>
+                        <Link href={item.href} key={index} className="flex items-center gap-3 w-full text-left py-3 px-4 text-gray-700 rounded-md hover:bg-gray-100 transition-colors" onClick={closeMobileMenu}>
+
+                          {IconComponent && (
+                            <IconComponent className="text-xl text-gray-500" />
+                          )}
+                          <span className="font-medium">{item.name}</span>
+
                         </Link>
                       );
                     })}
-                  <Link href="/account/settings" passHref legacyBehavior>
-                    <a
-                      className="flex items-center gap-3 w-full text-left py-3 px-4 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                      onClick={closeMobileMenu}
-                    >
-                      <FaCog className="text-xl text-gray-500" />
-                      <span className="font-medium">Account Settings</span>
-                    </a>
+                  <Link href="/account/settings" className="flex items-center gap-3 w-full text-left py-3 px-4 text-gray-700 rounded-md hover:bg-gray-100 transition-colors" onClick={closeMobileMenu}>
+
+                    <FaCog className="text-xl text-gray-500" />
+                    <span className="font-medium">Account Settings</span>
+
                   </Link>
                   <button
                     onClick={() => {
@@ -610,7 +570,6 @@ export default function Navbar() {
           </nav>
         </div>
       </div>
-
       <div className="h-[5.5rem] hidden lg:block"></div>
       <div className="h-[4rem] lg:hidden"></div>
     </>
