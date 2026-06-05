@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import SiteShell from "@/components/SiteShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,16 +33,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable}`}
         suppressHydrationWarning
       >
-        <div className="flex min-h-screen w-full">
-          {/* Sidebar / Navbar */}
-          <Navbar />
-
-          {/* Main Content */}
-          <div className="flex flex-col w-full">
-            <main className="flex-grow overflow-y-auto">{children}</main>
-            <Footer />
-          </div>
-        </div>
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

@@ -1,329 +1,314 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import React from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  LayoutDashboard,
+  Package,
+  Sofa,
+  MessageCircle,
+  ShoppingBag,
+  Heart,
+  User,
+  Settings,
+  HelpCircle,
+  LogOut,
+  Menu,
+  X,
+  Store,
+  Bell,
+  PlusCircle,
+} from "lucide-react";
 
-// ── Icons ─────────────────────────────────────────────────────
-const IcGrid = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="3" width="7" height="7" />
-    <rect x="14" y="3" width="7" height="7" />
-    <rect x="14" y="14" width="7" height="7" />
-    <rect x="3" y="14" width="7" height="7" />
-  </svg>
-);
-const IcPackage = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-    <line x1="12" y1="22.08" x2="12" y2="12" />
-  </svg>
-);
-const IcTag = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
-    <line x1="7" y1="7" x2="7.01" y2="7" />
-  </svg>
-);
-const IcMessage = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-  </svg>
-);
-const IcHeart = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-  </svg>
-);
-const IcUser = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
-);
-const IcSettings = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-  </svg>
-);
-const IcHelp = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-const IcPlus = () => (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-);
-const IcCheck = () => (
-  <svg
-    width="9"
-    height="9"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="3.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
+type SidebarProps = {
+  children?: React.ReactNode;
+};
 
-// ── Nav config ────────────────────────────────────────────────
-const NAV_GROUPS = [
-  {
-    label: "Main",
-    items: [
-      { label: "Overview", icon: IcGrid, href: "/dashboard" },
-      {
-        label: "Orders",
-        icon: IcPackage,
-        href: "/dashboard/orders",
-        badge: null,
-      },
-      { label: "Listings", icon: IcTag, href: "/dashboard/sell" },
-      {
-        label: "Messages",
-        icon: IcMessage,
-        href: "/dashboard/messages",
-        isMessagesLink: true,
-      },
-      { label: "Saved", icon: IcHeart, href: "/dashboard/saved" },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
-      { label: "Profile", icon: IcUser, href: "/dashboard/profile" },
-      { label: "Settings", icon: IcSettings, href: "/dashboard/settings" },
-      { label: "Help", icon: IcHelp, href: "/help" },
-    ],
-  },
+type UserData = {
+  name?: string;
+  email?: string;
+  profileImage?: string;
+};
+
+// Clean, minimal navigation links (no badges, no clutter)
+const primaryLinks = [
+  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Orders", href: "/dashboard/orders", icon: Package },
+  { label: "Listings", href: "/dashboard/listings", icon: Sofa },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageCircle },
 ];
 
-// ── TypeScript Interface Definition ───────────────────────────
-interface SidebarProps {
-  totalUnreadMessages: number;
-  isOpen: boolean;
-  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-}
+const marketplaceLinks = [
+  { label: "Shop", href: "/shop", icon: Store },
+  { label: "Saved", href: "/saved", icon: Heart },
+  { label: "Cart", href: "/cart", icon: ShoppingBag },
+  { label: "Sell", href: "/sell", icon: PlusCircle },
+];
 
-export default function Sidebar({
-  totalUnreadMessages,
-  isOpen,
-  setIsOpen,
-}: SidebarProps) {
+const accountLinks = [
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "Help", href: "/support", icon: HelpCircle },
+];
+
+export default function Sidebar({ children }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("refurnish_user");
+      if (stored) setUser(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const initials = useMemo(() => {
+    const name = user?.name || "Guest";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }, [user]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("refurnish_user");
+    router.push("/login");
+  };
 
   return (
-    <aside
-      className={`fixed top-16 left-0 bottom-0 z-40 w-60 flex-shrink-0 flex-col bg-white border-r border-[#EDE0CF] overflow-y-auto transition-transform duration-300 lg:translate-x-0 lg:flex ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
-    >
-      {/* ── Navbar gap spacer ── */}
-      <div className="h-10 flex-shrink-0 bg-[#FDF8F3] border-b border-[#EDE0CF]" />
+    <div className="min-h-screen bg-[#FAF4EC] text-[#211000]">
+      {/* Mobile top bar */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-[#FAF4EC]/95 backdrop-blur-sm border-b border-[#211000]/8 px-4 flex items-center justify-between">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <Image src="/logo.png" alt="Refurnish" width={30} height={30} />
+          <span className="font-serif text-lg font-medium tracking-tight">
+            Refurnish
+          </span>
+        </Link>
 
-      {/* ── Profile mini ── */}
-      <div className="px-5 pt-5 pb-5 border-b border-[#EDE0CF]">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative w-10 h-10 flex-shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-[#E8CEB0]">
-              <Image
-                src="/john-doe.png"
-                alt="Ada Obi"
-                width={40}
-                height={40}
-                className="object-cover w-full h-full"
-              />
-            </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#33B64B] border-2 border-white flex items-center justify-center">
-              <IcCheck />
-            </div>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#2C1F0E] truncate leading-tight">
-              Ada Obi
-            </p>
-            <p className="text-[10px] text-[#5F7161] font-medium mt-0.5 truncate">
-              ada@example.com
-            </p>
-          </div>
+        <div className="flex items-center gap-2">
+          <button className="relative size-10 rounded-full bg-white border border-[#211000]/8 grid place-items-center">
+            <Bell className="size-4 text-[#211000]/60" />
+            <span className="absolute top-2.5 right-2.5 size-1.5 rounded-full bg-[#B66B44]" />
+          </button>
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="size-10 rounded-full bg-white border border-[#211000]/8 grid place-items-center"
+            aria-label="Open menu"
+          >
+            <Menu className="size-5 text-[#211000]/80" />
+          </button>
         </div>
+      </header>
 
-        {/* Trust score */}
-        <div>
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-[10px] font-semibold text-[#8C7A6B] uppercase tracking-wide">
-              Trust Score
-            </span>
-            <span className="text-[10px] font-bold text-[#755210]">72/100</span>
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-[272px] bg-[#FAF4EC] border-r border-[#211000]/6 flex-col">
+        <SidebarContent
+          pathname={pathname}
+          user={user}
+          initials={initials}
+          onLogout={handleLogout}
+        />
+      </aside>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 z-[70] bg-[#211000]/40 backdrop-blur-sm lg:hidden"
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 32 }}
+              className="fixed inset-y-0 left-0 z-[80] w-[85vw] max-w-[320px] bg-[#FAF4EC] border-r border-[#211000]/6 shadow-xl lg:hidden flex flex-col"
+            >
+              <div className="absolute top-4 right-4">
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="size-8 rounded-full bg-white border border-[#211000]/8 grid place-items-center"
+                  aria-label="Close menu"
+                >
+                  <X className="size-4 text-[#211000]/60" />
+                </button>
+              </div>
+              <SidebarContent
+                pathname={pathname}
+                user={user}
+                initials={initials}
+                onLogout={handleLogout}
+              />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main content */}
+      <main className="lg:pl-[272px] pt-16 lg:pt-0 min-h-screen">
+        {children}
+      </main>
+    </div>
+  );
+}
+
+function SidebarContent({
+  pathname,
+  user,
+  initials,
+  onLogout,
+}: {
+  pathname: string;
+  user: UserData | null;
+  initials: string;
+  onLogout: () => void;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="h-20 px-6 flex items-center">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <Image src="/logo.png" alt="Refurnish" width={32} height={32} />
+          <div>
+            <p className="font-serif text-lg font-medium tracking-tight leading-none">
+              Refurnish
+            </p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44] mt-1">
+              Dashboard
+            </p>
           </div>
-          <div className="h-1.5 bg-[#F4E8D8] rounded-full overflow-hidden">
-            <div className="h-full w-[72%] bg-gradient-to-r from-[#755210] to-[#9A7235] rounded-full transition-all duration-700" />
+        </Link>
+      </div>
+
+      {/* Minimal user card */}
+      <div className="px-4 mb-6">
+        <div className="rounded-2xl bg-white/60 border border-[#211000]/6 p-3.5">
+          <div className="flex items-center gap-3">
+            {user?.profileImage ? (
+              <img
+                src={user.profileImage}
+                alt="Profile"
+                className="size-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="size-10 rounded-full bg-[#E8CEB0] text-[#211000] flex items-center justify-center font-bold text-xs">
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-bold truncate">
+                {user?.name || "Guest User"}
+              </p>
+              <p className="text-[11px] text-[#211000]/45 truncate">
+                {user?.email || "Welcome to Refurnish"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Nav groups ── */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-5 overflow-y-auto">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
-            <p className="text-[9.5px] font-bold text-[#B8A898] uppercase tracking-widest px-3 mb-1.5">
-              {group.label}
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {group.items.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href !== "/dashboard" &&
-                    pathname.startsWith(item.href));
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 space-y-6">
+        <NavGroup title="Main">
+          {primaryLinks.map((link) => (
+            <SidebarLink key={link.href} link={link} pathname={pathname} />
+          ))}
+        </NavGroup>
 
-                // Determine display badge value dynamically for messages
-                const displayBadge =
-                  "isMessagesLink" in item && totalUnreadMessages > 0
-                    ? String(totalUnreadMessages)
-                    : "badge" in item
-                    ? item.badge
-                    : null;
+        <NavGroup title="Marketplace">
+          {marketplaceLinks.map((link) => (
+            <SidebarLink key={link.href} link={link} pathname={pathname} />
+          ))}
+        </NavGroup>
 
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setIsOpen(false)} // Closes mobile drawer on click
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                      active
-                        ? "bg-[#F4E8D8] text-[#755210]"
-                        : "text-[#6B5A4E] hover:bg-[#FAF4EC] hover:text-[#755210]"
-                    }`}
-                  >
-                    <span
-                      className={`flex-shrink-0 ${
-                        active ? "text-[#755210]" : "text-[#A08060]"
-                      }`}
-                    >
-                      <item.icon />
-                    </span>
-                    <span className="flex-1">{item.label}</span>
-                    {displayBadge && (
-                      <span className="w-5 h-5 rounded-full bg-[#755210] text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-                        {displayBadge}
-                      </span>
-                    )}
-                    {active && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#755210] flex-shrink-0" />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+        <NavGroup title="Account">
+          {accountLinks.map((link) => (
+            <SidebarLink key={link.href} link={link} pathname={pathname} />
+          ))}
+        </NavGroup>
       </nav>
 
-      {/* ── Sell CTA ── */}
-      <div className="px-4 pb-6 pt-2 border-t border-[#EDE0CF]">
-        <Link
-          href="/create-listing"
-          onClick={() => setIsOpen(false)}
-          className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#755210] hover:bg-[#9A7235] text-white text-sm font-bold rounded-xl transition-all shadow-sm hover:shadow-md"
+      {/* Minimal logout */}
+      <div className="px-3 pb-6">
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#211000]/60 hover:text-[#b91c1c] hover:bg-white transition-colors"
         >
-          <IcPlus /> Sell an Item
-        </Link>
-        <p className="text-center text-[10px] text-[#B8A898] mt-2 leading-snug">
-          List furniture in under 2 minutes
-        </p>
+          <LogOut className="size-4" />
+          Sign out
+        </button>
       </div>
-    </aside>
+    </div>
+  );
+}
+
+function NavGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#211000]/30">
+        {title}
+      </p>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function SidebarLink({
+  link,
+  pathname,
+}: {
+  link: { label: string; href: string; icon: React.ElementType };
+  pathname: string;
+}) {
+  const Icon = link.icon;
+
+  const active =
+    link.href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname === link.href || pathname.startsWith(`${link.href}/`);
+
+  return (
+    <Link
+      href={link.href}
+      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+        active
+          ? "bg-[#211000] text-[#FAF4EC]"
+          : "text-[#211000]/70 hover:bg-white hover:text-[#211000]"
+      }`}
+    >
+      <span
+        className={`size-8 rounded-lg flex items-center justify-center transition-colors ${
+          active
+            ? "bg-[#B66B44]/20 text-[#B66B44]"
+            : "bg-transparent text-[#211000]/50 group-hover:text-[#211000]"
+        }`}
+      >
+        <Icon className="size-4" />
+      </span>
+      <span>{link.label}</span>
+    </Link>
   );
 }
