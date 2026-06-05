@@ -236,13 +236,16 @@ export default function Navbar() {
             <div className="relative" ref={profileDropdownRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className={`flex items-center space-x-2 font-semibold ${BRAND_TEXT_COLOR} hover:${BRAND_COLOR} transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none text-sm`}
+                className={`flex items-center space-x-1 sm:space-x-2 font-semibold ${BRAND_TEXT_COLOR} hover:${BRAND_COLOR} transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none text-sm p-1`}
                 aria-label="User Menu"
               >
-                <FaRegUser className="w-[18px] h-[18px] stroke-[1.5]" />
-                <span className="tracking-wide uppercase">
+                <FaRegUser className="w-[20px] h-[20px] sm:w-[18px] sm:h-[18px] stroke-[1.5]" />
+                
+                {/* Changed className below to hide text on mobile screens */}
+                <span className="hidden sm:inline-block tracking-wide uppercase">
                   {isLoggedIn ? `Hi, ${displayedName}` : "MY ACCOUNT"}
                 </span>
+
                 <motion.div
                   animate={{ rotate: profileDropdownOpen ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
