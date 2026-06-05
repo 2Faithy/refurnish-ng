@@ -280,7 +280,7 @@ const IcNgFlag = () => (
 
 // Category icon map — SVG only
 const CatIcon = ({ id }: { id: string }) => {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, React.JSX.Element> = {
     sofa: (
       <svg
         width="20"
