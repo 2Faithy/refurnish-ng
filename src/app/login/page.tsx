@@ -231,7 +231,6 @@ const IcInfoCircle = () => (
   </svg>
 );
 
-// Nigeria flag SVG (replaces emoji)
 const IcNgFlag = () => (
   <svg
     width="20"
@@ -246,7 +245,6 @@ const IcNgFlag = () => (
   </svg>
 );
 
-// Verified badge (replaces emoji on right panel card)
 const IcVerifiedBadge = () => (
   <svg
     width="14"
@@ -411,6 +409,7 @@ export default function AuthPage() {
     });
   };
 
+  // --- UPDATED METHOD: Uses matching localStorage key 'refurnish_user' ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier || !form.password) {
@@ -426,9 +425,14 @@ export default function AuthPage() {
           : u.phone === identifier && u.password === form.password
       );
       if (user) {
-        localStorage.setItem("current_user", JSON.stringify(user));
+        // MATCHED STORES TO NAVBAR CODE
+        localStorage.setItem("refurnish_user", JSON.stringify(user));
         showToast("Login successful! Welcome back.", "success");
-        setTimeout(() => router.push("/dashboard"), 1500);
+        // Redirecting to root so you instantly view updated navbar dashboard status
+        setTimeout(() => {
+          router.push("/");
+          window.location.reload(); // Hard cycle update for native synchronization
+        }, 1200);
       } else {
         showToast("Invalid credentials. Please try again.", "error");
       }
@@ -458,17 +462,31 @@ export default function AuthPage() {
     setStep(2);
   };
 
+  // --- UPDATED METHOD: Saves newly registered sessions cleanly ---
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
     if (form.otp.trim().length < 4) {
       showToast("Please enter the 4-digit code.", "error");
       return;
     }
+
+    // Package mock new user structures
+    const newUser = {
+      id: Math.floor(Math.random() * 10000),
+      name: form.name,
+      email: form.email || `${form.phone}@example.com`,
+      phone: form.phone,
+      id_uploaded: false,
+    };
+
+    localStorage.setItem("refurnish_user", JSON.stringify(newUser));
     showToast("Account created! Taking you to setup…", "success");
-    setTimeout(() => router.push("/onboarding"), 1500);
+    setTimeout(() => {
+      router.push("/");
+      window.location.reload();
+    }, 1200);
   };
 
-  // shared field style
   const inp =
     "w-full pl-10 pr-4 py-3.5 bg-white border-[1.5px] border-[#E5D5C0] rounded-xl text-[#2C1F0E] text-sm placeholder-[#8C7A6B] outline-none transition-all duration-200 focus:border-[#755210] focus:ring-2 focus:ring-[#755210]/10";
 
@@ -493,7 +511,6 @@ export default function AuthPage() {
   );
 
   return (
-    // pt-16 = standard 64px navbar height — adjusts if your navbar is taller (try pt-20 for 80px)
     <div className="min-h-screen flex font-sans bg-[#FDF8F3] pt-26">
       <Toast
         message={toast.message}
@@ -504,7 +521,6 @@ export default function AuthPage() {
       {/* ══ LEFT — form ══════════════════════════════════════════ */}
       <div className="flex-1 flex items-start lg:items-center justify-center px-6 py-10 lg:px-16 overflow-y-auto">
         <div className="w-full max-w-md">
-          {/* Tab switcher — NO logo above it */}
           <div className="flex bg-[#FAF4EC] border border-[#E5D5C0] rounded-xl p-1 mb-7">
             {(["login", "signup"] as Tab[]).map((t) => (
               <button
@@ -522,7 +538,6 @@ export default function AuthPage() {
             ))}
           </div>
 
-          {/* Heading */}
           <h1 className="font-serif text-3xl font-semibold text-[#2C1F0E] mb-1.5">
             {tab === "login"
               ? "Welcome back"
@@ -538,7 +553,6 @@ export default function AuthPage() {
               : "Join thousands of Nigerians buying & selling furniture safely."}
           </p>
 
-          {/* Escrow ribbon */}
           <div className="flex items-center gap-2.5 bg-[#5F7161]/10 border border-[#5F7161]/25 rounded-xl px-4 py-3 mb-6 text-[#5F7161]">
             <IcShield />
             <span className="text-xs font-medium leading-snug">
@@ -565,7 +579,6 @@ export default function AuthPage() {
 
               <MethodToggle />
 
-              {/* Identifier */}
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#755210] pointer-events-none">
                   {method === "email" ? <IcMail /> : <IcPhone />}
@@ -583,7 +596,6 @@ export default function AuthPage() {
                 />
               </div>
 
-              {/* Password */}
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#755210] pointer-events-none">
                   <IcLock />
@@ -654,7 +666,6 @@ export default function AuthPage() {
 
               <MethodToggle />
 
-              {/* Name */}
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#755210] pointer-events-none">
                   <IcUser />
@@ -670,7 +681,6 @@ export default function AuthPage() {
                 />
               </div>
 
-              {/* Identifier */}
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#755210] pointer-events-none">
                   {method === "email" ? <IcMail /> : <IcPhone />}
@@ -693,7 +703,6 @@ export default function AuthPage() {
                 />
               </div>
 
-              {/* Password + strength */}
               <div>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#755210] pointer-events-none">
@@ -730,7 +739,6 @@ export default function AuthPage() {
                 )}
               </div>
 
-              {/* Confirm password */}
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#755210] pointer-events-none">
                   <IcLock />
@@ -757,7 +765,6 @@ export default function AuthPage() {
                 )}
               </div>
 
-              {/* Terms */}
               <label
                 htmlFor="terms-cb"
                 className="flex items-start gap-2.5 cursor-pointer group"
@@ -885,7 +892,6 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#2C1A07]/55 via-[#755210]/30 to-[#0F0701]/90" />
 
         <div className="relative z-10 flex flex-col justify-between h-full p-14">
-          {/* Logo — only here, not on the form side */}
           <Image
             src="/logo.png"
             alt="Logo"
@@ -909,7 +915,6 @@ export default function AuthPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            {/* Product card */}
             <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
               <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-[#E8CEB0]">
                 <Image
@@ -934,7 +939,6 @@ export default function AuthPage() {
               </span>
             </div>
 
-            {/* Trust pills */}
             <div className="flex gap-2 flex-wrap">
               {["Escrow protected", "Verified sellers", "5,000+ listings"].map(
                 (t) => (
