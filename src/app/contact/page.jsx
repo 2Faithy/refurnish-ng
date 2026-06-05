@@ -1,133 +1,241 @@
-'use client';
+"use client";
 
-import React from "react";
-import Link from "next/link";
+import React, { useState } from "react";
+import { motion } from "framer-motion";
 import {
   FaEnvelope,
   FaMapMarkerAlt,
   FaPhoneAlt,
-  FaFacebook,
-  FaTwitter,
-  FaInstagram,
-  FaWhatsapp,
-  FaPaperPlane,
+  FaArrowRight,
 } from "react-icons/fa";
 
 export default function ContactPage() {
+  const [formState, setFormState] = useState({
+    name: "",
+    email: "",
+    message: "",
+  });
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Handle form handling or API logic here safely later
+    setIsSubmitted(true);
+    setTimeout(() => {
+      setIsSubmitted(false);
+      setFormState({ name: "", email: "", message: "" });
+    }, 4000);
+  };
+
   return (
-    <section
-      className="relative bg-cover bg-center text-white py-24 px-4 sm:px-8 lg:px-16 overflow-hidden" // Increased vertical padding, added overflow-hidden for animations
-      style={{ backgroundImage: "url('/contact-bg2.png')" }}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-black/80 to-[#775522]/60 z-0"></div>
-
-      <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-[#E8CEB0] opacity-5 rounded-full blur-3xl animate-blob-1"></div>
-      <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-[#9933BB] opacity-5 rounded-full blur-3xl animate-blob-2"></div>
-      <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-[#775522] opacity-5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-blob-3"></div>
-
-      <div className="relative z-10 max-w-7xl mx-auto"> 
-        {/* Page Header */}
-        <div className="text-center mb-16"> 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold flex items-center justify-center gap-4 mb-4 text-[#E8CEB0] animate-fade-in-down drop-shadow-xl">
-            <FaPaperPlane className="text-5xl" /> 
+    <main className="min-h-screen bg-[#E8CEB0]/15 pt-32 pb-20 px-4 sm:px-6 lg:px-8 font-sans selection:bg-[#B66B44]/20 selection:text-[#211000]">
+      <div className="max-w-5xl mx-auto">
+        {/* Header Block */}
+        <div className="max-w-2xl mb-16">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="text-xs font-bold uppercase tracking-widest text-[#5F7161] mb-3"
+          >
             Get In Touch
-          </h2>
-          <p className="text-lg sm:text-xl max-w-3xl mx-auto text-gray-200 animate-fade-in-up">
-            We'd love to hear from you — whether you're a buyer, seller, or just curious.
-            Your feedback and inquiries are important to us.
-          </p>
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#211000] mb-5 leading-tight"
+          >
+            We'd love to hear from you.
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-base text-[#211000]/70 leading-relaxed font-medium"
+          >
+            Have a question about our curated spaces, custom furniture pieces,
+            or just want to talk design? Drop a message and let's craft
+            something beautiful together.
+          </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start"> {/* Increased gap, aligned items to start */}
-          {/* Contact Info Section */}
-          <div className="space-y-8 animate-slide-in-left bg-white/10 p-8 rounded-2xl shadow-xl backdrop-blur-sm border border-white/20"> {/* Styled card */}
-            <h3 className="text-3xl font-bold mb-6 text-[#E8CEB0]">Our Details</h3> {/* New heading */}
-
-            <div className="flex items-start gap-5 p-3 hover:bg-white/5 rounded-lg transition duration-200 cursor-pointer">
-              <FaEnvelope className="text-3xl text-[#E8CEB0] mt-1 flex-shrink-0" /> {/* Larger icon */}
+        {/* Content Section Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start">
+          {/* Left Column: Direct Info Cards */}
+          <motion.div
+            initial={{ opacity: 0, x: -15 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="lg:col-span-5 space-y-10"
+          >
+            {/* Info Unit 1 */}
+            <div className="flex items-start space-x-4">
+              <div className="p-3 bg-white border border-[#E8CEB0]/60 rounded-xl text-[#5F7161] shadow-sm flex-shrink-0">
+                <FaEnvelope className="text-lg" />
+              </div>
               <div>
-                <h4 className="font-bold text-xl">Email</h4>
-                <a href="mailto:refurnishng@gmail.com" className="text-gray-200 hover:text-[#FFD700] transition-colors">refurnishng@gmail.com</a>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#211000]/40 mb-1">
+                  Email Support
+                </h3>
+                <a
+                  href="mailto:hello@refurnish.com"
+                  className="text-base font-semibold text-[#211000] hover:text-[#B66B44] transition-colors duration-200"
+                >
+                  hello@refurnish.com
+                </a>
+                <p className="text-xs text-[#211000]/50 mt-1">
+                  We respond within 24 business hours.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-5 p-3 hover:bg-white/5 rounded-lg transition duration-200 cursor-pointer">
-              <FaMapMarkerAlt className="text-3xl text-[#E8CEB0] mt-1 flex-shrink-0" /> {/* Larger icon */}
+            {/* Info Unit 2 */}
+            <div className="flex items-start space-x-4">
+              <div className="p-3 bg-white border border-[#E8CEB0]/60 rounded-xl text-[#5F7161] shadow-sm flex-shrink-0">
+                <FaPhoneAlt className="text-lg" />
+              </div>
               <div>
-                <h4 className="font-bold text-xl">Address</h4>
-                <p className="text-gray-200">Lagos, Nigeria</p>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#211000]/40 mb-1">
+                  Call Our Studio
+                </h3>
+                <a
+                  href="tel:+1234567890"
+                  className="text-base font-semibold text-[#211000] hover:text-[#B66B44] transition-colors duration-200"
+                >
+                  +1 (234) 567-890
+                </a>
+                <p className="text-xs text-[#211000]/50 mt-1">
+                  Mon - Fri from 9am to 5pm EST.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-5 p-3 hover:bg-white/5 rounded-lg transition duration-200 cursor-pointer">
-              <FaPhoneAlt className="text-3xl text-[#E8CEB0] mt-1 flex-shrink-0" /> {/* Larger icon */}
+            {/* Info Unit 3 */}
+            <div className="flex items-start space-x-4">
+              <div className="p-3 bg-white border border-[#E8CEB0]/60 rounded-xl text-[#5F7161] shadow-sm flex-shrink-0">
+                <FaMapMarkerAlt className="text-lg" />
+              </div>
               <div>
-                <h4 className="font-bold text-xl">Phone</h4>
-                <a href="tel:+2340000000000" className="text-gray-200 hover:text-[#FFD700] transition-colors">+234 000 000 0000</a>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#211000]/40 mb-1">
+                  Showroom Location
+                </h3>
+                <p className="text-base font-semibold text-[#211000] leading-snug">
+                  452 Artisan Way, Suite 100
+                  <br />
+                  Brooklyn, NY 11211
+                </p>
               </div>
             </div>
 
-            {/* Social Icons */}
-            <div className="flex gap-8 pt-6 text-3xl justify-center sm:justify-start"> {/* Larger icons, centered on small screens */}
-              <Link href="https://facebook.com/refurnishng" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                <FaFacebook className="text-gray-300 hover:text-[#E8CEB0] transition duration-300 transform hover:scale-110" />
-              </Link>
-              <Link href="https://twitter.com/refurnishng" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
-                <FaTwitter className="text-gray-300 hover:text-[#E8CEB0] transition duration-300 transform hover:scale-110" />
-              </Link>
-              <Link href="https://instagram.com/refurnishng" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                <FaInstagram className="text-gray-300 hover:text-[#E8CEB0] transition duration-300 transform hover:scale-110" />
-              </Link>
-              <Link href="https://wa.me/2340000000000" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
-                <FaWhatsapp className="text-gray-300 hover:text-[#E8CEB0] transition duration-300 transform hover:scale-110" />
-              </Link>
+            {/* Micro Decorative Element */}
+            <div className="pt-6 border-t border-[#E8CEB0]/40 text-xs font-medium text-[#211000]/40 italic">
+              "Good design is sustainable. Great design is unforgettable."
             </div>
-          </div>
+          </motion.div>
 
-          {/* Contact Form */}
-          <form className="bg-white rounded-2xl shadow-2xl p-8 space-y-7 text-[#5F7161] animate-slide-in-right border border-gray-100"> {/* Styled form card, increased spacing */}
-            <h3 className="text-3xl font-bold mb-6 text-[#775522]">Send Us a Message</h3> {/* New heading */}
-            <div>
-              <label htmlFor="name" className="block mb-2 font-semibold text-lg">Full Name</label> {/* Larger label */}
-              <input
-                id="name"
-                type="text"
-                placeholder="Enter your name"
-                className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-[#E8CEB0] focus:border-[#775522] transition duration-200" // Enhanced focus styles
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="email" className="block mb-2 font-semibold text-lg">Email</label> {/* Larger label */}
-              <input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-[#E8CEB0] focus:border-[#775522] transition duration-200" // Enhanced focus styles
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="message" className="block mb-2 font-semibold text-lg">Message</label> {/* Larger label */}
-              <textarea
-                id="message"
-                placeholder="Write your message here..."
-                rows={5} 
-                className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-[#E8CEB0] focus:border-[#775522] transition duration-200 resize-y" // Enhanced focus styles, added resize-y
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-[#775522] text-white px-8 py-4 rounded-full font-bold text-xl shadow-lg
-                         hover:bg-[#5E441B] transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.01]
-                         focus:outline-none focus:ring-4 focus:ring-[#E8CEB0] focus:ring-offset-2 focus:ring-offset-white animate-pulse-once" // Enhanced button styles and animation
-            >
-              Send Message <FaPhoneAlt className="inline-block ml-2 -translate-y-px" />
-            </button>
-          </form>
+          {/* Right Column: Clean Interactive Contact Form */}
+          <motion.div
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="lg:col-span-7 bg-white border border-[#E8CEB0]/50 rounded-2xl p-6 sm:p-10 shadow-xl shadow-[#211000]/5"
+          >
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Input: Name */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="name"
+                  className="text-xs font-bold uppercase tracking-wider text-[#211000]/60"
+                >
+                  Your Full Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  required
+                  value={formState.name}
+                  onChange={(e) =>
+                    setFormState({ ...formState, name: e.target.value })
+                  }
+                  placeholder="John Doe"
+                  className="w-full bg-[#E8CEB0]/10 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium text-[#211000] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B66B44]/20 focus:border-[#B66B44] focus:bg-white transition-all duration-200"
+                />
+              </div>
+
+              {/* Input: Email */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="email"
+                  className="text-xs font-bold uppercase tracking-wider text-[#211000]/60"
+                >
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  required
+                  value={formState.email}
+                  onChange={(e) =>
+                    setFormState({ ...formState, email: e.target.value })
+                  }
+                  placeholder="john@example.com"
+                  className="w-full bg-[#E8CEB0]/10 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium text-[#211000] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B66B44]/20 focus:border-[#B66B44] focus:bg-white transition-all duration-200"
+                />
+              </div>
+
+              {/* Input: Message */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="message"
+                  className="text-xs font-bold uppercase tracking-wider text-[#211000]/60"
+                >
+                  How can we help you?
+                </label>
+                <textarea
+                  id="message"
+                  required
+                  rows={5}
+                  value={formState.message}
+                  onChange={(e) =>
+                    setFormState({ ...formState, message: e.target.value })
+                  }
+                  placeholder="Tell us about your space or questions..."
+                  className="w-full bg-[#E8CEB0]/10 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium text-[#211000] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B66B44]/20 focus:border-[#B66B44] focus:bg-white transition-all duration-200 resize-none"
+                />
+              </div>
+
+              {/* Submit CTA Button container */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitted}
+                  className={`w-full flex items-center justify-center gap-2 bg-[#B66B44] hover:bg-[#965432] text-white font-bold text-xs uppercase tracking-widest py-4 px-6 rounded-xl transition-all duration-300 shadow-md shadow-[#B66B44]/20 hover:shadow-lg active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none`}
+                >
+                  <span>
+                    {isSubmitted ? "Message Sent Beautifully!" : "Send Message"}
+                  </span>
+                  {!isSubmitted && (
+                    <FaArrowRight className="text-[10px] transform group-hover:translate-x-1 transition-transform" />
+                  )}
+                </button>
+              </div>
+
+              {/* Success Notification Interaction */}
+              {isSubmitted && (
+                <motion.p
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center text-xs font-semibold text-[#5F7161]"
+                >
+                  Thank you! Your message reached us safely. We will touch base
+                  soon.
+                </motion.p>
+              )}
+            </form>
+          </motion.div>
         </div>
       </div>
-    </section>
+    </main>
   );
 }

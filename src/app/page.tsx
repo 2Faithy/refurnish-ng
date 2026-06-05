@@ -164,7 +164,7 @@ export default function HomePage() {
       buttons: [
         {
           text: "START SELLING",
-          href: "/dashboard/sell",
+          href: "/sell",
           bgColor: "bg-[#91B5B3]",
           hoverBg: "hover:bg-[#7a9d9b]",
           textColor: "text-white",
@@ -180,7 +180,7 @@ export default function HomePage() {
       buttons: [
         {
           text: "SELL NOW",
-          href: "/dashboard/sell",
+          href: "/sell",
           bgColor: "bg-[#5F7161]",
           hoverBg: "hover:bg-[#4d5c4e]",
           textColor: "text-white",
@@ -203,7 +203,7 @@ export default function HomePage() {
         },
         {
           text: "SELL NOW",
-          href: "/dashboard/sell",
+          href: "/sell",
           bgColor: "bg-[#5F7161]",
           hoverBg: "hover:bg-[#4d5c4e]",
           textColor: "text-white",
