@@ -672,12 +672,12 @@ const [paymentError, setPaymentError] = useState("");
                             Delivery Notes (Optional)
                           </label>
                           <textarea
-                            rows={3}
-                            placeholder="Gate code, floor number, special instructions..."
-                            value={deliveryNotes}
-                            onChange={setDeliveryNotes}
-                            className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
-                          />
+  placeholder="Gate code, floor number, special instructions..."
+  value={deliveryNotes}
+  // Change this line:
+  onChange={(e) => setDeliveryNotes(e.target.value)} 
+  className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
+/>
                         </div>
                       </motion.div>
                     )}
