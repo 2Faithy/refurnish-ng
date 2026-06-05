@@ -12,9 +12,9 @@
     "@types/three": "^0.184.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
-    "next": "15.3.5",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "next": "^16.2.7",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-icons": "^5.5.0",
     "react-toastify": "^11.0.5",
     "three": "^0.184.0"
