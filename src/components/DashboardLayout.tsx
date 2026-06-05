@@ -1,28 +1,29 @@
-// File: src/components/Sidebar.tsx
-import React from "react";
+// src/components/DashboardLayout.tsx
+"use client";
 
-// 1. Explicitly define what props Sidebar accepts
-interface SidebarProps {
+import { useState } from "react";
+import Sidebar from "./Sidebar";
+
+interface DashboardLayoutProps {
+  children: React.ReactNode; // <-- Make sure this is here!
   totalUnreadMessages: number;
-  isOpen: boolean;
-  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-// 2. Add the props to the function argument
-export default function Sidebar({
+// Ensure the default export is DashboardLayout
+export default function DashboardLayout({
+  children,
   totalUnreadMessages,
-  isOpen,
-  setIsOpen,
-}: SidebarProps) {
+}: DashboardLayoutProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <aside
-      className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      } transition-transform duration-300 md:relative md:translate-x-0`}
-    >
-      {/* Your sidebar UI code */}
-      <div>Unread Messages: {totalUnreadMessages}</div>
-      <button onClick={() => setIsOpen(false)}>Close Menu</button>
-    </aside>
+    <div className="flex min-h-screen">
+      <Sidebar
+        totalUnreadMessages={totalUnreadMessages}
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+      />
+      <main className="flex-1 p-6 bg-[#F9F9F9]">{children}</main>
+    </div>
   );
 }

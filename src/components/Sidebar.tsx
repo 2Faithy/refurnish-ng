@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import React from "react";
 
 // ── Icons ─────────────────────────────────────────────────────
 const IcGrid = () => (
@@ -174,7 +175,7 @@ const NAV_GROUPS = [
         label: "Messages",
         icon: IcMessage,
         href: "/dashboard/messages",
-        badge: "4",
+        isMessagesLink: true,
       },
       { label: "Saved", icon: IcHeart, href: "/dashboard/saved" },
     ],
@@ -189,11 +190,26 @@ const NAV_GROUPS = [
   },
 ];
 
-export default function Sidebar() {
+// ── TypeScript Interface Definition ───────────────────────────
+interface SidebarProps {
+  totalUnreadMessages: number;
+  isOpen: boolean;
+  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export default function Sidebar({
+  totalUnreadMessages,
+  isOpen,
+  setIsOpen,
+}: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex w-60 flex-shrink-0 flex-col bg-white border-r border-[#EDE0CF] fixed top-16 left-0 bottom-0 z-40 overflow-y-auto">
+    <aside
+      className={`fixed top-16 left-0 bottom-0 z-40 w-60 flex-shrink-0 flex-col bg-white border-r border-[#EDE0CF] overflow-y-auto transition-transform duration-300 lg:translate-x-0 lg:flex ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* ── Navbar gap spacer ── */}
       <div className="h-10 flex-shrink-0 bg-[#FDF8F3] border-b border-[#EDE0CF]" />
 
@@ -246,14 +262,25 @@ export default function Sidebar() {
               {group.label}
             </p>
             <div className="flex flex-col gap-0.5">
-              {group.items.map(({ label, icon: Icon, href, badge }) => {
+              {group.items.map((item) => {
                 const active =
-                  pathname === href ||
-                  (href !== "/dashboard" && pathname.startsWith(href));
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" &&
+                    pathname.startsWith(item.href));
+
+                // Determine display badge value dynamically for messages
+                const displayBadge =
+                  "isMessagesLink" in item && totalUnreadMessages > 0
+                    ? String(totalUnreadMessages)
+                    : "badge" in item
+                    ? item.badge
+                    : null;
+
                 return (
                   <Link
-                    key={label}
-                    href={href}
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)} // Closes mobile drawer on click
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                       active
                         ? "bg-[#F4E8D8] text-[#755210]"
@@ -265,12 +292,12 @@ export default function Sidebar() {
                         active ? "text-[#755210]" : "text-[#A08060]"
                       }`}
                     >
-                      <Icon />
+                      <item.icon />
                     </span>
-                    <span className="flex-1">{label}</span>
-                    {badge && (
+                    <span className="flex-1">{item.label}</span>
+                    {displayBadge && (
                       <span className="w-5 h-5 rounded-full bg-[#755210] text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-                        {badge}
+                        {displayBadge}
                       </span>
                     )}
                     {active && (
@@ -288,6 +315,7 @@ export default function Sidebar() {
       <div className="px-4 pb-6 pt-2 border-t border-[#EDE0CF]">
         <Link
           href="/create-listing"
+          onClick={() => setIsOpen(false)}
           className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#755210] hover:bg-[#9A7235] text-white text-sm font-bold rounded-xl transition-all shadow-sm hover:shadow-md"
         >
           <IcPlus /> Sell an Item
