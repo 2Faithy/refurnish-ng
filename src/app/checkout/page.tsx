@@ -188,24 +188,25 @@ const [paymentError, setPaymentError] = useState("");
     const baseInfoValid = fullName && phone && email && agreeTerms;
     if (!baseInfoValid) return false;
   
-    // 2. Validate based on Delivery Type
+    // 2. Validate delivery address (always required for home delivery)
     if (deliveryType === "delivery") {
       const deliveryValid = address && state && lga;
       if (!deliveryValid) return false;
     }
   
-    // 3. Validate based on Payment Method
-    if (paymentMethod === "card") {
-      const cardValid = cardNumber && cardExpiry && cardCvv && cardName;
-      if (!cardValid) return false;
-    }
-    
-    if (paymentMethod === "transfer") {
-      const transferValid = receiptFile !== null;
-      if (!transferValid) return false;
+    // 3. Only validate payment details when on payment or confirm step
+    if (step === "payment" || step === "confirm") {
+      if (paymentMethod === "card") {
+        const cardValid = cardNumber && cardExpiry && cardCvv && cardName;
+        if (!cardValid) return false;
+      }
+  
+      if (paymentMethod === "transfer") {
+        const transferValid = receiptFile !== null;
+        if (!transferValid) return false;
+      }
     }
   
-    // If it passes all the checks above, unlock the button!
     return true;
   };
 

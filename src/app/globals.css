@@ -931,3 +931,41 @@ html {
   animation: pulseOnce 1s ease-in-out 0.6s forwards; /* Start after other elements appear */
 }
 
+:root,
+[data-theme="light"] {
+  --bg-primary: #FAF4EC;
+  --card-bg: #ffffff;
+  --input-bg: #FAF4EC;
+  --text-primary: #211000;
+  --text-muted: rgba(33, 16, 0, 0.55);
+  --border: rgba(33, 16, 0, 0.08);
+  --toggle-off: rgba(33, 16, 0, 0.15);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #17100b;
+  --card-bg: #21170f;
+  --input-bg: #1b120c;
+  --text-primary: #FAF4EC;
+  --text-muted: rgba(250, 244, 236, 0.58);
+  --border: rgba(250, 244, 236, 0.1);
+  --toggle-off: rgba(250, 244, 236, 0.18);
+}
+
+html,
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+body {
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}

@@ -53,7 +53,7 @@ export default function DiscountModal() {
           {/* Image Section */}
           <div className="w-full md:w-1/2 relative min-h-[200px] md:min-h-[480px]">
             <Image
-              src="/hero-bg-modal-mobile.png"
+              src="/airbnb.jpg"
               alt="Unlock Discount"
               fill
               className="object-cover"

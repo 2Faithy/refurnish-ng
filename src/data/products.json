@@ -134,7 +134,7 @@
     ]
   },
   {
-    "id": 5,
+    "id": 7,
     "slug": "minimalist-boucle-armchair",
     "brand": "NORDIC ASH",
     "title": "Minimalist Bouclé Armchair",
@@ -142,19 +142,19 @@
     "originalPrice": 210000,
     "condition": "Excellent",
     "location": "Victoria Island, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Enveloped in heavily textured, premium cream bouclé fabric. This cloud-shaped profile provides deep physical comfort while keeping a clean design focus.",
     "material": "Bouclé Fabric & Pine Framework",
     "color": "Cream Chalk",
     "dimensions": "85cm x 85cm x 72cm",
     "style": "Cozy neutral",
     "room": "Bedroom",
-    "seller": { "name": "Nneka O.", "rating": "4.9" }
+    "description": "Enveloped in heavily textured, premium cream bouclé fabric. This cloud-shaped profile provides deep physical comfort while keeping a clean design focus.",
+    "seller": { "name": "Nneka O.", "rating": 4.9 },
+    "images": [
+      "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 6,
+    "id": 8,
     "slug": "monolithic-travertine-side-table",
     "brand": "ATELIER STONE",
     "title": "Monolithic Travertine Side Table",
@@ -162,19 +162,19 @@
     "originalPrice": null,
     "condition": "Excellent",
     "location": "Lekki Phase 1, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "A honed un-filled Italian travertine stone table block displaying organic pits and distinct earthy shifts. Adds a heavy geometric focus beside sofas.",
     "material": "Honed Travertine",
     "color": "Beige Ivory",
     "dimensions": "40cm x 40cm x 50cm",
     "style": "Modern luxury",
-    "room": "Living room",
-    "seller": { "name": "Atelier Stone Ltd", "rating": "5.0" }
+    "room": "Living Room",
+    "description": "A honed un-filled Italian travertine stone table block displaying organic pits and distinct earthy shifts. Adds a heavy geometric focus beside sofas.",
+    "seller": { "name": "Atelier Stone Ltd", "rating": 5.0 },
+    "images": [
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 7,
+    "id": 9,
     "slug": "woven-cane-bedroom-credenza",
     "brand": "REFURNISH ATELIER",
     "title": "Woven Cane Bedroom Credenza",
@@ -182,19 +182,19 @@
     "originalPrice": 240000,
     "condition": "Very Good",
     "location": "Ikeja, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "A light ash wood frame supporting four doors featuring meticulous, organic woven cane webbing inserts. High-capacity storage for clothing or workspace linens.",
     "material": "Ash Wood & Rattan Cane",
     "color": "Blonde Ash",
     "dimensions": "160cm x 45cm x 75cm",
     "style": "Scandinavian warm",
     "room": "Bedroom",
-    "seller": { "name": "Bisi & Co.", "rating": "4.6" }
+    "description": "A light ash wood frame supporting four doors featuring meticulous, organic woven cane webbing inserts. High-capacity storage for clothing or workspace linens.",
+    "seller": { "name": "Bisi & Co.", "rating": 4.6 },
+    "images": [
+      "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 8,
+    "id": 10,
     "slug": "sculptural-terracotta-floor-vases",
     "brand": "CLAY & EARTH",
     "title": "Sculptural Terracotta Floor Vases",
@@ -202,19 +202,19 @@
     "originalPrice": 55000,
     "condition": "Excellent",
     "location": "Yaba, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Trio set of varying heights, raw matte finish terracotta earthenware vases. Beautifully displays tall dried pampas branches or structural stems.",
     "material": "Earthenware Clay",
     "color": "Burnt Umber",
     "dimensions": "Varying heights 40cm - 80cm",
     "style": "Contemporary African",
-    "room": "Living room",
-    "seller": { "name": "Clay & Earth", "rating": "4.9" }
+    "room": "Living Room",
+    "description": "Trio set of varying heights, raw matte finish terracotta earthenware vases. Beautifully displays tall dried pampas branches or structural stems.",
+    "seller": { "name": "Clay & Earth", "rating": 4.9 },
+    "images": [
+      "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 9,
+    "id": 11,
     "slug": "floating-oak-workspace-desk",
     "brand": "MAKER'S CO.",
     "title": "Floating Oak Workspace Desk",
@@ -222,19 +222,19 @@
     "originalPrice": 150000,
     "condition": "Excellent",
     "location": "Surulere, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Wall-mounted architectural desk optimizing limited footprint floor layout space. Hidden cable channel routing allows for completely clean screen setups.",
     "material": "Solid Oak Wood",
     "color": "Light Natural Oak",
     "dimensions": "140cm x 60cm x 4cm",
     "style": "Japandi",
     "room": "Workspace",
-    "seller": { "name": "David K.", "rating": "4.8" }
+    "description": "Wall-mounted architectural desk optimizing limited footprint floor layout space. Hidden cable channel routing allows for completely clean screen setups.",
+    "seller": { "name": "David K.", "rating": 4.8 },
+    "images": [
+      "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 10,
+    "id": 12,
     "slug": "brutalist-concrete-pendant-light",
     "brand": "STUDIO ÒKÀ",
     "title": "Brutalist Concrete Pendant Light",
@@ -242,19 +242,19 @@
     "originalPrice": null,
     "condition": "New",
     "location": "Lekki, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1565814329452-e1edd11c5b89?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Cast concrete structure cylinder shade highlighting beautiful surface aggregate imperfections. Suspended via an industrial fine-threaded matte black cord.",
     "material": "Cast Concrete & Aluminum",
     "color": "Raw Slate Gray",
     "dimensions": "15cm Diameter x 30cm H",
     "style": "Afro-minimal",
     "room": "Dining",
-    "seller": { "name": "Studio Òkà", "rating": "4.8" }
+    "description": "Cast concrete structure cylinder shade highlighting beautiful surface aggregate imperfections. Suspended via an industrial fine-threaded matte black cord.",
+    "seller": { "name": "Studio Òkà", "rating": 4.8 },
+    "images": [
+      "https://images.unsplash.com/photo-1565814329452-e1edd11c5b89?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 11,
+    "id": 13,
     "slug": "linen-tufted-boutique-bed-frame",
     "brand": "NORDIC ASH",
     "title": "Linen Tufted Boutique Bed Frame",
@@ -262,19 +262,19 @@
     "originalPrice": 450000,
     "condition": "Excellent",
     "location": "Ikoyi, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Low profile premium king-size bed frame featuring an oversized wrapped headboard cushion element. Gives an instant boutique Airbnb look to master spaces.",
     "material": "Woven Linen & Pine Planks",
     "color": "Sand Dune",
     "dimensions": "King Size (210cm x 220cm)",
     "style": "Cozy neutral",
     "room": "Bedroom",
-    "seller": { "name": "Micheal C.", "rating": "5.0" }
+    "description": "Low profile premium king-size bed frame featuring an oversized wrapped headboard cushion element. Gives an instant boutique Airbnb look to master spaces.",
+    "seller": { "name": "Micheal C.", "rating": 5.0 },
+    "images": [
+      "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 12,
+    "id": 14,
     "slug": "smoked-glass-minimalist-console",
     "brand": "ATELIER STONE",
     "title": "Smoked Glass Minimalist Console",
@@ -282,19 +282,19 @@
     "originalPrice": 180000,
     "condition": "Very Good",
     "location": "Victoria Island, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Slender linear console made from reinforced dark translucent glass sheets. Pairs cleanly inside entrance passages or tight apartment studio dividers.",
     "material": "Tempered Smoked Glass",
     "color": "Translucent Charcoal",
     "dimensions": "120cm x 35cm x 80cm",
     "style": "Modern luxury",
     "room": "Airbnb",
-    "seller": { "name": "Sarah J.", "rating": "4.9" }
+    "description": "Slender linear console made from reinforced dark translucent glass sheets. Pairs cleanly inside entrance passages or tight apartment studio dividers.",
+    "seller": { "name": "Sarah J.", "rating": 4.9 },
+    "images": [
+      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 13,
+    "id": 15,
     "slug": "solid-iroko-block-bench",
     "brand": "LAGOS WEAVE",
     "title": "Solid Iroko Block Bench",
@@ -302,19 +302,19 @@
     "originalPrice": null,
     "condition": "Excellent",
     "location": "Ikorodu, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Substantial structural bench milled from a salvaged deep-grain slab of local Nigerian Iroko hardwood. Smooth matte polyurethane protection seal layer.",
     "material": "Milled Iroko Timber",
     "color": "Golden Honey Amber",
     "dimensions": "150cm x 38cm x 45cm",
     "style": "Contemporary African",
     "room": "Dining",
-    "seller": { "name": "Baba Wasiu Crafts", "rating": "4.8" }
+    "description": "Substantial structural bench milled from a salvaged deep-grain slab of local Nigerian Iroko hardwood. Smooth matte polyurethane protection seal layer.",
+    "seller": { "name": "Baba Wasiu Crafts", "rating": 4.8 },
+    "images": [
+      "https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 14,
+    "id": 16,
     "slug": "japanese-washi-paper-floor-lamp",
     "brand": "NORDIC ASH",
     "title": "Japanese Washi Paper Floor Lamp",
@@ -322,19 +322,19 @@
     "originalPrice": 75000,
     "condition": "Excellent",
     "location": "Yaba, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1617103996166-af14a79d305b?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Traditional iron tripod wire supports hosting a high-grade fibrous mulberry washi paper lantern wrapper. Distributes gorgeous, soft ambient luminescence.",
     "material": "Washi Paper & Black Iron Wire",
     "color": "Warm Rice White",
     "dimensions": "45cm x 45cm x 120cm",
     "style": "Japandi",
-    "room": "Living room",
-    "seller": { "name": "Precious O.", "rating": "4.7" }
+    "room": "Living Room",
+    "description": "Traditional iron tripod wire supports hosting a high-grade fibrous mulberry washi paper lantern wrapper. Distributes gorgeous, soft ambient luminescence.",
+    "seller": { "name": "Precious O.", "rating": 4.7 },
+    "images": [
+      "https://images.unsplash.com/photo-1617103996166-af14a79d305b?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 15,
+    "id": 17,
     "slug": "abstract-monochrome-canvas-art",
     "brand": "REFURNISH ATELIER",
     "title": "Abstract Monochrome Canvas Art",
@@ -342,19 +342,19 @@
     "originalPrice": 95000,
     "condition": "New",
     "location": "Lekki, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Large scale multi-textured plaster and gesso acrylic knife strokes on canvas panel. Framed in a raw un-lacquered light blonde wood thin edge casing profile.",
     "material": "Plaster & Acrylic on Canvas",
     "color": "Chalk & Charcoal Black",
     "dimensions": "100cm x 120cm",
     "style": "Afro-minimal",
     "room": "Workspace",
-    "seller": { "name": "Refurnish Atelier", "rating": "4.9" }
+    "description": "Large scale multi-textured plaster and gesso acrylic knife strokes on canvas panel. Framed in a raw un-lacquered light blonde wood thin edge casing profile.",
+    "seller": { "name": "Refurnish Atelier", "rating": 4.9 },
+    "images": [
+      "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 16,
+    "id": 18,
     "slug": "velvet-curved-lounge-daybed",
     "brand": "STUDIO ÒKÀ",
     "title": "Velvet Curved Lounge Daybed",
@@ -362,19 +362,19 @@
     "originalPrice": 350000,
     "condition": "Excellent",
     "location": "Ikoyi, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Sinuous asymmetric silhouette upholstered in soft structural plush matte velvet finish. Provides an ultimate chic reading accent corner layout.",
     "material": "Cotton Velvet & Steel Legs",
     "color": "Rich Olive Green",
     "dimensions": "180cm x 80cm x 65cm",
     "style": "Modern luxury",
     "room": "Studio",
-    "seller": { "name": "Studio Òkà", "rating": "4.8" }
+    "description": "Sinuous asymmetric silhouette upholstered in soft structural plush matte velvet finish. Provides an ultimate chic reading accent corner layout.",
+    "seller": { "name": "Studio Òkà", "rating": 4.8 },
+    "images": [
+      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 17,
+    "id": 19,
     "slug": "woven-wool-tribal-area-rug",
     "brand": "LAGOS WEAVE",
     "title": "Woven Wool Tribal Area Rug",
@@ -382,19 +382,19 @@
     "originalPrice": 190000,
     "condition": "Very Good",
     "location": "Surulere, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Heavy-pile hand-knotted organic virgin sheep wool showcasing subtle geometric patterns. Yields warm structural ground context across bare stone floor grids.",
     "material": "100% Organic Wool",
     "color": "Cream Ivory & Desert Earth",
     "dimensions": "200cm x 300cm",
     "style": "Contemporary African",
-    "room": "Living room",
-    "seller": { "name": "Alhaji Rugs Emporium", "rating": "4.6" }
+    "room": "Living Room",
+    "description": "Heavy-pile hand-knotted organic virgin sheep wool showcasing subtle geometric patterns. Yields warm structural ground context across bare stone floor grids.",
+    "seller": { "name": "Alhaji Rugs Emporium", "rating": 4.6 },
+    "images": [
+      "https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 18,
+    "id": 20,
     "slug": "matte-black-ergonomic-office-chair",
     "brand": "MAKER'S CO.",
     "title": "Matte Black Ergonomic Office Chair",
@@ -402,19 +402,19 @@
     "originalPrice": 160000,
     "condition": "Excellent",
     "location": "Ikeja, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "High back technical task design featuring responsive lumbar support structures and breathable polymer weave mesh detailing. Zero posture compromises.",
     "material": "Reinforced Mesh & Nylon Base",
     "color": "Stealth Matte Black",
     "dimensions": "65cm x 65cm x 115cm-125cm",
     "style": "Scandinavian warm",
     "room": "Workspace",
-    "seller": { "name": "Tech Furniture Ng", "rating": "4.9" }
+    "description": "High back technical task design featuring responsive lumbar support structures and breathable polymer weave mesh detailing. Zero posture compromises.",
+    "seller": { "name": "Tech Furniture Ng", "rating": 4.9 },
+    "images": [
+      "https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 19,
+    "id": 21,
     "slug": "fluted-white-oak-sideboard",
     "brand": "MAKER'S CO.",
     "title": "Fluted White Oak Sideboard",
@@ -422,19 +422,19 @@
     "originalPrice": 295000,
     "condition": "Excellent",
     "location": "Lekki, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Meticulous structural tambour vertical fluting wrapping around radiused seamless edge panels. Magnetic touch-latches conceal substantial shelf organization layouts.",
     "material": "White Oak Wood Veneer",
     "color": "Bleached Chalk Oak",
     "dimensions": "180cm x 45cm x 80cm",
     "style": "Japandi",
     "room": "Dining",
-    "seller": { "name": "Maker's Co.", "rating": "4.7" }
+    "description": "Meticulous structural tambour vertical fluting wrapping around radiused seamless edge panels. Magnetic touch-latches conceal substantial shelf organization layouts.",
+    "seller": { "name": "Maker's Co.", "rating": 4.7 },
+    "images": [
+      "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 20,
+    "id": 22,
     "slug": "polished-marble-block-coffee-table",
     "brand": "ATELIER STONE",
     "title": "Polished Marble Block Coffee Table",
@@ -442,19 +442,19 @@
     "originalPrice": null,
     "condition": "Excellent",
     "location": "Victoria Island, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Sourced genuine Carrara white marble slab block showcasing bold charcoal stone veins running continuously across waterfall mitered edge seams.",
     "material": "Carrara White Marble",
     "color": "Bright Onyx-Veined White",
     "dimensions": "90cm x 90cm x 32cm",
     "style": "Modern luxury",
-    "room": "Living room",
-    "seller": { "name": "Atelier Stone Ltd", "rating": "5.0" }
+    "room": "Living Room",
+    "description": "Sourced genuine Carrara white marble slab block showcasing bold charcoal stone veins running continuously across waterfall mitered edge seams.",
+    "seller": { "name": "Atelier Stone Ltd", "rating": 5.0 },
+    "images": [
+      "https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 21,
+    "id": 23,
     "slug": "slat-wood-minimalist-bedhead",
     "brand": "REFURNISH ATELIER",
     "title": "Slat Wood Minimalist Bedhead",
@@ -462,19 +462,19 @@
     "originalPrice": 195000,
     "condition": "Very Good",
     "location": "Yaba, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Architectural headboard accent panel formed of vertical walnut structural rods. Creates an immediate sense of scale and heights inside primary bedroom layouts.",
     "material": "Walnut Timber Slats",
     "color": "Warm Roasted Walnut",
     "dimensions": "200cm x 5cm x 130cm",
     "style": "Afro-minimal",
     "room": "Bedroom",
-    "seller": { "name": "Wasiu Studio", "rating": "4.8" }
+    "description": "Architectural headboard accent panel formed of vertical walnut structural rods. Creates an immediate sense of scale and heights inside primary bedroom layouts.",
+    "seller": { "name": "Wasiu Studio", "rating": 4.8 },
+    "images": [
+      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 22,
+    "id": 24,
     "slug": "brass-arc-oversized-floor-lamp",
     "brand": "STUDIO ÒKÀ",
     "title": "Brass Arc Oversized Floor Lamp",
@@ -482,19 +482,19 @@
     "originalPrice": 105000,
     "condition": "Excellent",
     "location": "Ikoyi, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Dramatic cantilevering solid brass structural rod anchored inside a heavy circular premium dark Nero Marquina marble balance weights disk floor block.",
     "material": "Satin Brass & Marble Base",
     "color": "Brushed Gold",
     "dimensions": "160cm Extension Reach x 210cm H",
     "style": "Modern luxury",
-    "room": "Living room",
-    "seller": { "name": "Studio Òkà", "rating": "4.8" }
+    "room": "Living Room",
+    "description": "Dramatic cantilevering solid brass structural rod anchored inside a heavy circular premium dark Nero Marquina marble balance weights disk floor block.",
+    "seller": { "name": "Studio Òkà", "rating": 4.8 },
+    "images": [
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 23,
+    "id": 25,
     "slug": "organic-cotton-waffle-bedding-set",
     "brand": "NORDIC ASH",
     "title": "Organic Cotton Waffle Bedding Set",
@@ -502,19 +502,19 @@
     "originalPrice": 65000,
     "condition": "New",
     "location": "Lekki Phase 2, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Includes 1 heavy waffle duvet casing cover, 1 smooth percale sheet underneath layer, and 4 cozy standard pillowcases. Fully breathable premium comfort fibers.",
     "material": "100% Long-Staple Organic Cotton",
     "color": "Mist Sage Gray",
     "dimensions": "King Size Duvet",
     "style": "Cozy neutral",
     "room": "Bedroom",
-    "seller": { "name": "Luxe Linens Ng", "rating": "5.0" }
+    "description": "Includes 1 heavy waffle duvet casing cover, 1 smooth percale sheet underneath layer, and 4 cozy standard pillowcases. Fully breathable premium comfort fibers.",
+    "seller": { "name": "Luxe Linens Ng", "rating": 5.0 },
+    "images": [
+      "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 24,
+    "id": 26,
     "slug": "sculptural-burnt-ash-dining-chair",
     "brand": "MAKER'S CO.",
     "title": "Sculptural Burnt Ash Dining Chair",
@@ -522,19 +522,19 @@
     "originalPrice": 80000,
     "condition": "Excellent",
     "location": "Surulere, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Deeply expressive curved posture back element treated via traditional wood flame-charring techniques to raise structural carbon fiber grain textures.",
     "material": "Charred Solid Ash Wood",
     "color": "Carbon Charcoal Black",
     "dimensions": "52cm x 50cm x 78cm",
     "style": "Japandi",
     "room": "Dining",
-    "seller": { "name": "Maker's Co.", "rating": "4.7" }
+    "description": "Deeply expressive curved posture back element treated via traditional wood flame-charring techniques to raise structural carbon fiber grain textures.",
+    "seller": { "name": "Maker's Co.", "rating": 4.7 },
+    "images": [
+      "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 25,
+    "id": 27,
     "slug": "compact-modular-credenza-unit",
     "brand": "NORDIC ASH",
     "title": "Compact Modular Credenza Unit",
@@ -542,19 +542,19 @@
     "originalPrice": 155000,
     "condition": "Very Good",
     "location": "Yaba, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Optimized multi-functional layout sideboard ideal for studio flats or Airbnb welcome luggage storage setups. Clean slide-away flush tracked tracks.",
     "material": "Oak Grain Panel System",
     "color": "Warm Honey Oak",
     "dimensions": "110cm x 40cm x 65cm",
     "style": "Scandinavian warm",
     "room": "Studio",
-    "seller": { "name": "Bisi & Co.", "rating": "4.6" }
+    "description": "Optimized multi-functional layout sideboard ideal for studio flats or Airbnb welcome luggage storage setups. Clean slide-away flush tracked tracks.",
+    "seller": { "name": "Bisi & Co.", "rating": 4.6 },
+    "images": [
+      "https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 26,
+    "id": 28,
     "slug": "raw-travertine-pedestal-plinth",
     "brand": "ATELIER STONE",
     "title": "Raw Travertine Pedestal Plinth",
@@ -562,19 +562,19 @@
     "originalPrice": null,
     "condition": "Excellent",
     "location": "Victoria Island, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "An interior gallery pillar designed specifically to showcase art statement sculptures or heavy organic plant pots in empty lounge corners.",
     "material": "Italian Travertine Core Block",
     "color": "Porous Ivory Sand",
     "dimensions": "30cm x 30cm x 90cm",
     "style": "Modern luxury",
-    "room": "Living room",
-    "seller": { "name": "Atelier Stone Ltd", "rating": "5.0" }
+    "room": "Living Room",
+    "description": "An interior gallery pillar designed specifically to showcase art statement sculptures or heavy organic plant pots in empty lounge corners.",
+    "seller": { "name": "Atelier Stone Ltd", "rating": 5.0 },
+    "images": [
+      "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 27,
+    "id": 29,
     "slug": "minimalist-walnut-floating-shelves",
     "brand": "STUDIO ÒKÀ",
     "title": "Minimalist Walnut Floating Shelves",
@@ -582,19 +582,19 @@
     "originalPrice": 50000,
     "condition": "New",
     "location": "Surulere, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1594040226829-7f251ab46d80?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Set of two matching heavy planks with concealed internal wall anchors. Gives books and objects an airy floating appearance across walls.",
     "material": "Solid Walnut Planks",
     "color": "Deep Umber Walnut",
     "dimensions": "80cm x 22cm x 3.5cm each",
     "style": "Afro-minimal",
     "room": "Workspace",
-    "seller": { "name": "Studio Òkà", "rating": "4.8" }
+    "description": "Set of two matching heavy planks with concealed internal wall anchors. Gives books and objects an airy floating appearance across walls.",
+    "seller": { "name": "Studio Òkà", "rating": 4.8 },
+    "images": [
+      "https://images.unsplash.com/photo-1594040226829-7f251ab46d80?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 28,
+    "id": 30,
     "slug": "woven-cord-lounge-armchair",
     "brand": "LAGOS WEAVE",
     "title": "Woven Cord Lounge Armchair",
@@ -602,19 +602,19 @@
     "originalPrice": 130000,
     "condition": "Excellent",
     "location": "Lekki Phase 1, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "Relaxed angular sit-back profile using strong organic cotton flag-line rope cords stretched beautifully across an eco-treated timber framework chassis.",
     "material": "Oak Wood & Cotton Flagline",
     "color": "Charcoal Black & Tan",
     "dimensions": "75cm x 80cm x 70cm",
     "style": "Contemporary African",
-    "room": "Living room",
-    "seller": { "name": "Lagos Weave Studio", "rating": "5.0" }
+    "room": "Living Room",
+    "description": "Relaxed angular sit-back profile using strong organic cotton flag-line rope cords stretched beautifully across an eco-treated timber framework chassis.",
+    "seller": { "name": "Lagos Weave Studio", "rating": 5.0 },
+    "images": [
+      "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 29,
+    "id": 31,
     "slug": "arch-linen-headboard-wall-panel",
     "brand": "REFURNISH ATELIER",
     "title": "Arch Linen Headboard Wall Panel",
@@ -622,19 +622,19 @@
     "originalPrice": 220000,
     "condition": "Excellent",
     "location": "Ikoyi, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "An elegant arched statement backdrop panel system to cleanly ground bed frames. Padded interior density foam provides supreme soft comfort layers.",
     "material": "Flax Linen & High Density Foam",
     "color": "Warm Off-White Biscuit",
     "dimensions": "210cm x 8cm x 150cm",
     "style": "Cozy neutral",
     "room": "Airbnb",
-    "seller": { "name": "Refurnish Atelier", "rating": "4.9" }
+    "description": "An elegant arched statement backdrop panel system to cleanly ground bed frames. Padded interior density foam provides supreme soft comfort layers.",
+    "seller": { "name": "Refurnish Atelier", "rating": 4.9 },
+    "images": [
+      "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   },
   {
-    "id": 30,
+    "id": 32,
     "slug": "minimalist-oak-workspace-credenza",
     "brand": "NORDIC ASH",
     "title": "Minimalist Oak Workspace Credenza",
@@ -642,15 +642,15 @@
     "originalPrice": 240000,
     "condition": "Excellent",
     "location": "Ikeja, Lagos",
-    "images": [
-      "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&h=1066&q=80"
-    ],
-    "description": "A low, elongated storage workspace credenza containing hidden utility grommets for absolute seamless desktop device cord containment setups.",
     "material": "White Oak Core Framework",
     "color": "Natural Blonde Ash",
     "dimensions": "150cm x 42cm x 60cm",
     "style": "Scandinavian warm",
     "room": "Workspace",
-    "seller": { "name": "Tech Furniture Ng", "rating": "4.9" }
+    "description": "A low, elongated storage workspace credenza containing hidden utility grommets for absolute seamless desktop device cord containment setups.",
+    "seller": { "name": "Tech Furniture Ng", "rating": 4.9 },
+    "images": [
+      "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&h=1066&q=80"
+    ]
   }
 ]
