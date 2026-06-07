@@ -214,11 +214,11 @@ export default function Navbar() {
               <FaSearch />
             </button>
 
-            {/* Wishlist Outlined Icon */}
+            {/* Saved Icon */}
             <Link
-              href="/wishlist"
+              href="/saved"
               className={`w-6 h-6 flex items-center justify-center ${BRAND_TEXT_COLOR} hover:${BRAND_COLOR} transition-all duration-200 hover:scale-105 active:scale-95`}
-              aria-label="Wishlist"
+              aria-label="Saved"
             >
               <FaRegHeart className="w-[22px] h-[22px] stroke-[1.5]" />
             </Link>

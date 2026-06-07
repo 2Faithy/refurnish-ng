@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,   
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -344,9 +345,19 @@ export default function AuthPage() {
       </div>
 
       {/* RIGHT */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-5 sm:px-10 py-12 pt-28">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8 flex items-center gap-3 justify-center">
+<div className="w-full lg:w-1/2 flex items-center justify-center px-5 sm:px-10 py-12 pt-28">
+  <div className="w-full max-w-md">
+
+    {/* 👇 Add this back button */}
+    <Link
+      href="/"
+      className="inline-flex items-center gap-2 text-sm font-bold text-[#211000]/50 hover:text-[#B66B44] transition-colors mb-8"
+    >
+      <ArrowLeft className="size-4" />
+      Back to home
+    </Link>
+
+    <div className="lg:hidden mb-8 flex items-center gap-3 justify-center">
             <Image src="/logo.png" alt="Refurnish" width={40} height={40} />
             <span className="font-serif text-2xl tracking-tight">Refurnish</span>
           </div>

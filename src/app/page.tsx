@@ -1,1319 +1,739 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import products from "@/data/products.json";
+import { motion } from "framer-motion";
 import {
-  FaCheck,
-  FaInfoCircle,
-  FaQuestionCircle,
-  FaHeadset,
-  FaEnvelope,
-  FaArrowRight,
-  FaArrowLeft,
-  FaStar,
-  FaCheckCircle,
-  FaHeart,
-} from "react-icons/fa";
-import DiscountModal from "../components/DiscountModal";
+  ArrowLeft,
+  ArrowRight,
+  Heart,
+  ShieldCheck,
+  Truck,
+  CreditCard,
+  CheckCircle2,
+  Sparkles,
+  HelpCircle,
+  MessageCircle,
+  Store,
+  Sofa,
+  BadgeCheck,
+} from "lucide-react";
+
+import DiscountModal from "@/components/DiscountModal";
+import { products, formatNaira } from "@/lib/data";
+
+const heroSlides = [
+  {
+    title: "Find quality pre-loved furniture near you.",
+    description:
+      "Discover curated, gently-used furniture in excellent condition — verified, protected, and ready for your space.",
+    image: "/hero1.jpg",
+    primaryText: "Browse shop",
+    primaryHref: "/shop",
+    secondaryText: "Start selling",
+    secondaryHref: "/sell",
+  },
+  {
+    title: "Furniture buying and selling, made safer.",
+    description:
+      "Buy with escrow protection, sell with confidence, and refresh your home without the usual marketplace stress.",
+    image: "/hero2.jpg",
+    primaryText: "Shop now",
+    primaryHref: "/shop",
+    secondaryText: "How it works",
+    secondaryHref: "#how-it-works",
+  },
+  {
+    title: "Turn unused furniture into money.",
+    description:
+      "List your pre-loved pieces in minutes and connect with serious buyers across Nigeria.",
+    image: "/hero3.jpg",
+    primaryText: "List an item",
+    primaryHref: "/sell",
+    secondaryText: "View dashboard",
+    secondaryHref: "/dashboard",
+  },
+];
 
 const testimonials = [
   {
     id: 1,
     feedback:
-      "The sofa was perfect and in great condition! Buying it was easy with a click of a button and they worked with my schedule for pick up. First time buying with Re-furnish was awesome!",
-    author: "Ifechukwude . E",
+      "The sofa was perfect and in great condition. Buying with Refurnish felt safe and simple.",
+    author: "Ifechukwude E.",
     bgImage: "/testimonial.jpg",
   },
   {
     id: 2,
     feedback:
-      "I was hesitant at first, but Refurnish exceeded my expectations. The dining set looked even better in person, and the delivery was smooth. Highly recommend for quality pre-owned furniture!",
-    author: "Chinedu . O",
+      "The dining set looked even better in person, and delivery was smooth. Highly recommend.",
+    author: "Chinedu O.",
     bgImage: "/testimonial.jpg",
   },
   {
     id: 3,
     feedback:
-      "Fantastic experience! Found exactly what I needed for my bedroom at a fraction of the cost. The team was very helpful and trustworthy. Will definitely use Refurnish again.",
-    author: "Aisha . G",
-    bgImage: "/testimonial.jpg",
-  },
-  {
-    id: 4,
-    feedback:
-      "Selling my old office desk was a breeze with Refurnish. The process was transparent, and I got a fair price. It's a great platform for giving furniture a second life.",
-    author: "Tunde . A",
+      "Found exactly what I needed for my bedroom at a fraction of the cost. Very trustworthy.",
+    author: "Aisha G.",
     bgImage: "/testimonial.jpg",
   },
 ];
 
 const categories = [
-  { id: 1, name: "LIVING", imageUrl: "/living.jpg" },
-  { id: 2, name: "DINING", imageUrl: "/dining.jpg" },
-  { id: 3, name: "BEDROOM", imageUrl: "/bedroom.jpg" },
-  {
-    id: 4,
-    name: "OFFICE",
-    imageUrl:
-      "https://via.placeholder.com/400x400/A79A8F/333333?text=HOME+OFFICE",
-  },
-  {
-    id: 5,
-    name: "OUTDOOR",
-    imageUrl: "https://via.placeholder.com/400x400/968E82/333333?text=OUTDOOR",
-  },
-  {
-    id: 6,
-    name: "KITCHEN",
-    imageUrl: "https://via.placeholder.com/400x400/857D71/333333?text=KITCHEN",
-  },
-  {
-    id: 7,
-    name: "BATHROOM",
-    imageUrl: "https://via.placeholder.com/400x400/746C60/333333?text=BATHROOM",
-  },
-  {
-    id: 8,
-    name: "STORAGE",
-    imageUrl: "https://via.placeholder.com/400x400/635B4F/333333?text=STORAGE",
-  },
+  { name: "Living Room", image: "/living.jpg", href: "/shop?category=Living%20Room" },
+  { name: "Bedroom", image: "/bedroom.jpg", href: "/shop?category=Bedroom" },
+  { name: "Dining", image: "/dining.jpg", href: "/shop?category=Dining" },
+  { name: "Workspace", image: "/workspace.jpg", href: "/shop?category=Office" },
+  { name: "Studio", image: "/studio.jpg", href: "/shop?category=Studio" },
+  { name: "Outdoor", image: "/hero-bg3.png", href: "/shop?category=Outdoor" },
 ];
 
 const articles = [
   {
-    date: "August 30, 2030",
-    title: "How to Design your Home to be Functional",
+    date: "Design Guide",
+    title: "How to design your home to feel functional and warm",
     readTime: "5 mins read",
-    imageUrl:
-      "https://via.placeholder.com/350x250/F0F0EE/333333?text=Article+Image+1", // Replace with your image paths
+    imageUrl: "/hero-bg4.png",
   },
   {
-    date: "Oct 23, 2030",
+    date: "Styling",
     title: "Creating the right mood board for your home space",
     readTime: "7 mins read",
-    imageUrl:
-      "https://via.placeholder.com/350x250/F0F0EE/333333?text=Article+Image+2",
+    imageUrl: "/hero-bg2.png",
   },
   {
-    date: "Nov 20-22, 2030",
-    title: "How to save space in a small home",
+    date: "Small Spaces",
+    title: "How to save space in a compact Nigerian apartment",
     readTime: "6 mins read",
-    imageUrl:
-      "https://via.placeholder.com/350x250/F0F0EE/333333?text=Article+Image+3",
+    imageUrl: "/hero-bg3.png",
   },
 ];
 
-const collectionImages = {
-  newArrivals: "/images/collection-new-arrivals.jpg",
-  kidsFashion: "/images/collection-kids-fashion.jpg",
-  womenLingerie: "/images/collection-women-lingerie.jpg",
-  classic: "/images/collection-classic.jpg",
-  vintageFinds: "/images/collection-vintage-finds.jpg",
-  outdoorLiving: "/images/collection-outdoor-living.jpg",
-  homeDecor: "/images/collection-home-decor.jpg",
-  bedroomEssentials: "/images/collection-bedroom-essentials.jpg",
+const fadeUp = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0 },
 };
 
 export default function HomePage() {
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
-  const [currentTopPickSlide, setCurrentTopPickSlide] = useState(0);
-  const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [currentCollectionIndex, setCurrentCollectionIndex] = useState(0);
+  const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0);
+  const [liked, setLiked] = useState([]);
 
-  const heroSlides = [
-    {
-      title: "Find Quality Pre-Owned Furniture Near You",
-      description:
-        "Discover unique, gently used furniture in excellent condition, near you, at unbeatable prices.",
-      image: "/hero1.jpg",
-      textColor: "text-white",
-      buttons: [
-        {
-          text: "BROWSE",
-          href: "/shop",
-          bgColor: "bg-[#91B5B3]",
-          hoverBg: "hover:bg-[#7a9d9b]",
-          textColor: "text-white",
-        },
-      ],
-    },
-    {
-      title: "Simplifying Furniture Buying & Selling in Lagos",
-      description:
-        "A seamless, safe, and efficient marketplace where you can declutter, furnish, and refresh your space with ease.",
-      image: "/hero2.jpg",
-      textColor: "text-white",
-      buttons: [
-        {
-          text: "SHOP NOW",
-          href: "/shop",
-          bgColor: "bg-[#5F7161]",
-          hoverBg: "hover:bg-[#4d5c4e]",
-          textColor: "text-white",
-        },
-      ],
-    },
-    {
-      title: "Turn Your Unused Furniture To Cash Today!",
-      description:
-        "Unlock the value of your unused items and earn extra cash with just a few clicks.",
-      image: "/hero3.jpg",
-      textColor: "text-white",
-      buttons: [
-        {
-          text: "START SELLING",
-          href: "/sell",
-          bgColor: "bg-[#91B5B3]",
-          hoverBg: "hover:bg-[#7a9d9b]",
-          textColor: "text-white",
-        },
-      ],
-    },
-    {
-      title: "Declutter Your Space, Earn Extra Cash!",
-      description:
-        "Ready to part with your pre-loved furniture? List it effortlessly and connect with eager buyers in Lagos.",
-      image: "/hero4.jpg",
-      textColor: "text-white",
-      buttons: [
-        {
-          text: "SELL NOW",
-          href: "/sell",
-          bgColor: "bg-[#5F7161]",
-          hoverBg: "hover:bg-[#4d5c4e]",
-          textColor: "text-white",
-        },
-      ],
-    },
-    {
-      title: "Your Ultimate Furniture Marketplace",
-      description:
-        "Whether you're furnishing a new home or giving old pieces a new life, find or sell exactly what you need with ease.",
-      image: "/hero5.jpg",
-      textColor: "text-white",
-      buttons: [
-        {
-          text: "SHOP NOW",
-          href: "/shop",
-          bgColor: "bg-[#5F7161]",
-          hoverBg: "hover:bg-[#4d5c4e]",
-          textColor: "text-white",
-        },
-        {
-          text: "SELL NOW",
-          href: "/sell",
-          bgColor: "bg-[#5F7161]",
-          hoverBg: "hover:bg-[#4d5c4e]",
-          textColor: "text-white",
-        },
-      ],
-    },
-  ];
-
-  const collections = [
-    {
-      name: "New arrivals",
-      image: collectionImages.newArrivals,
-      alt: "Man smiling in a light blue shirt",
-      href: "/shop?category=new-arrivals",
-    },
-    {
-      name: "Kids furniture",
-      image: collectionImages.kidsFashion,
-      alt: "Young girl in a red dress and hat",
-      href: "/shop?category=kids-furniture",
-    },
-    {
-      name: "Sofa",
-      image: collectionImages.womenLingerie,
-      alt: "Woman in red lingerie",
-      href: "/shop?category=sofa",
-    },
-    {
-      name: "Home Deco",
-      image: collectionImages.classic,
-      alt: "Boy in a red hoodie and sunglasses",
-      href: "/shop?category=home-deco",
-    },
-    {
-      name: "Office Furniture",
-      image: collectionImages.vintageFinds,
-      alt: "Vintage furniture in a cozy room",
-      href: "/shop?category=office-furniture",
-    },
-    {
-      name: "Beds",
-      image: collectionImages.outdoorLiving,
-      alt: "Outdoor patio furniture",
-      href: "/shop?category=beds",
-    },
-    {
-      name: "Chairs",
-      image: collectionImages.homeDecor,
-      alt: "Stylish home decor items",
-      href: "/shop?category=chairs",
-    },
-    {
-      name: "Tables",
-      image: collectionImages.bedroomEssentials,
-      alt: "Cozy bedroom setup with bed",
-      href: "/shop?category=tables",
-    },
-  ];
-
-  const topPicks = [
-    {
-      id: "tp1",
-      name: "Asymmetrical Sofa",
-      image: "/asymmetrical-sofa.png",
-      price: 150000,
-      oldPrice: 400000,
-      quantity: 1,
-      deliveryOff: 8000,
-    },
-    {
-      id: "tp2",
-      name: "Round Coffee Table",
-      image: "/round-coffee-table.png",
-      price: 45000,
-      oldPrice: 50000,
-      quantity: 1,
-      deliveryOff: 5000,
-    },
-    {
-      id: "tp3",
-      name: "Modern Armchair",
-      image: "/modern-armchair.png",
-      price: 90000,
-      oldPrice: 250000,
-      quantity: 1,
-      deliveryOff: 7000,
-    },
-    {
-      id: "tp4",
-      name: "Elegant Bookshelf",
-      image: "/elegant-bookshelf.png",
-      price: 120000,
-      oldPrice: 300000,
-      quantity: 1,
-      deliveryOff: 10000,
-    },
-    {
-      id: "tp5",
-      name: "Vintage Dresser",
-      image: "/vintage-dresser.png",
-      price: 80000,
-      oldPrice: 200000,
-      quantity: 1,
-      deliveryOff: 6000,
-    },
-    {
-      id: "tp6",
-      name: "Dining Chairs (Set of 4)",
-      image: "/dining-chairs.png",
-      price: 180000,
-      oldPrice: 450000,
-      quantity: 1,
-      deliveryOff: 12000,
-    },
-    {
-      id: "tp7",
-      name: "Minimalist Bed Frame",
-      image: "/minimalist-bed-frame.png",
-      price: 200000,
-      oldPrice: 500000,
-      quantity: 1,
-      deliveryOff: 15000,
-    },
-    {
-      id: "tp8",
-      name: "Study Desk",
-      image: "/study-desk.png",
-      price: 60000,
-      oldPrice: 150000,
-      quantity: 1,
-      deliveryOff: 4000,
-    },
-    {
-      id: "tp9",
-      name: "Velvet Pouffe",
-      image: "/velvet-pouffe.png",
-      price: 35000,
-      oldPrice: 80000,
-      quantity: 1,
-      deliveryOff: 3000,
-    },
-    {
-      id: "tp10",
-      name: "Glass Display Cabinet",
-      image: "/glass-cabinet.png",
-      price: 170000,
-      oldPrice: 420000,
-      quantity: 1,
-      deliveryOff: 11000,
-    },
-    {
-      id: "tp11",
-      name: "Outdoor Lounge Set",
-      image: "/outdoor-lounge-set.png",
-      price: 300000,
-      oldPrice: 700000,
-      quantity: 1,
-      deliveryOff: 20000,
-    },
-    {
-      id: "tp12",
-      name: "Accent Side Table",
-      image: "/accent-side-table.png",
-      price: 55000,
-      oldPrice: 130000,
-      quantity: 1,
-      deliveryOff: 4500,
-    },
-  ];
-
-  const collectionsPerPage = 4;
-  const topPicksPerPage = 3;
-
-  const nextCollection = () => {
-    setCurrentCollectionIndex((prevIndex) => {
-      const maxIndex = collections.length - collectionsPerPage;
-      return prevIndex + 1 > maxIndex ? maxIndex : prevIndex + 1;
-    });
-  };
-
-  const prevCollection = () => {
-    setCurrentCollectionIndex((prevIndex) => {
-      return prevIndex - 1 < 0 ? 0 : prevIndex - 1;
-    });
-  };
-
-  const isPrevDisabled = currentCollectionIndex === 0;
-  const isNextDisabled =
-    currentCollectionIndex >= collections.length - collectionsPerPage;
-
-  const handleHeroSlideChange = (newSlide: number) => {
-    if (newSlide !== currentHeroSlide) {
-      setCurrentHeroSlide(newSlide);
-    }
-  };
-
-  const handleTopPickSlideChange = (newSlide: number) => {
-    if (newSlide !== currentTopPickSlide) {
-      setCurrentTopPickSlide(newSlide);
-    }
-  };
-
-  const nextTopPickSlide = () => {
-    setCurrentTopPickSlide(
-      (prev) => (prev + 1) % Math.ceil(topPicks.length / topPicksPerPage)
-    );
-  };
-
-  const prevTopPickSlide = () => {
-    setCurrentTopPickSlide(
-      (prev) =>
-        (prev - 1 + Math.ceil(topPicks.length / topPicksPerPage)) %
-        Math.ceil(topPicks.length / topPicksPerPage)
-    );
-  };
+  const topPicks = useMemo(() => products.slice(0, 4), []);
 
   useEffect(() => {
-    const heroTimer = setInterval(() => {
-      handleHeroSlideChange((currentHeroSlide + 1) % heroSlides.length);
-    }, 6000);
-    return () => clearInterval(heroTimer);
-  }, [currentHeroSlide, heroSlides.length]);
+    const timer = setInterval(() => {
+      setCurrentHeroSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 6500);
 
-  useEffect(() => {
-    const topPickTimer = setInterval(() => {
-      nextTopPickSlide();
-    }, 7000);
-    return () => clearInterval(topPickTimer);
-  }, [currentTopPickSlide, topPicks.length]);
-
-  useEffect(() => {
-    const modalTimer = setTimeout(() => {
-      setShowDiscountModal(true);
-    }, 1000);
-    return () => clearTimeout(modalTimer);
+    return () => clearInterval(timer);
   }, []);
 
-  const handleCloseModal = () => {
-    setShowDiscountModal(false);
-  };
-
-  const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0);
-
-  // useEffect to handle automatic sliding
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonialIndex(
-        (prevIndex) => (prevIndex + 1) % testimonials.length
-      );
-    }, 10000); // Change slide every 10 seconds (10000 ms)
+    const timer = setInterval(() => {
+      setCurrentTestimonialIndex((prev) => (prev + 1) % testimonials.length);
+    }, 9000);
 
-    return () => clearInterval(interval); // Clean up the interval on component unmount
-  }, [testimonials.length]); // Re-run effect if testimonials length changes
+    return () => clearInterval(timer);
+  }, []);
 
+  const currentHero = heroSlides[currentHeroSlide];
   const currentTestimonial = testimonials[currentTestimonialIndex];
 
-  return (
-    <div className="font-sans text-[#5F7161]">
-      <DiscountModal show={showDiscountModal} onClose={handleCloseModal} />
+  const toggleLike = (id) => {
+    setLiked((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
-      <section className="w-full min-h-screen relative overflow-hidden">
+  return (
+    <main className="bg-[#FAF4EC] text-[#211000] font-sans antialiased overflow-hidden">
+      <DiscountModal />
+
+      {/* ================= HERO ================= */}
+      <section className="relative min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0">
           {heroSlides.map((slide, index) => (
-            <div
-              key={index}
-              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 ease-in-out ${
-                currentHeroSlide === index ? "opacity-100" : "opacity-0"
-              }`}
-              style={{
-                backgroundImage: `url(${slide.image})`,
-                filter: "brightness(0.9)",
-              }}
+            <motion.div
+              key={slide.title}
+              initial={false}
+              animate={{ opacity: currentHeroSlide === index ? 1 : 0 }}
+              transition={{ duration: 0.9, ease: "easeInOut" }}
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${slide.image})` }}
             >
-              <div className="absolute inset-0 bg-black/30"></div>
-            </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#211000]/75 via-[#211000]/45 to-[#211000]/15" />
+            </motion.div>
           ))}
         </div>
 
-        <div className="relative z-10 max-w-screen-xl mx-auto px-4 sm:px-8 lg:px-16 flex flex-col items-center justify-center min-h-screen text-center">
-          <div
-            className={`max-w-4xl pt-24 pb-16 transition-opacity duration-500`}
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-8 lg:px-16 pt-28 pb-20">
+          <motion.div
+            key={currentHero.title}
+            initial="hidden"
+            animate="show"
+            variants={{ show: { transition: { staggerChildren: 0.12 } } }}
+            className="max-w-3xl"
           >
-            <h1
-              className={`text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight ${heroSlides[currentHeroSlide].textColor} transition-colors duration-500`}
-              style={{
-                textShadow: "2px 2px 4px rgba(0,0,0,0.5)",
-              }}
+            <motion.div
+              variants={fadeUp}
+              className="inline-flex items-center gap-2 rounded-full bg-[#FAF4EC]/15 border border-[#FAF4EC]/20 backdrop-blur-sm px-4 py-2 mb-6"
             >
-              {heroSlides[currentHeroSlide].title}
-            </h1>
+              <Sparkles className="size-3.5 text-[#E8CEB0]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#FAF4EC]">
+                Pre-loved. Re-loved.
+              </span>
+            </motion.div>
 
-            <div className="overflow-hidden mb-10">
-              <p
-                className={`text-xl md:text-2xl leading-8 max-w-3xl mx-auto ${heroSlides[currentHeroSlide].textColor} transition-colors duration-500`}
-                style={{
-                  textShadow: "1px 1px 3px rgba(0,0,0,0.5)",
-                }}
+            <motion.h1
+              variants={fadeUp}
+              className="font-serif text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.02] text-[#FAF4EC]"
+            >
+              {currentHero.title}
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              className="mt-6 text-base sm:text-lg text-[#FAF4EC]/80 leading-relaxed font-medium max-w-xl"
+            >
+              {currentHero.description}
+            </motion.p>
+
+            <motion.div
+              variants={fadeUp}
+              className="mt-10 flex flex-col sm:flex-row gap-3"
+            >
+              <Link
+                href={currentHero.primaryHref}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#B66B44] hover:bg-[#a05934] text-white px-7 py-4 text-xs font-bold uppercase tracking-wider transition-colors shadow-md shadow-[#B66B44]/20"
               >
-                {heroSlides[currentHeroSlide].description}
-              </p>
-            </div>
+                {currentHero.primaryText}
+                <ArrowRight className="size-4" />
+              </Link>
 
-            <div className="flex justify-center flex-wrap gap-6">
-              {heroSlides[currentHeroSlide].buttons.map((button, index) => (
-                <Link
-                  key={index}
-                  href={button.href}
-                  className={`relative inline-block ${button.bgColor} ${button.hoverBg} ${button.textColor} px-10 py-4 rounded-md shadow-xl font-bold text-lg transition-all duration-300 transform hover:scale-[1.03] uppercase`}
-                >
-                  {button.text}
-                </Link>
-              ))}
-            </div>
-          </div>
+              <Link
+                href={currentHero.secondaryHref}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FAF4EC]/15 hover:bg-[#FAF4EC]/25 border border-[#FAF4EC]/25 text-[#FAF4EC] px-7 py-4 text-xs font-bold uppercase tracking-wider transition-colors backdrop-blur-sm"
+              >
+                {currentHero.secondaryText}
+              </Link>
+            </motion.div>
+          </motion.div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex space-x-3">
+        {/* Dots */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
           {heroSlides.map((_, index) => (
             <button
               key={index}
-              onClick={() => handleHeroSlideChange(index)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+              onClick={() => setCurrentHeroSlide(index)}
+              className={`h-2 rounded-full transition-all ${
                 currentHeroSlide === index
-                  ? "bg-white scale-125"
-                  : "bg-white/50 hover:bg-white"
+                  ? "w-8 bg-[#FAF4EC]"
+                  : "w-2 bg-[#FAF4EC]/50 hover:bg-[#FAF4EC]"
               }`}
-              aria-label={`Go to slide ${index + 1}`}
+              aria-label={`Go to hero slide ${index + 1}`}
             />
           ))}
         </div>
       </section>
 
-      <style jsx>{`
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
+      {/* ================= TOP PICKS ================= */}
+      <section className="py-20 sm:py-28 px-4 sm:px-8 lg:px-16">
+        <div className="max-w-7xl mx-auto">
+          <SectionHeader
+            eyebrow="Curated finds"
+            title="Top picks for a softer landing."
+            description="Editorial furniture pieces selected for comfort, quality, and beautiful everyday living."
+            href="/shop"
+            cta="View all"
+          />
 
-        .animate-float {
-          animation: float 4s ease-in-out infinite;
-        }
-      `}</style>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12 mt-10">
+            {topPicks.map((product) => {
+              const isLiked = liked.includes(product.id);
 
-      <section className="min-h-screen flex items-center bg-[#F6F1EB] py-16 px-4 sm:px-8 lg:px-16">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-[#5F7161] mb-4">
-              Our Top Picks
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-serif">
-              Curated just for you. Discover exceptional furniture handpicked by
-              our experts.
-            </p>
-          </div>
+              return (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.45 }}
+                  className="group"
+                >
+                  <Link href={`/product/${product.slug}`} className="block">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-white border border-[#211000]/5 shadow-sm">
+                      <img
+                        src={product.images?.[0]}
+                        alt={product.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
 
-          <div className="relative">
-            <div className="overflow-hidden">
-              <div
-                className="flex transition-transform duration-700 ease-in-out"
-                style={{
-                  transform: `translateX(-${
-                    currentTopPickSlide *
-                    (100 / Math.min(topPicks.length, topPicksPerPage))
-                  }%)`,
-                }}
-              >
-                {topPicks.map((product, index) => {
-                  const percentageOff = product.oldPrice
-                    ? Math.round(
-                        ((product.oldPrice - product.price) /
-                          product.oldPrice) *
-                          100
-                      )
-                    : 0;
+                      <span className="absolute bottom-3 left-3 bg-[#E8CEB0] text-[#211000] text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
+                        {product.condition}
+                      </span>
 
-                  return (
-                    <Link
-                      href={`/product/${product.id}`}
-                      key={product.id}
-                      className="flex-shrink-0 w-full sm:w-1/2 lg:w-1/3 p-4 group"
-                    >
-                      <div className="bg-[#FFFDFB] rounded-2xl overflow-hidden shadow-lg transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer">
-                        <div className="relative h-72 bg-[#fbe7dc]">
-                          <Image
-                            src={product.image}
-                            alt={product.name}
-                            fill
-                            className="object-contain"
-                          />
-                          <div className="absolute top-4 left-4 bg-[#8E4B35] text-white px-3 py-1 rounded-sm text-xs font-serif">
-                            ₦{product.deliveryOff.toLocaleString()} off delivery
-                          </div>
-                          <button className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md text-gray-400 hover:text-red-500 transition-colors duration-200">
-                            <FaHeart className="w-5 h-5" />
-                          </button>
-                        </div>
-
-                        <div className="p-6 text-center font-serif text-[#5F7161]">
-                          <h3 className="text-xl md:text-2xl font-normal mb-1">
-                            {product.name}
-                          </h3>
-                          <p className="text-xl md:text-2xl font-bold mb-2 flex items-center justify-center gap-2">
-                            ₦{product.price.toLocaleString()}
-                            {product.oldPrice && (
-                              <span className="text-sm text-gray-500 line-through font-normal">
-                                ₦{product.oldPrice.toLocaleString()}
-                              </span>
-                            )}
-                            <span className="text-base font-normal">
-                              • Qty: {product.quantity}
-                            </span>
-                          </p>
-                          <div className="text-sm flex items-center justify-center gap-2 text-gray-600">
-                            <span>
-                              Est retail: ₦{product.oldPrice.toLocaleString()}
-                            </span>
-                            {percentageOff > 0 && (
-                              <span className="text-green-600 font-semibold">
-                                {percentageOff}% off
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button
-              onClick={prevTopPickSlide}
-              className={`absolute top-1/2 left-0 transform -translate-y-1/2 bg-white rounded-full p-3 shadow-md transition-all duration-300 hover:scale-110 ${
-                currentTopPickSlide === 0
-                  ? "opacity-50 cursor-not-allowed"
-                  : "opacity-100"
-              }`}
-              disabled={currentTopPickSlide === 0}
-            >
-              <FaArrowLeft className="w-5 h-5 text-[#775522]" />
-            </button>
-            <button
-              onClick={nextTopPickSlide}
-              className={`absolute top-1/2 right-0 transform -translate-y-1/2 bg-white rounded-2xl p-3 shadow-md transition-all duration-300 hover:scale-110 ${
-                currentTopPickSlide ===
-                Math.ceil(topPicks.length / topPicksPerPage) - 1
-                  ? "opacity-50 cursor-not-allowed"
-                  : "opacity-100"
-              }`}
-              disabled={
-                currentTopPickSlide ===
-                Math.ceil(topPicks.length / topPicksPerPage) - 1
-              }
-            >
-              <FaArrowRight className="w-5 h-5 text-[#775522]" />
-            </button>
-
-            <div className="flex justify-center mt-8 space-x-2">
-              {Array.from({
-                length: Math.ceil(topPicks.length / topPicksPerPage),
-              }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleTopPickSlideChange(index)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    currentTopPickSlide === index
-                      ? "bg-[#8E4B35]"
-                      : "bg-gray-300 hover:bg-gray-400"
-                  }`}
-                  aria-label={`Go to Top Pick slide ${index + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="min-h-screen flex items-center py-16 px-4 sm:px-8 lg:px-16"
-        style={{ backgroundColor: "#F0F0EE" }}
-      >
-        <div className="max-w-4xl mx-auto w-full text-center">
-          {/* Headline - Using a serif font (or simulating one) and a dark color */}
-          <h2
-            className="text-4xl md:text-5xl font-serif font-bold text-gray-800 mb-8"
-            style={{ fontFamily: "Georgia, serif", color: "#333333" }}
-          >
-            Meet Refurnish
-          </h2>
-
-          {/* Body Text */}
-          <p
-            className="text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto mb-10"
-            style={{ color: "#4A4A4A" }}
-          >
-            A marketplace for furniture and décor — built for everyday
-            Nigerians, reshaping how we buy and sell with quality,
-            affordability, and trust at the core.
-          </p>
-
-          {/* Separator Line (Light Teal/Green) */}
-          <div
-            className="w-16 h-0.5 bg-gray-400 mx-auto mb-10"
-            style={{ backgroundColor: "#A2C2B9" }}
-          ></div>
-
-          {/* Checklist - No explicit box/shadow in the image, just centered text */}
-          <div className="max-w-xl mx-auto">
-            <ul className="text-center space-y-4 text-gray-700 text-lg">
-              <li className="flex items-center justify-center">
-                {/* Using a subtle green checkmark */}
-                <span className="text-lg mr-3" style={{ color: "#A2C2B9" }}>
-                  ✓
-                </span>{" "}
-                Your money safe, no mago-mago.
-              </li>
-              <li className="flex items-center justify-center">
-                <span className="text-lg mr-3" style={{ color: "#A2C2B9" }}>
-                  ✓
-                </span>{" "}
-                Pocket-friendly prices, better value for your space.
-              </li>
-              <li className="flex items-center justify-center">
-                <span className="text-lg mr-3" style={{ color: "#A2C2B9" }}>
-                  ✓
-                </span>{" "}
-                Professional delivery service, zero wahala.
-              </li>
-              <li className="flex items-center justify-center">
-                <span className="text-lg mr-3" style={{ color: "#A2C2B9" }}>
-                  ✓
-                </span>{" "}
-                Deals wey sure, quality guaranteed.
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#8B2C24] h-screen flex items-center py-16 px-4 sm:px-8 lg:px-16 text-white text-center">
-        <div className="max-w-7xl mx-auto w-full">
-          <h2
-            className="text-4xl md:text-5xl font-extrabold mb-12 uppercase"
-            style={{ fontFamily: "Georgia, serif", letterSpacing: "0.05em" }}
-          >
-            How Refurnish Works
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-            {/* Step 1: Shop */}
-            <div className="flex flex-col items-center">
-              {/* ICON 1: Shop - CORRECTED PATH */}
-              <div className="w-24 h-24 mb-4 flex items-center justify-center">
-                <img
-                  src="/icon1.png"
-                  alt="Shop Icon"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3
-                className="text-2xl font-bold mb-2"
-                style={{ fontFamily: "Georgia, serif" }}
-              >
-                Shop
-              </h3>
-              <p className="text-sm px-4 leading-relaxed opacity-90">
-                Shop for the Perfect Pre-Owned Pieces from Verified Local
-                Sellers
-              </p>
-            </div>
-
-            {/* Step 2: Pay */}
-            <div className="flex flex-col items-center">
-              {/* ICON 2: Pay - CORRECTED PATH */}
-              <div className="w-24 h-24 mb-4 flex items-center justify-center">
-                <img
-                  src="/icon2.png"
-                  alt="Pay Icon"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3
-                className="text-2xl font-bold mb-2"
-                style={{ fontFamily: "Georgia, serif" }}
-              >
-                Pay
-              </h3>
-              <p className="text-sm px-4 leading-relaxed opacity-90">
-                Securely Purchase and Pay Online
-              </p>
-            </div>
-
-            {/* Step 3: Deliver */}
-            <div className="flex flex-col items-center">
-              {/* ICON 3: Deliver - CORRECTED PATH */}
-              <div className="w-24 h-24 mb-4 flex items-center justify-center">
-                <img
-                  src="/icon3.png"
-                  alt="Deliver Icon"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3
-                className="text-2xl font-bold mb-2"
-                style={{ fontFamily: "Georgia, serif" }}
-              >
-                Deliver
-              </h3>
-              <p className="text-sm px-4 leading-relaxed opacity-90">
-                Select Delivery or In-Person Pickup
-              </p>
-            </div>
-
-            {/* Step 4: Confidence */}
-            <div className="flex flex-col items-center">
-              {/* ICON 4: Confidence - CORRECTED PATH */}
-              <div className="w-24 h-24 mb-4 flex items-center justify-center">
-                <img
-                  src="/icon4.png"
-                  alt="Confidence Icon"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3
-                className="text-2xl font-bold mb-2"
-                style={{ fontFamily: "Georgia, serif" }}
-              >
-                Confidence
-              </h3>
-              <p className="text-sm px-4 leading-relaxed opacity-90">
-                Shop Confidently with Refurnish's Buyer Money-back Guarantee
-              </p>
-            </div>
-          </div>
-
-          {/* Read our FAQs link */}
-          <a
-            href="#"
-            className="inline-flex items-center text-lg font-semibold border-b-2 border-white pb-1 hover:border-transparent transition duration-300 ease-in-out"
-          >
-            Read our FAQs
-            <span className="ml-2">→</span>
-          </a>
-        </div>
-      </section>
-
-      <section className="bg-white py-16 px-4 sm:px-8 lg:px-16">
-        <div className="max-w-7xl mx-auto text-center">
-          <h2
-            className="text-4xl md:text-5xl font-serif font-bold text-gray-800 mb-12"
-            style={{ fontFamily: "Georgia, serif", color: "#333333" }}
-          >
-            Shop by Category
-          </h2>
-
-          {/* CAROUSEL CONTAINER */}
-          <div className="relative flex items-center justify-center">
-            {/* Left Arrow (Previous Slide Button) */}
-            {/* You'll need to attach a click handler here to shift the category data */}
-            <button className="absolute left-0 z-20 p-2 rounded-full bg-white bg-opacity-70 shadow-lg -ml-4 focus:outline-none hover:bg-opacity-100 transition">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-gray-700"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </button>
-
-            {/* SLIDER VIEWPORT */}
-            <div className="overflow-hidden w-full max-w-6xl mx-auto">
-              {/* SLIDE TRACK (You will apply translations/transforms to this element in JS) */}
-              <div
-                className="flex transition-transform duration-500 ease-in-out"
-                // IMPORTANT: This inline style ensures only 3 cards are visible
-                style={{ transform: "translateX(0%)" }}
-              >
-                {categories.map((category) => (
-                  <div
-                    key={category.id}
-                    // CRUCIAL: w-1/3 ensures exactly 3 items fit the container width
-                    className="w-full md:w-1/3 p-4 flex-none"
-                  >
-                    <div
-                      style={{ height: "400px" }}
-                      className={`rounded-2xl overflow-hidden shadow-xl transform transition-transform duration-300 hover:scale-[1.02] cursor-pointer`}
-                    >
-                      <div className="relative h-full">
-                        <img
-                          src={category.imageUrl}
-                          alt={category.name}
-                          className="w-full h-full object-cover"
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleLike(product.id);
+                        }}
+                        className="absolute top-3 right-3 size-9 rounded-full bg-white/90 backdrop-blur grid place-items-center text-[#211000]/50 hover:text-red-500 transition-colors shadow-sm"
+                        aria-label="Save item"
+                      >
+                        <Heart
+                          className={`size-4 ${
+                            isLiked ? "fill-red-500 text-red-500" : ""
+                          }`}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
-                        <p className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-white text-xl font-semibold uppercase tracking-wider">
-                          {category.name}
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#211000]/45 truncate">
+                          {product.brand}
+                        </p>
+                        <h3 className="font-serif text-lg font-medium tracking-tight truncate mt-0.5">
+                          {product.title}
+                        </h3>
+                        <p className="mt-1 text-[11px] text-[#211000]/45 font-medium flex items-center gap-1">
+                          <BadgeCheck className="size-3 text-[#5F7161]" />
+                          Verified · {product.location}
                         </p>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Right Arrow (Next Slide Button) */}
-            {/* You'll need to attach a click handler here to shift the category data */}
-            <button className="absolute right-0 z-20 p-2 rounded-full bg-white bg-opacity-70 shadow-lg -mr-4 focus:outline-none hover:bg-opacity-100 transition">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-gray-700"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold">
+                          {formatNaira(product.price)}
+                        </p>
+                        {product.originalPrice && (
+                          <p className="text-[10px] text-[#211000]/35 line-through font-medium">
+                            {formatNaira(product.originalPrice)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <section className="bg-white py-20 px-4 sm:px-8 lg:px-16">
+      {/* ================= STYLE QUIZ CTA — LIKE YOUR IMAGE ================= */}
+      <section className="px-4 sm:px-8 lg:px-16 pb-20 sm:pb-28">
         <div className="max-w-7xl mx-auto">
-          {/* Header Block: Title and Link */}
-          <div className="flex justify-between items-end mb-12">
-            <h2
-              className="text-4xl md:text-5xl font-serif font-normal text-gray-900"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
-              Read Our Articles
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="rounded-[2rem] sm:rounded-[2.5rem] bg-[#B66B44] text-[#FAF4EC] px-6 sm:px-12 lg:px-16 py-12 sm:py-16 lg:py-20 min-h-[420px] flex items-center"
+          >
+            <div className="max-w-4xl">
+              <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.4em] text-[#FAF4EC]/80 mb-8">
+                Discover your style
+              </p>
+
+              <h2 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.02] max-w-5xl">
+                Three questions. A home that finally feels like you.
+              </h2>
+
+              <p className="mt-8 text-base sm:text-xl text-[#FAF4EC]/85 leading-relaxed max-w-3xl">
+                Tell us how you live and we’ll curate a personalised feed of
+                furniture, colour palettes and room inspiration.
+              </p>
+
+              <Link
+                href="/style"
+                className="mt-10 inline-flex items-center justify-center gap-4 rounded-full bg-[#FAF4EC] hover:bg-[#E8CEB0] text-[#211000] px-8 sm:px-10 py-4 text-sm sm:text-base font-bold transition-colors"
+              >
+                Take the style quiz
+                <ArrowRight className="size-5" />
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ================= MEET REFURNISH ================= */}
+      <section className="py-20 sm:py-28 px-4 sm:px-8 lg:px-16 bg-[#E8CEB0]/35">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44] mb-4">
+            Meet Refurnish
+          </p>
+          <h2 className="font-serif text-4xl sm:text-5xl font-medium tracking-tight">
+            A better way to furnish in Nigeria.
+          </h2>
+          <p className="mt-6 text-base sm:text-lg text-[#211000]/65 leading-relaxed font-medium">
+            A trusted marketplace for furniture and décor — built for everyday
+            Nigerians, reshaping how we buy and sell with quality,
+            affordability, and protection at the core.
+          </p>
+
+          <div className="mt-10 grid sm:grid-cols-2 gap-4 text-left">
+            {[
+              "Your money stays safe with escrow protection.",
+              "Pocket-friendly prices and better value.",
+              "Professional delivery support, zero wahala.",
+              "Verified listings, safer deals, better homes.",
+            ].map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl bg-white/70 border border-[#211000]/6 p-4 flex gap-3"
+              >
+                <CheckCircle2 className="size-5 text-[#5F7161] shrink-0 mt-0.5" />
+                <p className="text-sm font-bold text-[#211000]/75">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================= HOW IT WORKS ================= */}
+      <section
+        id="how-it-works"
+        className="py-20 sm:py-28 px-4 sm:px-8 lg:px-16 bg-[#211000] text-[#FAF4EC]"
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#E8CEB0] mb-4">
+              How Refurnish works
+            </p>
+            <h2 className="font-serif text-4xl sm:text-5xl font-medium tracking-tight">
+              Safe from search to delivery.
             </h2>
-            <a
-              href="#"
-              className="text-lg text-gray-700 font-normal border-b border-gray-700 hover:text-black hover:border-black transition duration-300"
-            >
-              View all articles
-            </a>
           </div>
 
-          {/* Articles Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {articles.map((article, index) => (
-              <a
-                key={index}
-                href="#"
-                className="block border border-gray-300 transition duration-300 hover:shadow-lg rounded-sm"
+          <div className="grid md:grid-cols-4 gap-5">
+            {[
+              {
+                icon: Store,
+                title: "Shop",
+                text: "Find verified pre-loved pieces from local sellers.",
+              },
+              {
+                icon: CreditCard,
+                title: "Pay",
+                text: "Pay securely through Refurnish escrow.",
+              },
+              {
+                icon: Truck,
+                title: "Deliver",
+                text: "Choose home delivery or self-pickup from seller.",
+              },
+              {
+                icon: ShieldCheck,
+                title: "Confirm",
+                text: "Only release payment after you receive the item.",
+              },
+            ].map((step, index) => {
+              const Icon = step.icon;
+
+              return (
+                <motion.div
+                  key={step.title}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.08 }}
+                  className="rounded-3xl bg-[#FAF4EC]/8 border border-[#FAF4EC]/10 p-6"
+                >
+                  <div className="size-12 rounded-2xl bg-[#FAF4EC]/10 flex items-center justify-center mb-5">
+                    <Icon className="size-6 text-[#E8CEB0]" />
+                  </div>
+                  <h3 className="font-serif text-2xl font-medium">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-[#FAF4EC]/60 leading-relaxed font-medium">
+                    {step.text}
+                  </p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ================= CATEGORIES ================= */}
+      <section className="py-20 sm:py-28 px-4 sm:px-8 lg:px-16">
+        <div className="max-w-7xl mx-auto">
+          <SectionHeader
+            eyebrow="Shop by category"
+            title="A room for every story."
+            description="Browse furniture by space and discover pieces that fit beautifully."
+            href="/shop"
+            cta="Open shop"
+          />
+
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {categories.map((category) => (
+              <Link
+                key={category.name}
+                href={category.href}
+                className="group relative aspect-[4/5] sm:aspect-[3/4] rounded-3xl overflow-hidden bg-white border border-[#211000]/5 shadow-sm"
               >
-                {/* Image Container */}
-                <div className="h-64 overflow-hidden mb-4">
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#211000]/65 via-[#211000]/10 to-transparent" />
+                <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+                  <h3 className="font-serif text-2xl text-white font-medium">
+                    {category.name}
+                  </h3>
+                  <span className="size-10 rounded-full bg-white/90 text-[#211000] grid place-items-center">
+                    <ArrowRight className="size-4" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================= ARTICLES ================= */}
+      <section className="py-20 sm:py-28 px-4 sm:px-8 lg:px-16 bg-white/50">
+        <div className="max-w-7xl mx-auto">
+          <SectionHeader
+            eyebrow="The journal"
+            title="Ideas for better living."
+            description="Thoughtful tips for styling, saving space, and making furniture last longer."
+            href="/blog"
+            cta="View articles"
+          />
+
+          <div className="mt-10 grid md:grid-cols-3 gap-6">
+            {articles.map((article) => (
+              <Link
+                key={article.title}
+                href="/blog"
+                className="group rounded-3xl bg-white border border-[#211000]/6 overflow-hidden hover:border-[#B66B44]/25 hover:shadow-sm transition-all"
+              >
+                <div className="aspect-[4/3] overflow-hidden bg-[#E8CEB0]/30">
                   <img
                     src={article.imageUrl}
                     alt={article.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
-
-                <div className="p-4 pt-0">
-                  {/* Date */}
-                  <p className="text-sm text-gray-500 mb-2">{article.date}</p>
-
-                  {/* Title */}
-                  <h3 className="text-xl font-medium text-gray-800 mb-4 leading-normal">
+                <div className="p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#B66B44]">
+                    {article.date}
+                  </p>
+                  <h3 className="mt-2 font-serif text-xl font-medium leading-tight">
                     {article.title}
                   </h3>
-
-                  {/* Read Time */}
-                  <p className="text-sm text-gray-500 italic">
+                  <p className="mt-4 text-xs text-[#211000]/45 font-bold">
                     {article.readTime}
                   </p>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="min-h-screen bg-[#E8CEB0]/10 py-12 px-4 sm:px-6 lg:px-8 flex items-center">
-        <div className="max-w-6xl mx-auto w-full">
-          {/* Header Section */}
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#5F7161] mb-4 tracking-tight">
-              How Refurnish NG Works
-            </h2>
-            <p className="text-base sm:text-lg text-gray-700 max-w-3xl mx-auto leading-relaxed">
-              Discover, connect, and transact with ease. Our platform simplifies
-              buying and selling furniture in Nigeria.
-            </p>
-          </div>
-
-          {/* Steps Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-16">
-            {[
-              {
-                step: 1,
-                title: "Discover & List",
-                description:
-                  "Browse a wide range of furniture or list your items for sale in just a few clicks.",
-              },
-              {
-                step: 2,
-                title: "Connect Seamlessly",
-                description:
-                  "Engage directly with buyers or sellers through our secure messaging system.",
-              },
-              {
-                step: 3,
-                title: "Transact with Confidence",
-                description:
-                  "Complete your purchase or sale with secure payments and reliable delivery options.",
-              },
-            ].map((item) => (
-              <div
-                key={item.step}
-                className="relative bg-white rounded-xl shadow-md p-6 sm:p-8 text-center transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-              >
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-[#775522] rounded-full flex items-center justify-center text-white text-xl font-bold">
-                  {item.step}
-                </div>
-                <h3 className="mt-8 text-xl sm:text-2xl font-semibold text-[#5F7161] mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-gray-600 text-sm sm:text-base">
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Why Choose Us Section */}
-          <div className="bg-white rounded-xl shadow-md p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col lg:flex-row gap-8 items-center">
-              <div className="lg:w-1/2">
-                <h3 className="text-2xl sm:text-3xl font-bold text-[#775522] mb-6">
-                  Why Refurnish NG Stands Out
-                </h3>
-                <ul className="space-y-3">
-                  {[
-                    "Authentic products from verified sellers",
-                    "Secure and private messaging platform",
-                    "Smart price comparison tools",
-                    "Hassle-free delivery coordination",
-                    "Trusted quality assurance guarantee",
-                  ].map((item, index) => (
-                    <li key={index} className="flex items-start">
-                      <FaCheckCircle className="w-5 h-5 text-[#9933BB66BB44] mt-1 mr-3 flex-shrink-0" />
-                      <span className="text-gray-700 text-sm sm:text-base">
-                        {item}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <a
-                  href="#get-started"
-                  className="mt-8 inline-block bg-[#9933BB66BB44] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#775522] transition-colors duration-300"
-                >
-                  Get Started Now
-                </a>
-              </div>
-              <div className="lg:w-1/2 h-64 sm:h-80 lg:h-96 rounded-lg overflow-hidden">
-                <img
-                  src="/why-choose-us.jpg"
-                  alt="Why choose Refurnish NG"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      {/* ================= TESTIMONIALS ================= */}
       <section
-        className="relative min-h-[600px] flex items-center justify-center py-20 px-4 sm:px-8 lg:px-16 text-white overflow-hidden"
+        className="relative min-h-[620px] flex items-center justify-center px-4 sm:px-8 lg:px-16 overflow-hidden"
         style={{
           backgroundImage: `url(${currentTestimonial.bgImage})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        {/* Background Overlay (matches the image's dark, subtle overlay) */}
-        <div className="absolute inset-0 bg-black opacity-40"></div>
+        <div className="absolute inset-0 bg-[#211000]/55" />
 
-        {/* Testimonial Content */}
-        <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <h2
-            className="text-4xl md:text-5xl font-serif font-normal mb-12"
-            style={{ fontFamily: "Georgia, serif" }}
-          >
-            Customers' Feedback
+        <div className="relative z-10 max-w-3xl mx-auto text-center text-[#FAF4EC]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#E8CEB0] mb-4">
+            Customers’ feedback
+          </p>
+          <h2 className="font-serif text-4xl sm:text-5xl font-medium tracking-tight mb-10">
+            People are furnishing differently.
           </h2>
 
-          {/* Testimonial Card - Now without white background */}
-          <div
-            className="rounded-3xl p-8 md:p-12 mx-auto max-w-2xl flex flex-col justify-between items-center"
-            style={{
-              maxWidth: "800px",
-              minHeight: "350px",
-              backgroundColor: "rgba(0, 0, 0, 0.4)", // Semi-transparent dark background
-              backdropFilter: "blur(8px)", // Subtle blur effect
-              boxShadow:
-                "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)", // Subtle shadow
-            }}
+          <motion.div
+            key={currentTestimonial.id}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl bg-[#FAF4EC]/10 backdrop-blur-md border border-[#FAF4EC]/15 p-8 sm:p-10"
           >
-            <p className="text-5xl font-bold text-gray-200 mb-6 -mt-4">“</p>{" "}
-            {/* Top quote */}
-            <p
-              className="text-xl md:text-2xl text-gray-100 font-semibold mb-8 leading-relaxed animate-fade-in" // Added fade-in animation
-            >
-              {currentTestimonial.feedback}
+            <p className="font-serif text-2xl sm:text-3xl leading-relaxed">
+              “{currentTestimonial.feedback}”
             </p>
-            <p className="text-5xl font-bold text-gray-200 mt-6 rotate-180">
-              ”
-            </p>{" "}
-            {/* Bottom quote */}
-            <p className="text-lg md:text-xl font-medium text-gray-200 mt-4">
-              - {currentTestimonial.author}
+            <p className="mt-6 text-sm font-bold text-[#E8CEB0]">
+              — {currentTestimonial.author}
             </p>
-          </div>
-        </div>
+          </motion.div>
 
-        {/* Navigation Dots */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10 flex space-x-2">
-          {testimonials.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentTestimonialIndex(index)}
-              className={`w-3 h-3 rounded-full ${
-                index === currentTestimonialIndex
-                  ? "bg-white"
-                  : "bg-gray-400 opacity-70"
-              } transition-colors duration-300`}
-              aria-label={`Go to testimonial ${index + 1}`}
-            ></button>
-          ))}
+          <div className="mt-8 flex items-center justify-center gap-2">
+            {testimonials.map((testimonial, index) => (
+              <button
+                key={testimonial.id}
+                onClick={() => setCurrentTestimonialIndex(index)}
+                className={`h-2 rounded-full transition-all ${
+                  currentTestimonialIndex === index
+                    ? "w-8 bg-[#E8CEB0]"
+                    : "w-2 bg-[#FAF4EC]/45"
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="bg-[#EAD8C7] py-16 px-4 sm:px-8 lg:px-16">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-center space-y-8 lg:space-y-0 lg:space-x-12">
-          {/* Illustration Placeholder (Hanging Chair) */}
-          <div className="flex-shrink-0 w-32 h-32 md:w-48 md:h-48">
-            {/* Placeholder for the complex hanging chair illustration */}
+      {/* ================= NEWSLETTER ================= */}
+      <section className="py-16 sm:py-20 px-4 sm:px-8 lg:px-16 bg-[#E8CEB0]/70">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
+          <div className="w-32 h-32 sm:w-44 sm:h-44 shrink-0">
             <img
               src="/newsletter.png"
-              alt="Hanging Chair Illustration"
+              alt="Newsletter illustration"
               className="w-full h-full object-contain"
-              // If you were using an SVG, you'd embed it here
             />
           </div>
 
-          {/* Text and Form Container */}
-          <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-12 w-full lg:max-w-3xl">
-            {/* Text Content */}
-            <div className="text-center md:text-left flex-shrink-0">
-              <h3 className="text-2xl md:text-3xl font-bold text-[#8B2C24] mb-2">
-                Get 10% off your first purchase
-              </h3>
-              <p className="text-base md:text-lg text-[black]">
-                Sign up for the latest updates, products and offers
-              </p>
-            </div>
-
-            {/* Subscription Form */}
-            <form className="flex w-full md:max-w-xs lg:max-w-none lg:w-96">
-              <input
-                type="email"
-                placeholder="Enter email address"
-                aria-label="Enter email address"
-                className="w-full py-3 px-4 text-gray-700 rounded-l-lg border-2 border-r-0 border-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#8B2C24] transition duration-200"
-                style={{ backgroundColor: "#F0F0EE" }}
-              />
-              <button
-                type="submit"
-                aria-label="Subscribe"
-                className="flex items-center justify-center px-4 rounded-r-lg bg-[#A0C5C2] hover:bg-[#86A8A4] transition duration-300"
-              >
-                {/* Right Arrow Icon */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </form>
+          <div className="flex-1 text-center lg:text-left">
+            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44] mb-3">
+              Stay inspired
+            </p>
+            <h3 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight">
+              Get 10% off your first purchase.
+            </h3>
+            <p className="mt-2 text-sm text-[#211000]/60 font-medium">
+              Sign up for the latest finds, design tips and exclusive offers.
+            </p>
           </div>
-        </div>
 
-        {/* Scroll to Top Arrow (Stylized) */}
-        <div className="fixed bottom-8 right-8 z-30">
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            aria-label="Scroll to top"
-            className="p-3 rounded-full bg-[#A0C5C2] text-white shadow-lg hover:bg-[#86A8A4] transition duration-300"
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="w-full lg:w-auto flex max-w-md"
           >
-            {/* Up Arrow Icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
+            <input
+              type="email"
+              placeholder="Enter email address"
+              className="flex-1 rounded-l-full bg-white border border-[#211000]/8 px-5 py-4 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44]"
+            />
+            <button
+              type="submit"
+              className="rounded-r-full bg-[#B66B44] hover:bg-[#a05934] text-white px-5 py-4 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 15l7-7 7 7"
-              />
-            </svg>
-          </button>
+              <ArrowRight className="size-5" />
+            </button>
+          </form>
         </div>
       </section>
 
-      <section className="bg-white min-h-screen flex items-center py-16 px-4 sm:px-8 lg:px-16">
-        <div className="max-w-7xl mx-auto w-full text-center">
-          <h2
-            className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-12"
-            style={{ fontFamily: "Georgia, serif" }}
-          >
-            Quick Actions
-          </h2>
+      {/* ================= QUICK ACTIONS ================= */}
+      <section className="py-20 sm:py-28 px-4 sm:px-8 lg:px-16">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44] mb-3">
+              Quick actions
+            </p>
+            <h2 className="font-serif text-4xl sm:text-5xl font-medium tracking-tight">
+              What would you like to do?
+            </h2>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Action Card 1: Sell - Increased icon size */}
-            <div className="flex flex-col items-center p-6 border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer">
-              {/* Changed wrapper to w-24 h-24 and image to w-12 h-12 */}
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4">
-                <img
-                  src="/sell.png"
-                  alt="Sell Icon"
-                  className="w-12 h-12 object-contain"
-                />
-              </div>
-              <h3 className="text-xl font-bold text-[#8B2C24] mb-2">Sell</h3>
-              <p className="text-sm text-gray-600">
-                List a furniture or home decor
-              </p>
-            </div>
-
-            {/* Action Card 2: FAQs - Increased icon size */}
-            <div className="flex flex-col items-center p-6 border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer">
-              {/* Changed wrapper to w-24 h-24 and image to w-12 h-12 */}
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4">
-                <img
-                  src="/faq.png"
-                  alt="FAQs Icon"
-                  className="w-12 h-12 object-contain"
-                />
-              </div>
-              <h3 className="text-xl font-bold text-[#8B2C24] mb-2">FAQs</h3>
-              <p className="text-sm text-gray-600">Get Answers</p>
-            </div>
-
-            {/* Action Card 3: Support - Increased icon size */}
-            <div className="flex flex-col items-center p-6 border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer">
-              {/* Changed wrapper to w-24 h-24 and image to w-12 h-12 */}
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4">
-                <img
-                  src="/support.png"
-                  alt="Support Icon"
-                  className="w-12 h-12 object-contain"
-                />
-              </div>
-              <h3 className="text-xl font-bold text-[#8B2C24] mb-2">Support</h3>
-              <p className="text-sm text-gray-600">Help & Contact Us</p>
-            </div>
-
-            {/* Action Card 4: WhatsApp - Increased icon size */}
-            <div className="flex flex-col items-center p-6 border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer">
-              {/* Changed wrapper to w-24 h-24 and image to w-12 h-12 */}
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4">
-                <img
-                  src="/whatsapp.png"
-                  alt="WhatsApp Icon"
-                  className="w-12 h-12 object-contain"
-                />
-              </div>
-              <h3 className="text-xl font-bold text-[#8B2C24] mb-2">
-                WhatsApp
-              </h3>
-              <p className="text-sm text-gray-600">Chat with Us</p>
-            </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              {
+                title: "Sell",
+                text: "List furniture or home décor.",
+                href: "/sell",
+                image: "/sell.png",
+              },
+              {
+                title: "FAQs",
+                text: "Get quick answers.",
+                href: "/faqs",
+                image: "/faq.png",
+              },
+              {
+                title: "Support",
+                text: "Help and contact us.",
+                href: "/support",
+                image: "/support.png",
+              },
+              {
+                title: "WhatsApp",
+                text: "Chat with our team.",
+                href: "/contact",
+                image: "/whatsapp.png",
+              },
+            ].map((action) => (
+              <Link
+                key={action.title}
+                href={action.href}
+                className="group rounded-3xl bg-white border border-[#211000]/6 p-7 text-center hover:border-[#B66B44]/30 hover:shadow-sm transition-all"
+              >
+                <div className="w-20 h-20 rounded-full bg-[#E8CEB0]/35 flex items-center justify-center mx-auto mb-5">
+                  <img
+                    src={action.image}
+                    alt={action.title}
+                    className="w-10 h-10 object-contain"
+                  />
+                </div>
+                <h3 className="font-serif text-2xl font-medium text-[#211000]">
+                  {action.title}
+                </h3>
+                <p className="mt-2 text-sm text-[#211000]/55 font-medium">
+                  {action.text}
+                </p>
+                <span className="mt-5 inline-flex items-center gap-1 text-xs font-bold text-[#B66B44]">
+                  Continue
+                  <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* Scroll to top */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        aria-label="Scroll to top"
+        className="fixed bottom-6 right-6 z-30 size-12 rounded-full bg-[#B66B44] hover:bg-[#a05934] text-white shadow-lg grid place-items-center transition-colors"
+      >
+        <ArrowLeft className="size-5 rotate-90" />
+      </button>
+    </main>
+  );
+}
+
+function SectionHeader({ eyebrow, title, description, href, cta }) {
+  return (
+    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
+          {eyebrow}
+        </p>
+        <h2 className="font-serif text-4xl sm:text-5xl font-medium tracking-tight mt-2 max-w-2xl leading-tight">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-3 text-sm sm:text-base text-[#211000]/55 font-medium max-w-2xl leading-relaxed">
+            {description}
+          </p>
+        )}
+      </div>
+
+      {href && (
+        <Link
+          href={href}
+          className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#B66B44] hover:underline"
+        >
+          {cta}
+          <ArrowRight className="size-4" />
+        </Link>
+      )}
     </div>
   );
 }

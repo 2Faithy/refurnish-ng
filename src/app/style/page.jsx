@@ -166,7 +166,7 @@ export default function DiscoveryQuiz() {
     : { title: "", paragraph: "" };
 
   return (
-    <main className="min-h-screen bg-[#E8CEB0] text-[#211000] font-sans antialiased pt-24 pb-20 px-4 sm:px-8 lg:px-16 selection:bg-[#B66B44]/20">
+    <main className="min-h-screen bg-[#E8CEB0] text-[#211000] font-sans antialiased pt-32 sm:pt-36 lg:pt-40 pb-20 px-4 sm:px-8 lg:px-16 selection:bg-[#B66B44]/20">
       <div className="max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
           {!showResults ? (
