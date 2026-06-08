@@ -13,7 +13,7 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  ArrowLeft,   
+  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -27,27 +27,13 @@ const fadeUp = {
   show: { opacity: 1, y: 0 },
 };
 
-const PASSWORD_OVERRIDES_KEY = "refurnish_password_overrides";
-
-function getPasswordOverrides() {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(localStorage.getItem(PASSWORD_OVERRIDES_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function setPasswordOverride(email: string, password: string) {
-  if (typeof window === "undefined") return;
-  const existing = getPasswordOverrides();
-  existing[email.toLowerCase()] = password;
-  localStorage.setItem(PASSWORD_OVERRIDES_KEY, JSON.stringify(existing));
-}
-
-function getEffectivePassword(user: any) {
-  const overrides = getPasswordOverrides();
-  return overrides[user.email.toLowerCase()] || user.password;
+async function apiFetch(url: string, body: object) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res;
 }
 
 export default function AuthPage() {
@@ -60,7 +46,9 @@ export default function AuthPage() {
 
   // Forgot password modal state
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState<"email" | "code" | "reset" | "done">("email");
+  const [forgotStep, setForgotStep] = useState<
+    "email" | "code" | "reset" | "done"
+  >("email");
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotCode, setForgotCode] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -69,7 +57,8 @@ export default function AuthPage() {
   const [resetPassword, setResetPassword] = useState("");
   const [confirmResetPassword, setConfirmResetPassword] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
+  const [showConfirmResetPassword, setShowConfirmResetPassword] =
+    useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -97,70 +86,68 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/users.json");
-      const users = await res.json();
-
-      await new Promise((r) => setTimeout(r, 900));
-
       if (mode === "login") {
-        const matchedUser = users.find(
-          (u: any) => u.email.toLowerCase() === form.email.toLowerCase()
+        const res = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+          }/api/auth/login`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: form.email,
+              password: form.password,
+            }),
+          }
         );
 
-        if (!matchedUser) {
-          setError("No account found with that email.");
-          setLoading(false);
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (data.needsEmailVerification) {
+            localStorage.setItem("pending_verification_email", data.email);
+            router.push("/login/email-verification");
+            return;
+          }
+          setError(data.message || "Login failed.");
           return;
         }
 
-        const effectivePassword = getEffectivePassword(matchedUser);
-
-        if (effectivePassword !== form.password) {
-          setError("Invalid email or password. Please try again.");
-          setLoading(false);
-          return;
-        }
-
-        setSuccess(`Welcome back, ${matchedUser.name.split(" ")[0]}!`);
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem(
-            "refurnish_user",
-            JSON.stringify({
-              id: matchedUser.id,
-              name: matchedUser.name,
-              email: matchedUser.email,
-              phone: matchedUser.phone,
-              verified: true,
-            })
-          );
-        }
-
+        localStorage.setItem("refurnish_user", JSON.stringify(data.user));
+        setSuccess(`Welcome back, ${data.user.name.split(" ")[0]}!`);
         setTimeout(() => router.push("/dashboard"), 1200);
       } else {
-        const exists = users.find(
-          (u: any) => u.email.toLowerCase() === form.email.toLowerCase()
+        if (!form.name || !form.email || !form.password) {
+          setError("Please fill in all required fields.");
+          return;
+        }
+
+        const res = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+          }/api/auth/signup`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: form.name,
+              email: form.email,
+              phone: form.phone,
+              password: form.password,
+            }),
+          }
         );
 
-        if (exists) {
-          setError("An account with this email already exists.");
-        } else if (!form.name || !form.email || !form.password) {
-          setError("Please fill in all required fields.");
-        } else {
-          if (typeof window !== "undefined") {
-            localStorage.setItem(
-              "pending_signup",
-              JSON.stringify({
-                name: form.name,
-                email: form.email,
-                phone: form.phone,
-              })
-            );
-          }
+        const data = await res.json();
 
-          setSuccess("Account created! Verifying your email…");
-          setTimeout(() => router.push("/login/email-verification"), 1200);
+        if (!res.ok) {
+          setError(data.message || "Signup failed.");
+          return;
         }
+
+        localStorage.setItem("pending_verification_email", form.email);
+        setSuccess("Account created! Verifying your email…");
+        setTimeout(() => router.push("/login/email-verification"), 1200);
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -169,30 +156,32 @@ export default function AuthPage() {
     }
   };
 
-  // Forgot password step 1: email
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError("");
     setForgotLoading(true);
 
     try {
-      const res = await fetch("/users.json");
-      const users = await res.json();
-
-      await new Promise((r) => setTimeout(r, 800));
-
-      const found = users.find(
-        (u: any) => u.email.toLowerCase() === forgotEmail.toLowerCase()
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+        }/api/auth/resend-verification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: forgotEmail }),
+        }
       );
 
-      if (!found) {
-        setForgotError("No account found with that email address.");
-        setForgotLoading(false);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setForgotError(data.message || "Email not found.");
         return;
       }
 
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedCode(code);
+      // In dev, code comes back in response
+      if (data.devCode) setGeneratedCode(data.devCode);
       setForgotStep("code");
     } catch {
       setForgotError("Something went wrong. Please try again.");
@@ -227,23 +216,46 @@ export default function AuthPage() {
       setForgotError("Please fill in both password fields.");
       return;
     }
-
-    if (resetPassword.length < 6) {
-      setForgotError("Your new password must be at least 6 characters.");
+    if (resetPassword.length < 8) {
+      setForgotError("Password must be at least 8 characters.");
       return;
     }
-
     if (resetPassword !== confirmResetPassword) {
       setForgotError("Passwords do not match.");
       return;
     }
 
     setForgotLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
 
-    setPasswordOverride(forgotEmail, resetPassword);
-    setForgotLoading(false);
-    setForgotStep("done");
+    try {
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+        }/api/auth/reset-password`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: forgotEmail,
+            code: forgotCode,
+            password: resetPassword,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setForgotError(data.message || "Could not reset password.");
+        return;
+      }
+
+      setForgotStep("done");
+    } catch {
+      setForgotError("Something went wrong. Please try again.");
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   const closeForgot = () => {
@@ -345,21 +357,22 @@ export default function AuthPage() {
       </div>
 
       {/* RIGHT */}
-<div className="w-full lg:w-1/2 flex items-center justify-center px-5 sm:px-10 py-12 pt-28">
-  <div className="w-full max-w-md">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-5 sm:px-10 py-12 pt-28">
+        <div className="w-full max-w-md">
+          {/* 👇 Add this back button */}
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm font-bold text-[#211000]/50 hover:text-[#B66B44] transition-colors mb-8"
+          >
+            <ArrowLeft className="size-4" />
+            Back to home
+          </Link>
 
-    {/* 👇 Add this back button */}
-    <Link
-      href="/"
-      className="inline-flex items-center gap-2 text-sm font-bold text-[#211000]/50 hover:text-[#B66B44] transition-colors mb-8"
-    >
-      <ArrowLeft className="size-4" />
-      Back to home
-    </Link>
-
-    <div className="lg:hidden mb-8 flex items-center gap-3 justify-center">
+          <div className="lg:hidden mb-8 flex items-center gap-3 justify-center">
             <Image src="/logo.png" alt="Refurnish" width={40} height={40} />
-            <span className="font-serif text-2xl tracking-tight">Refurnish</span>
+            <span className="font-serif text-2xl tracking-tight">
+              Refurnish
+            </span>
           </div>
 
           <AnimatePresence mode="wait">
@@ -502,7 +515,11 @@ export default function AuthPage() {
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[#211000]/40 hover:text-[#B66B44] transition-colors"
                   >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
                   </button>
                 </div>
 
@@ -531,7 +548,9 @@ export default function AuthPage() {
                     </>
                   ) : (
                     <>
-                      <span>{mode === "login" ? "Sign in" : "Create account"}</span>
+                      <span>
+                        {mode === "login" ? "Sign in" : "Create account"}
+                      </span>
                       <ArrowRight className="size-4" />
                     </>
                   )}
@@ -556,7 +575,9 @@ export default function AuthPage() {
                   ? "Don't have an account? "
                   : "Already have an account? "}
                 <button
-                  onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+                  onClick={() =>
+                    switchMode(mode === "login" ? "signup" : "login")
+                  }
                   className="font-bold text-[#B66B44] hover:underline"
                 >
                   {mode === "login" ? "Sign up" : "Sign in"}
@@ -598,7 +619,10 @@ export default function AuthPage() {
               <div className="p-8 sm:p-10">
                 {/* Step 1 */}
                 {forgotStep === "email" && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                  >
                     <div className="w-14 h-14 rounded-2xl bg-[#B66B44]/10 flex items-center justify-center mb-5">
                       <Mail className="size-6 text-[#B66B44]" />
                     </div>
@@ -613,7 +637,8 @@ export default function AuthPage() {
                       Reset your password
                     </h3>
                     <p className="text-sm text-[#211000]/55 font-medium mb-6">
-                      Enter the email associated with your account and we'll send you a verification code.
+                      Enter the email associated with your account and we'll
+                      send you a verification code.
                     </p>
 
                     {forgotError && (
@@ -656,7 +681,10 @@ export default function AuthPage() {
 
                 {/* Step 2 */}
                 {forgotStep === "code" && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                  >
                     <div className="w-14 h-14 rounded-2xl bg-[#5F7161]/10 flex items-center justify-center mb-5">
                       <ShieldCheck className="size-6 text-[#5F7161]" />
                     </div>
@@ -673,7 +701,9 @@ export default function AuthPage() {
                     <p className="text-sm text-[#211000]/55 font-medium mb-1">
                       We sent a 6-digit code to
                     </p>
-                    <p className="text-sm font-bold text-[#211000] mb-6">{forgotEmail}</p>
+                    <p className="text-sm font-bold text-[#211000] mb-6">
+                      {forgotEmail}
+                    </p>
 
                     <div className="mb-4 rounded-xl bg-[#E8CEB0]/40 border border-[#E8CEB0] px-3.5 py-2.5 text-xs text-[#211000]/70 font-mono">
                       🔑 Demo code: <strong>{generatedCode}</strong>
@@ -694,7 +724,9 @@ export default function AuthPage() {
                         placeholder="Enter 6-digit code"
                         value={forgotCode}
                         onChange={(e) => {
-                          setForgotCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                          setForgotCode(
+                            e.target.value.replace(/\D/g, "").slice(0, 6)
+                          );
                           setForgotError("");
                         }}
                         className="w-full rounded-xl bg-white border border-[#211000]/12 px-4 py-3.5 text-sm font-bold tracking-[0.3em] text-center placeholder:tracking-normal placeholder:text-[#211000]/30 placeholder:font-medium focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
@@ -731,7 +763,10 @@ export default function AuthPage() {
 
                 {/* Step 3 */}
                 {forgotStep === "reset" && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                  >
                     <div className="w-14 h-14 rounded-2xl bg-[#B66B44]/10 flex items-center justify-center mb-5">
                       <Lock className="size-6 text-[#B66B44]" />
                     </div>
@@ -746,7 +781,11 @@ export default function AuthPage() {
                       Create a new password
                     </h3>
                     <p className="text-sm text-[#211000]/55 font-medium mb-6">
-                      Choose a secure new password for <span className="font-bold text-[#211000]">{forgotEmail}</span>.
+                      Choose a secure new password for{" "}
+                      <span className="font-bold text-[#211000]">
+                        {forgotEmail}
+                      </span>
+                      .
                     </p>
 
                     {forgotError && (
@@ -776,7 +815,11 @@ export default function AuthPage() {
                           onClick={() => setShowResetPassword((v) => !v)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-[#211000]/40 hover:text-[#B66B44] transition-colors"
                         >
-                          {showResetPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          {showResetPassword ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
                         </button>
                       </div>
 
@@ -799,7 +842,11 @@ export default function AuthPage() {
                           onClick={() => setShowConfirmResetPassword((v) => !v)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-[#211000]/40 hover:text-[#B66B44] transition-colors"
                         >
-                          {showConfirmResetPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          {showConfirmResetPassword ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
                         </button>
                       </div>
 
@@ -835,7 +882,11 @@ export default function AuthPage() {
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 200,
+                        delay: 0.1,
+                      }}
                       className="w-16 h-16 rounded-full bg-[#5F7161]/10 flex items-center justify-center mx-auto mb-5"
                     >
                       <CheckCircle2 className="size-8 text-[#5F7161]" />
@@ -851,7 +902,8 @@ export default function AuthPage() {
                       Password updated
                     </h3>
                     <p className="text-sm text-[#211000]/55 font-medium mb-6">
-                      Your password has been successfully changed. You can now sign in with your new password.
+                      Your password has been successfully changed. You can now
+                      sign in with your new password.
                     </p>
 
                     <button
@@ -912,10 +964,22 @@ function SocialButton({
 function GoogleIcon() {
   return (
     <svg className="size-4" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
     </svg>
   );
 }
