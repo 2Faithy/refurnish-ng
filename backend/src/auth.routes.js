@@ -1,5 +1,6 @@
 import express from "express";
 import { pool } from "./db.js";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./email.js";
 import {
   hashPassword,
   verifyPassword,
@@ -153,6 +154,7 @@ router.post("/signup", async (req, res) => {
      * Until we add email sending, the code prints in backend terminal.
      */
     console.log(`Verification code for ${email}: ${code}`);
+    await sendVerificationEmail(email, code);
 
     return res.status(201).json({
       message: "Account created. Please verify your email.",
@@ -307,7 +309,8 @@ router.post("/resend-verification", async (req, res) => {
       [user.id, sha256(code), new Date(Date.now() + 15 * 60 * 1000)]
     );
 
-    console.log(`New verification code for ${email}: ${code}`);
+    console.log(`Verification code for ${email}: ${code}`);
+    await sendVerificationEmail(email, code);
 
     return res.json({
       message: "Verification code resent.",
@@ -452,6 +455,129 @@ router.post("/logout", async (req, res) => {
     return res.status(500).json({
       message: "Could not log out.",
     });
+  }
+});
+
+/**
+ * FORGOT PASSWORD — send reset code
+ */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const email = String(req.body.email || "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const userResult = await pool.query(
+      `SELECT * FROM users WHERE email = $1`,
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      // Don't reveal if email exists
+      return res.json({
+        message: "If that email exists, a reset code has been sent.",
+      });
+    }
+
+    const user = userResult.rows[0];
+    const code = randomCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [user.id, sha256(code), expiresAt]
+    );
+
+    console.log(`Password reset code for ${email}: ${code}`);
+    await sendPasswordResetEmail(email, code);
+
+    return res.json({
+      message: "If that email exists, a reset code has been sent.",
+      devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({ message: "Something went wrong." });
+  }
+});
+
+/**
+ * RESET PASSWORD — verify code and set new password
+ */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const email = String(req.body.email || "")
+      .trim()
+      .toLowerCase();
+    const code = String(req.body.code || "").trim();
+    const password = String(req.body.password || "");
+
+    if (!email || !code || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email, code, and password are required." });
+    }
+
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters." });
+    }
+
+    const userResult = await pool.query(
+      `SELECT * FROM users WHERE email = $1`,
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const user = userResult.rows[0];
+
+    const codeResult = await pool.query(
+      `SELECT * FROM password_reset_codes
+       WHERE user_id = $1
+         AND used_at IS NULL
+         AND expires_at > NOW()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [user.id]
+    );
+
+    if (codeResult.rows.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Reset code expired. Please request a new one." });
+    }
+
+    const reset = codeResult.rows[0];
+
+    if (reset.code_hash !== sha256(code)) {
+      return res.status(400).json({ message: "Invalid reset code." });
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    await pool.query(
+      `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+      [passwordHash, user.id]
+    );
+
+    await pool.query(
+      `UPDATE password_reset_codes SET used_at = NOW() WHERE id = $1`,
+      [reset.id]
+    );
+
+    return res.json({ message: "Password reset successfully." });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ message: "Something went wrong." });
   }
 });
 

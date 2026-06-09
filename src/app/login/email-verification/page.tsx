@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
@@ -15,16 +14,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0 },
-};
+const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
 
 export default function EmailVerificationPage() {
   const router = useRouter();
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const [generatedCode, setGeneratedCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -33,22 +28,14 @@ export default function EmailVerificationPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    // Read pending signup from localStorage
     const stored = localStorage.getItem("pending_signup");
     if (stored) {
-      const parsed = JSON.parse(stored);
-      setPendingUser(parsed);
+      setPendingUser(JSON.parse(stored));
     } else {
-      // No pending signup — redirect to login
       router.push("/login");
     }
-
-    // Generate a demo verification code
-    const demoCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(demoCode);
   }, [router]);
 
-  // Resend countdown timer
   useEffect(() => {
     if (canResend) return;
     if (resendTimer <= 0) {
@@ -60,33 +47,28 @@ export default function EmailVerificationPage() {
   }, [resendTimer, canResend]);
 
   const handleCodeChange = (index: number, value: string) => {
-    // Only allow digits
     const digit = value.replace(/\D/g, "");
     if (digit.length > 1) return;
-
     const newCode = [...code];
     newCode[index] = digit;
     setCode(newCode);
     setError("");
-
-    // Auto-advance to next input
-    if (digit && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
+    if (e.key === "Backspace" && !code[index] && index > 0)
       inputRefs.current[index - 1]?.focus();
-    }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
     if (pasted.length === 6) {
-      const newCode = pasted.split("");
-      setCode(newCode);
+      setCode(pasted.split(""));
       inputRefs.current[5]?.focus();
     }
   };
@@ -101,43 +83,59 @@ export default function EmailVerificationPage() {
     setLoading(true);
     setError("");
 
-    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: pendingUser.email, code: fullCode }),
+        }
+      );
 
-    if (fullCode === generatedCode) {
-      setSuccess(true);
-      // Save verified user to session
-      if (typeof window !== "undefined" && pendingUser) {
-        localStorage.setItem(
-          "refurnish_user",
-          JSON.stringify({
-            name: pendingUser.name,
-            email: pendingUser.email,
-            phone: pendingUser.phone,
-            verified: true,
-          })
-        );
-        localStorage.removeItem("pending_signup");
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Invalid code. Please try again.");
+        return;
       }
+
+      localStorage.setItem("refurnish_user", JSON.stringify(data.user));
+      localStorage.removeItem("pending_signup");
+      setSuccess(true);
       setTimeout(() => router.push("/dashboard"), 1500);
-    } else {
-      setError("Invalid code. Please check your email and try again.");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleResend = () => {
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(newCode);
-    setCode(["", "", "", "", "", ""]);
+  const handleResend = async () => {
     setCanResend(false);
     setResendTimer(30);
+    setCode(["", "", "", "", "", ""]);
     setError("");
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-verification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: pendingUser.email }),
+        }
+      );
+      const data = await res.json();
+    } catch {
+      setError("Could not resend code. Please try again.");
+    }
+
     inputRefs.current[0]?.focus();
   };
 
   return (
-    <main className="min-h-screen bg-[#FAF4EC] text-[#211000] font-sans antialiased selection:bg-[#B66B44]/20 flex flex-col">
-      {/* Top bar */}
+    <main className="min-h-screen bg-[#FAF4EC] text-[#211000] font-sans antialiased flex flex-col">
       <div className="w-full px-5 sm:px-10 pt-8 pb-4">
         <Link
           href="/login"
@@ -159,8 +157,10 @@ export default function EmailVerificationPage() {
                 exit={{ opacity: 0, y: -20 }}
                 variants={{ show: { transition: { staggerChildren: 0.08 } } }}
               >
-                {/* Icon */}
-                <motion.div variants={fadeUp} className="flex justify-center mb-6">
+                <motion.div
+                  variants={fadeUp}
+                  className="flex justify-center mb-6"
+                >
                   <div className="w-16 h-16 rounded-2xl bg-[#B66B44]/10 flex items-center justify-center">
                     <Mail className="size-7 text-[#B66B44]" />
                   </div>
@@ -172,37 +172,25 @@ export default function EmailVerificationPage() {
                 >
                   Verify your email
                 </motion.p>
-
                 <motion.h1
                   variants={fadeUp}
-                  className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-2 mb-2 text-center leading-tight"
+                  className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-2 mb-2 text-center"
                 >
                   Check your inbox
                 </motion.h1>
-
                 <motion.p
                   variants={fadeUp}
-                  className="text-sm text-[#211000]/55 font-medium text-center mb-2"
+                  className="text-sm text-[#211000]/55 font-medium text-center mb-1"
                 >
-                  We sent a 6-digit verification code to
+                  We sent a 6-digit code to
                 </motion.p>
-
                 <motion.p
                   variants={fadeUp}
-                  className="text-sm font-bold text-[#211000] text-center mb-8"
+                  className="text-sm font-bold text-center mb-6"
                 >
                   {pendingUser?.email || "your email"}
                 </motion.p>
 
-                {/* Dev hint */}
-                <motion.div
-                  variants={fadeUp}
-                  className="mb-6 rounded-xl bg-[#E8CEB0]/40 border border-[#E8CEB0] px-4 py-3 text-xs text-[#211000]/70 font-mono text-center"
-                >
-                  🔑 Demo code: <strong>{generatedCode}</strong>
-                </motion.div>
-
-                {/* Error */}
                 <AnimatePresence>
                   {error && (
                     <motion.div
@@ -219,12 +207,16 @@ export default function EmailVerificationPage() {
                   )}
                 </AnimatePresence>
 
-                {/* Code inputs */}
-                <motion.div variants={fadeUp} className="flex justify-center gap-2.5 mb-6">
+                <motion.div
+                  variants={fadeUp}
+                  className="flex justify-center gap-2.5 mb-6"
+                >
                   {code.map((digit, i) => (
                     <input
                       key={i}
-                      ref={(el) => { inputRefs.current[i] = el; }}
+                      ref={(el) => {
+                        inputRefs.current[i] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
@@ -232,22 +224,21 @@ export default function EmailVerificationPage() {
                       onChange={(e) => handleCodeChange(i, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(i, e)}
                       onPaste={handlePaste}
-                      className={`w-12 h-14 sm:w-14 sm:h-16 rounded-xl text-center text-xl font-bold border-2 transition-all duration-200 focus:outline-none ${
+                      className={`w-12 h-14 sm:w-14 sm:h-16 rounded-xl text-center text-xl font-bold border-2 transition-all focus:outline-none ${
                         digit
-                          ? "border-[#B66B44] bg-white text-[#211000]"
-                          : "border-[#211000]/12 bg-white text-[#211000]"
+                          ? "border-[#B66B44] bg-white"
+                          : "border-[#211000]/12 bg-white"
                       } focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15`}
                     />
                   ))}
                 </motion.div>
 
-                {/* Verify button */}
                 <motion.button
                   variants={fadeUp}
                   onClick={handleVerify}
                   disabled={loading || code.some((d) => !d)}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full flex items-center justify-center gap-2.5 bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-60 text-white font-bold text-sm py-4 rounded-xl transition-all duration-200 shadow-md shadow-[#B66B44]/20"
+                  className="w-full flex items-center justify-center gap-2.5 bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-60 text-white font-bold text-sm py-4 rounded-xl transition-all shadow-md shadow-[#B66B44]/20"
                 >
                   {loading ? (
                     <>
@@ -262,7 +253,6 @@ export default function EmailVerificationPage() {
                   )}
                 </motion.button>
 
-                {/* Resend */}
                 <motion.div variants={fadeUp} className="text-center mt-6">
                   <p className="text-sm text-[#211000]/50 font-medium">
                     Didn't receive the code?{" "}
@@ -275,7 +265,7 @@ export default function EmailVerificationPage() {
                         Resend code
                       </button>
                     ) : (
-                      <span className="text-[#211000]/40 font-medium">
+                      <span className="text-[#211000]/40">
                         Resend in {resendTimer}s
                       </span>
                     )}
@@ -283,9 +273,8 @@ export default function EmailVerificationPage() {
                 </motion.div>
               </motion.div>
             ) : (
-              /* Success state */
               <motion.div
-                key="verify-success"
+                key="success"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="text-center py-8"

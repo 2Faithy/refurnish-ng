@@ -145,7 +145,14 @@ export default function AuthPage() {
           return;
         }
 
-        localStorage.setItem("pending_verification_email", form.email);
+        localStorage.setItem(
+          "pending_signup",
+          JSON.stringify({
+            email: form.email,
+            name: form.name,
+            devCode: data.devCode,
+          })
+        );
         setSuccess("Account created! Verifying your email…");
         setTimeout(() => router.push("/login/email-verification"), 1200);
       }
@@ -163,9 +170,7 @@ export default function AuthPage() {
 
     try {
       const res = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
-        }/api/auth/resend-verification`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -180,7 +185,6 @@ export default function AuthPage() {
         return;
       }
 
-      // In dev, code comes back in response
       if (data.devCode) setGeneratedCode(data.devCode);
       setForgotStep("code");
     } catch {
@@ -704,10 +708,6 @@ export default function AuthPage() {
                     <p className="text-sm font-bold text-[#211000] mb-6">
                       {forgotEmail}
                     </p>
-
-                    <div className="mb-4 rounded-xl bg-[#E8CEB0]/40 border border-[#E8CEB0] px-3.5 py-2.5 text-xs text-[#211000]/70 font-mono">
-                      🔑 Demo code: <strong>{generatedCode}</strong>
-                    </div>
 
                     {forgotError && (
                       <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2.5 text-xs text-red-700 font-medium">

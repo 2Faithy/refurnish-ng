@@ -21,6 +21,7 @@ import {
   Store,
   Bell,
   PlusCircle,
+  Wallet,
 } from "lucide-react";
 
 type SidebarProps = { children?: React.ReactNode };
@@ -42,6 +43,7 @@ const marketplaceLinks = [
 
 const accountLinks = [
   { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Payments", href: "/dashboard/payments", icon: Wallet },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
   { label: "Help", href: "/support", icon: HelpCircle },
 ];
