@@ -17,6 +17,9 @@ app.use(
 
 app.use(express.json({ limit: "1mb" }));
 
+import passport from "./passport.js";
+app.use(passport.initialize());
+
 app.get("/", (req, res) => {
   res.json({ message: "Refurnish API is running" });
 });

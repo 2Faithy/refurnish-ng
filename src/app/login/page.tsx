@@ -22,6 +22,8 @@ import {
   X,
 } from "lucide-react";
 
+const MotionLink = motion.create(Link);
+
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0 },
@@ -570,8 +572,16 @@ export default function AuthPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <SocialButton label="Google" icon={<GoogleIcon />} />
-                <SocialButton label="Apple" icon={<AppleIcon />} />
+                <SocialButton
+                  label="Google"
+                  icon={<GoogleIcon />}
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`}
+                />
+                <SocialButton
+                  label="Facebook"
+                  icon={<FacebookIcon />}
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/api/auth/facebook`}
+                />
               </div>
 
               <p className="text-center text-sm text-[#211000]/55 font-medium mt-8">
@@ -945,19 +955,21 @@ function Field({
 function SocialButton({
   label,
   icon,
+  href,
 }: {
   label: string;
   icon: React.ReactNode;
+  href: string;
 }) {
   return (
-    <motion.button
-      type="button"
+    <MotionLink
+      href={href}
       whileTap={{ scale: 0.98 }}
       className="flex items-center justify-center gap-2.5 rounded-xl border border-[#211000]/12 bg-white hover:bg-[#E8CEB0]/30 py-3 text-sm font-bold transition-colors"
     >
       {icon}
       <span>{label}</span>
-    </motion.button>
+    </MotionLink>
   );
 }
 
@@ -984,10 +996,13 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
+function FacebookIcon() {
   return (
-    <svg className="size-4" viewBox="0 0 24 24" fill="#211000">
-      <path d="M17.05 12.04c-.03-2.5 2.04-3.7 2.13-3.76-1.16-1.7-2.97-1.93-3.61-1.96-1.54-.16-3 .9-3.78.9-.77 0-1.97-.88-3.24-.86-1.67.03-3.21.97-4.07 2.46-1.73 3-.44 7.45 1.25 9.89.82 1.19 1.8 2.53 3.08 2.48 1.24-.05 1.71-.8 3.21-.8 1.49 0 1.92.8 3.23.77 1.33-.02 2.18-1.21 3-2.41.94-1.38 1.33-2.72 1.35-2.79-.03-.01-2.6-1-2.62-3.97zM14.6 4.7c.68-.83 1.14-1.97 1.01-3.12-.98.04-2.17.65-2.88 1.47-.63.73-1.18 1.9-1.03 3.02 1.09.08 2.21-.55 2.9-1.37z" />
+    <svg className="size-4" viewBox="0 0 24 24">
+      <path
+        fill="#1877F2"
+        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+      />
     </svg>
   );
 }

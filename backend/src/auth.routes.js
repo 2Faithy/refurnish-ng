@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "./db.js";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email.js";
+import passport from "./passport.js";
 import {
   hashPassword,
   verifyPassword,
@@ -18,8 +19,8 @@ const SESSION_DAYS = 7;
 function setSessionCookie(res, token) {
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     path: "/",
     maxAge: SESSION_DAYS * 24 * 60 * 60 * 1000,
   });
@@ -28,8 +29,8 @@ function setSessionCookie(res, token) {
 function clearSessionCookie(res) {
   res.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     path: "/",
   });
 }
@@ -580,5 +581,48 @@ router.post("/reset-password", async (req, res) => {
     return res.status(500).json({ message: "Something went wrong." });
   }
 });
+
+/**
+ * GOOGLE OAUTH
+ */
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+  })
+);
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: "/login",
+  }),
+  async (req, res) => {
+    await createSession(req, res, req.user.id);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+  }
+);
+
+/**
+ * FACEBOOK OAUTH
+ */
+router.get(
+  "/facebook",
+  passport.authenticate("facebook", { scope: ["email"], session: false })
+);
+
+router.get(
+  "/facebook/callback",
+  passport.authenticate("facebook", {
+    session: false,
+    failureRedirect: "/login",
+  }),
+  async (req, res) => {
+    await createSession(req, res, req.user.id);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+  }
+);
 
 export default router;
