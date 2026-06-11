@@ -4,12 +4,7 @@ import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-// Routes that should NOT show the main Navbar/Footer
-const BARE_ROUTES = [
-  "/dashboard",
-  "/login",
-  "/email-verification",
-];
+const BARE_ROUTES = ["/dashboard", "/login", "/admin"];
 
 export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,12 +13,10 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  // Bare layout — dashboard manages its own sidebar
   if (isBare) {
     return <>{children}</>;
   }
 
-  // Normal site layout with Navbar + Footer
   return (
     <div className="flex min-h-screen w-full">
       <Navbar />
