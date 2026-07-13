@@ -28,9 +28,13 @@ export default function EmailVerificationPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("pending_signup");
-    if (stored) {
-      setPendingUser(JSON.parse(stored));
+    const signupData = localStorage.getItem("pending_signup");
+    const loginEmail = localStorage.getItem("pending_verification_email");
+
+    if (signupData) {
+      setPendingUser(JSON.parse(signupData));
+    } else if (loginEmail) {
+      setPendingUser({ email: loginEmail });
     } else {
       router.push("/login");
     }
@@ -102,6 +106,7 @@ export default function EmailVerificationPage() {
 
       localStorage.setItem("refurnish_user", JSON.stringify(data.user));
       localStorage.removeItem("pending_signup");
+      localStorage.removeItem("pending_verification_email");
       setSuccess(true);
       setTimeout(() => router.push("/dashboard"), 1500);
     } catch {
