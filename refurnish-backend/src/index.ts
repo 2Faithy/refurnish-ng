@@ -6,6 +6,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes";
 import passport from "./config/passport";
+import "./config/passport-facebook";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
