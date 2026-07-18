@@ -52,14 +52,7 @@ type AdminTab =
   | "support";
 
 const tabs: { id: AdminTab; label: string; icon: any }[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "payouts", label: "Payouts", icon: Wallet },
   { id: "listings", label: "Listings", icon: Package },
-  { id: "orders", label: "Orders", icon: ListChecks },
-  { id: "verifications", label: "Verification", icon: UserCheck },
-  { id: "disputes", label: "Disputes", icon: Flag },
-  { id: "users", label: "Users", icon: Users },
-  { id: "support", label: "Support", icon: FileText },
 ];
 
 export default function AdminPage() {
@@ -68,7 +61,7 @@ export default function AdminPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [admin, setAdmin] = useState<any>(null);
 
-  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [activeTab, setActiveTab] = useState<AdminTab>("listings");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
 
@@ -81,6 +74,31 @@ export default function AdminPage() {
   const [contactMessages, setContactMessages] = useState<any[]>([]);
   const [supportTicket, setSupportTicket] = useState<any | null>(null);
 
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [listingsError, setListingsError] = useState("");
+  const [listingTab, setListingTab] = useState<"pending" | "approved" | "rejected">("pending");
+  const [selectedListing, setSelectedListing] = useState<any | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectBox, setShowRejectBox] = useState(false);
+
+  const fetchListings = async () => {
+    setListingsLoading(true);
+    setListingsError("");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/listings/admin/all`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to load listings.");
+      setListings(data.listings || []);
+    } catch (err: any) {
+      console.error(err);
+      setListingsError(err.message || "Could not load listings.");
+    } finally {
+      setListingsLoading(false);
+    }
+  };
+
   useEffect(() => {
     try {
       const session = localStorage.getItem(ADMIN_SESSION_KEY);
@@ -91,19 +109,7 @@ export default function AdminPage() {
       }
 
       setAdmin(JSON.parse(session));
-
-      setOrders(JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]"));
-      setPayouts(JSON.parse(localStorage.getItem(PAYOUTS_KEY) || "[]"));
-      setListings(JSON.parse(localStorage.getItem(LISTINGS_KEY) || "[]"));
-      setProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"));
-      setUser(JSON.parse(localStorage.getItem(USER_KEY) || "null"));
-      setComplaints(JSON.parse(localStorage.getItem(COMPLAINTS_KEY) || "[]"));
-      setContactMessages(
-        JSON.parse(localStorage.getItem(CONTACT_MESSAGES_KEY) || "[]")
-      );
-      setSupportTicket(
-        JSON.parse(localStorage.getItem(SUPPORT_TICKET_KEY) || "null")
-      );
+      fetchListings();
     } catch {
       router.push("/admin/login");
     } finally {
@@ -132,11 +138,6 @@ export default function AdminPage() {
     localStorage.setItem(PAYOUTS_KEY, JSON.stringify(next));
   };
 
-  const saveListings = (next: any[]) => {
-    setListings(next);
-    localStorage.setItem(LISTINGS_KEY, JSON.stringify(next));
-  };
-
   const saveProfile = (next: any) => {
     setProfile(next);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
@@ -150,6 +151,50 @@ export default function AdminPage() {
   const saveComplaints = (next: any[]) => {
     setComplaints(next);
     localStorage.setItem(COMPLAINTS_KEY, JSON.stringify(next));
+  };
+
+  const filteredListings = useMemo(() => {
+    const statusMap: Record<string, string> = {
+      pending: "pending",
+      approved: "active",
+      rejected: "rejected",
+    };
+    return listings
+      .filter((l) => l.status === statusMap[listingTab])
+      .filter((l) => searchable(l, search));
+  }, [listings, listingTab, search]);
+
+  const tabCounts = useMemo(
+    () => ({
+      pending: listings.filter((l) => l.status === "pending").length,
+      approved: listings.filter((l) => l.status === "active").length,
+      rejected: listings.filter((l) => l.status === "rejected").length,
+    }),
+    [listings]
+  );
+
+  const openListingModal = (listing: any) => {
+    setSelectedListing(listing);
+    setShowRejectBox(false);
+    setRejectReason("");
+  };
+
+  const closeListingModal = () => {
+    setSelectedListing(null);
+    setShowRejectBox(false);
+    setRejectReason("");
+  };
+
+  const approveFromModal = async () => {
+    if (!selectedListing) return;
+    await updateListingStatus(selectedListing.id, "active");
+    closeListingModal();
+  };
+
+  const confirmRejectFromModal = async () => {
+    if (!selectedListing || !rejectReason.trim()) return;
+    await updateListingStatus(selectedListing.id, "rejected", rejectReason.trim());
+    closeListingModal();
   };
 
   const stats = useMemo(() => {
@@ -189,25 +234,53 @@ export default function AdminPage() {
     setToast(`Payout marked as ${status}`);
   };
 
-  const updateListingStatus = (id: string, status: string) => {
-    const next = listings.map((l) =>
-      l.id === id
-        ? {
-            ...l,
-            status,
-            reviewedAt: new Date().toISOString(),
-          }
-        : l
-    );
+  const updateListingStatus = async (
+    id: string,
+    status: string,
+    rejectionReason?: string
+  ) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/listings/${id}/review`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status, rejectionReason }),
+        }
+      );
 
-    saveListings(next);
-    setToast(`Listing marked as ${status}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to update listing.");
+      }
+
+      setToast(`Listing marked as ${status}`);
+      await fetchListings();
+    } catch (err: any) {
+      console.error("Failed to update listing:", err);
+      setToast(err.message || "Failed to update listing.");
+    }
   };
 
-  const deleteListing = (id: string) => {
-    const next = listings.filter((l) => l.id !== id);
-    saveListings(next);
-    setToast("Listing deleted");
+  const deleteListing = async (id: string) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/listings/${id}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to delete listing.");
+      }
+
+      setToast("Listing deleted");
+      await fetchListings();
+    } catch (err: any) {
+      console.error("Failed to delete listing:", err);
+      setToast(err.message || "Failed to delete listing.");
+    }
   };
 
   const updateOrder = (id: string, updates: any) => {
@@ -346,7 +419,7 @@ export default function AdminPage() {
                 Operations overview
               </h1>
               <p className="text-sm text-[#211000]/55 font-medium mt-2">
-                Manage payouts, listings, KYC, orders, disputes and support.
+                Review and moderate seller listings.
               </p>
             </div>
 
@@ -380,7 +453,7 @@ export default function AdminPage() {
         </div>
 
         {/* Search */}
-        {activeTab !== "overview" && (
+        {(
           <div className="relative mb-6">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#211000]/35" />
             <input
@@ -401,517 +474,352 @@ export default function AdminPage() {
         )}
 
         <AnimatePresence mode="wait">
-          {activeTab === "overview" && (
-            <AdminSection key="overview">
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                <StatCard
-                  label="Pending payouts"
-                  value={stats.pendingPayouts}
-                  sub={formatNaira(stats.payoutAmount)}
-                  icon={<Wallet className="size-5" />}
-                  accent="#B66B44"
-                />
-                <StatCard
-                  label="Pending listings"
-                  value={stats.pendingListings}
-                  icon={<Package className="size-5" />}
-                  accent="#ca8a04"
-                />
-                <StatCard
-                  label="Escrow orders"
-                  value={stats.escrowOrders}
-                  icon={<ShieldCheck className="size-5" />}
-                  accent="#5F7161"
-                />
-                <StatCard
-                  label="Open disputes"
-                  value={stats.openComplaints}
-                  icon={<Flag className="size-5" />}
-                  accent="#c0392b"
-                />
-                <StatCard
-                  label="Users"
-                  value={user ? 1 : 0}
-                  icon={<Users className="size-5" />}
-                  accent="#211000"
-                />
+          <AdminSection key="listings">
+            <AdminCard title="Listings moderation">
+              <div className="flex gap-1.5 mb-6">
+                {(["pending", "approved", "rejected"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setListingTab(t)}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
+                      listingTab === t
+                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
+                    }`}
+                  >
+                    {t}
+                    <span
+                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                        listingTab === t
+                          ? "bg-[#E8CEB0] text-[#211000]"
+                          : "bg-[#211000]/8 text-[#211000]/60"
+                      }`}
+                    >
+                      {tabCounts[t]}
+                    </span>
+                  </button>
+                ))}
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-6">
-                <AdminCard title="What needs attention">
-                  <AttentionRow
-                    title="Pending payout requests"
-                    count={stats.pendingPayouts}
-                    onClick={() => setActiveTab("payouts")}
-                  />
-                  <AttentionRow
-                    title="Listings awaiting approval"
-                    count={stats.pendingListings}
-                    onClick={() => setActiveTab("listings")}
-                  />
-                  <AttentionRow
-                    title="Open disputes"
-                    count={stats.openComplaints}
-                    onClick={() => setActiveTab("disputes")}
-                  />
-                  <AttentionRow
-                    title="KYC review"
-                    count={
-                      profile?.idImage && !profile?.idVerified ? 1 : 0
-                    }
-                    onClick={() => setActiveTab("verifications")}
-                  />
-                </AdminCard>
-
-                <AdminCard title="Admin notes">
-                  <div className="rounded-2xl bg-[#E8CEB0]/35 border border-[#E8CEB0] p-4">
-                    <p className="text-xs text-[#211000]/65 font-medium leading-relaxed">
-                      This panel currently reads and writes to localStorage for
-                      prototype testing. Production admin actions must be
-                      protected by backend authentication, roles, and audit logs.
-                    </p>
-                  </div>
-                </AdminCard>
-              </div>
-            </AdminSection>
-          )}
-
-          {activeTab === "payouts" && (
-            <AdminSection key="payouts">
-              <AdminCard title="Seller payout requests">
-                {payouts.length === 0 ? (
-                  <EmptyState text="No payout requests yet." />
-                ) : (
-                  <div className="divide-y divide-[#211000]/6">
-                    {payouts
-                      .filter((p) => searchable(p, search))
-                      .map((payout) => (
-                        <div
-                          key={payout.id}
-                          className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-                        >
-                          <div>
-                            <p className="text-lg font-bold">
-                              {formatNaira(Number(payout.amount || 0))}
-                            </p>
-                            <p className="text-xs text-[#211000]/50 font-medium mt-1">
-                              {payout.bankName} · {payout.accountName} ·{" "}
-                              {payout.accountNumber}
-                            </p>
-                            <p className="text-[10px] font-mono text-[#211000]/35 mt-1">
-                              {payout.id}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            <StatusBadge status={payout.status} />
-
-                            {payout.status === "pending" && (
-                              <>
-                                <ActionButton
-                                  label="Processing"
-                                  onClick={() =>
-                                    updatePayoutStatus(
-                                      payout.id,
-                                      "processing"
-                                    )
-                                  }
-                                />
-                                <ActionButton
-                                  label="Reject"
-                                  tone="danger"
-                                  onClick={() =>
-                                    updatePayoutStatus(payout.id, "rejected")
-                                  }
-                                />
-                              </>
-                            )}
-
-                            {payout.status === "processing" && (
-                              <ActionButton
-                                label="Mark paid"
-                                tone="success"
-                                onClick={() =>
-                                  updatePayoutStatus(payout.id, "paid")
-                                }
-                              />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </AdminCard>
-            </AdminSection>
-          )}
-
-          {activeTab === "listings" && (
-            <AdminSection key="listings">
-              <AdminCard title="Listings moderation">
-                {listings.length === 0 ? (
-                  <EmptyState text="No listings found." />
-                ) : (
-                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {listings
-                      .filter((l) => searchable(l, search))
-                      .map((listing) => (
-                        <div
-                          key={listing.id}
-                          className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 overflow-hidden"
-                        >
-                          <div className="aspect-[4/3] bg-[#E8CEB0]/30 overflow-hidden">
-                            {listing.image && (
-                              <img
-                                src={listing.image}
-                                alt={listing.title}
-                                className="w-full h-full object-cover"
-                              />
-                            )}
-                          </div>
-
-                          <div className="p-4">
-                            <p className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold">
-                              {listing.category}
-                            </p>
-                            <p className="font-serif text-lg font-medium mt-1 truncate">
-                              {listing.title}
-                            </p>
-                            <p className="text-sm font-bold mt-1">
-                              {formatNaira(listing.price || 0)}
-                            </p>
-
-                            <div className="mt-3 flex items-center justify-between">
-                              <StatusBadge status={listing.status} />
-
-                              <Link
-                                href={`/product/${listing.slug || listing.id}`}
-                                className="text-xs font-bold text-[#B66B44] hover:underline"
-                              >
-                                View
-                              </Link>
-                            </div>
-
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              <ActionButton
-                                label="Approve"
-                                tone="success"
-                                onClick={() =>
-                                  updateListingStatus(listing.id, "active")
-                                }
-                              />
-                              <ActionButton
-                                label="Pause"
-                                onClick={() =>
-                                  updateListingStatus(listing.id, "paused")
-                                }
-                              />
-                              <ActionButton
-                                label="Reject"
-                                tone="danger"
-                                onClick={() =>
-                                  updateListingStatus(listing.id, "rejected")
-                                }
-                              />
-                              <button
-                                onClick={() => deleteListing(listing.id)}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 text-red-500 px-3 py-2 text-xs font-bold hover:bg-red-50"
-                              >
-                                <Trash2 className="size-3.5" />
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </AdminCard>
-            </AdminSection>
-          )}
-
-          {activeTab === "orders" && (
-            <AdminSection key="orders">
-              <AdminCard title="Orders & escrow control">
-                {orders.length === 0 ? (
-                  <EmptyState text="No orders found." />
-                ) : (
-                  <div className="divide-y divide-[#211000]/6">
-                    {orders
-                      .filter((o) => searchable(o, search))
-                      .map((order) => (
-                        <div key={order.id} className="py-4">
-                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                            <div>
-                              <p className="font-bold">{order.id}</p>
-                              <p className="text-xs text-[#211000]/50 font-medium mt-1">
-                                {order.items?.[0]?.title || "Order"} ·{" "}
-                                {formatNaira(order.total || 0)}
-                              </p>
-                              <p className="text-[10px] text-[#211000]/35 mt-1">
-                                Escrow: {order.escrowStatus || "unknown"} ·
-                                Status: {order.status || "unknown"}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <ActionButton
-                                label="Release escrow"
-                                tone="success"
-                                onClick={() =>
-                                  updateOrder(order.id, {
-                                    status: "completed",
-                                    escrowStatus: "released",
-                                    releasedAt: new Date().toISOString(),
-                                  })
-                                }
-                              />
-                              <ActionButton
-                                label="Refund"
-                                tone="danger"
-                                onClick={() =>
-                                  updateOrder(order.id, {
-                                    status: "refunded",
-                                    escrowStatus: "refunded",
-                                    refundedAt: new Date().toISOString(),
-                                  })
-                                }
-                              />
-                              <ActionButton
-                                label="Freeze dispute"
-                                onClick={() =>
-                                  updateOrder(order.id, {
-                                    status: "disputed",
-                                    disputeFrozenAt:
-                                      new Date().toISOString(),
-                                  })
-                                }
-                              />
-                              <Link
-                                href={`/dashboard/orders/${order.id}`}
-                                className="rounded-full border border-[#211000]/10 px-3 py-2 text-xs font-bold hover:border-[#B66B44]/30"
-                              >
-                                View
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </AdminCard>
-            </AdminSection>
-          )}
-
-          {activeTab === "verifications" && (
-            <AdminSection key="verifications">
-              <AdminCard title="Identity verification review">
-                {!profile?.idImage && !profile?.idNumber ? (
-                  <EmptyState text="No verification submission found." />
-                ) : (
-                  <div className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-5">
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      <div className="flex-1">
-                        <p className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold">
-                          User
-                        </p>
-                        <p className="font-serif text-2xl font-medium mt-1">
-                          {user?.name || profile?.name || "User"}
-                        </p>
-                        <p className="text-sm text-[#211000]/55 font-medium mt-1">
-                          {user?.email || profile?.email}
-                        </p>
-
-                        <div className="mt-5 grid sm:grid-cols-2 gap-3 text-sm">
-                          <InfoBlock label="ID type" value={profile?.idType || profile?.id_type || "N/A"} />
-                          <InfoBlock label="ID number" value={profile?.idNumber || profile?.id_number || "N/A"} />
-                          <InfoBlock
-                            label="Verification"
-                            value={
-                              profile?.idVerified || profile?.id_verified_at
-                                ? "Verified"
-                                : "Pending"
-                            }
+              {listingsLoading ? (
+                <div className="py-14 flex justify-center">
+                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                </div>
+              ) : listingsError ? (
+                <div className="py-14 text-center">
+                  <p className="text-sm text-red-600 font-medium mb-3">
+                    {listingsError}
+                  </p>
+                  <button
+                    onClick={fetchListings}
+                    className="text-xs font-bold text-[#B66B44] hover:underline"
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : filteredListings.length === 0 ? (
+                <EmptyState
+                  text={
+                    listingTab === "pending"
+                      ? "No listings awaiting review."
+                      : listingTab === "approved"
+                      ? "No approved listings yet."
+                      : "No rejected listings."
+                  }
+                />
+              ) : (
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredListings.map((listing) => (
+                    <div
+                      key={listing.id}
+                      className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 overflow-hidden"
+                    >
+                      <div className="aspect-[4/3] bg-[#E8CEB0]/30 overflow-hidden">
+                        {listing.photos?.[0] && (
+                          <img
+                            src={listing.photos[0]}
+                            alt={listing.itemTitle}
+                            className="w-full h-full object-cover"
                           />
-                          <InfoBlock
-                            label="DOB"
-                            value={profile?.dateOfBirth || profile?.dob || "N/A"}
-                          />
-                        </div>
-
-                        <div className="mt-5 flex gap-2">
-                          <ActionButton
-                            label="Approve"
-                            tone="success"
-                            onClick={approveVerification}
-                          />
-                          <ActionButton
-                            label="Reject"
-                            tone="danger"
-                            onClick={rejectVerification}
-                          />
-                        </div>
+                        )}
                       </div>
 
-                      <div className="lg:w-64">
-                        <p className="text-xs font-bold text-[#211000]/50 mb-2">
-                          Uploaded document
+                      <div className="p-4">
+                        <p className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold">
+                          {listing.category}
                         </p>
-                        <div className="aspect-[4/3] rounded-2xl bg-white border border-[#211000]/8 overflow-hidden grid place-items-center">
-                          {profile?.idImage ? (
-                            <img
-                              src={profile.idImage}
-                              alt="ID document"
-                              className="w-full h-full object-cover"
+                        <p className="font-serif text-lg font-medium mt-1 truncate">
+                          {listing.itemTitle}
+                        </p>
+                        <p className="text-sm font-bold mt-1">
+                          {formatNaira(Number(listing.sellingPrice) || 0)}
+                        </p>
+
+                        <div className="mt-3">
+                          <StatusBadge status={listing.status} />
+                        </div>
+
+                        {listing.status === "rejected" && listing.rejectionReason && (
+                          <p className="mt-2 text-[11px] text-red-600 font-medium">
+                            Reason: {listing.rejectionReason}
+                          </p>
+                        )}
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {listingTab === "pending" && (
+                            <ActionButton
+                              label="View"
+                              onClick={() => openListingModal(listing)}
                             />
-                          ) : (
-                            <FileText className="size-8 text-[#211000]/30" />
+                          )}
+
+                          {listingTab === "approved" && (
+                            <Link
+                              href={`/product/${listing.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                            >
+                              View
+                            </Link>
+                          )}
+
+                          {listingTab === "rejected" && (
+                            <button
+                              onClick={() => deleteListing(listing.id)}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-red-200 text-red-500 px-3 py-2 text-xs font-bold hover:bg-red-50"
+                            >
+                              <Trash2 className="size-3.5" />
+                              Delete
+                            </button>
                           )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </AdminCard>
-            </AdminSection>
-          )}
-
-          {activeTab === "disputes" && (
-            <AdminSection key="disputes">
-              <AdminCard title="Disputes & complaints">
-                {complaints.length === 0 ? (
-                  <EmptyState text="No disputes or complaints found." />
-                ) : (
-                  <div className="divide-y divide-[#211000]/6">
-                    {complaints
-                      .filter((c) => searchable(c, search))
-                      .map((complaint, index) => (
-                        <div key={index} className="py-4">
-                          <div className="flex flex-col lg:flex-row justify-between gap-4">
-                            <div>
-                              <p className="font-bold">
-                                {complaint.reason || "Complaint"}
-                              </p>
-                              <p className="text-xs text-[#211000]/55 font-medium mt-1 max-w-xl">
-                                {complaint.details}
-                              </p>
-                              <p className="text-[10px] text-[#211000]/35 mt-1">
-                                Order: {complaint.orderId || "N/A"} ·{" "}
-                                {complaint.createdAt?.split("T")[0]}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <StatusBadge status={complaint.status || "open"} />
-                              <ActionButton
-                                label="Reviewing"
-                                onClick={() =>
-                                  updateComplaint(index, {
-                                    status: "reviewing",
-                                  })
-                                }
-                              />
-                              <ActionButton
-                                label="Resolve"
-                                tone="success"
-                                onClick={() =>
-                                  updateComplaint(index, {
-                                    status: "resolved",
-                                  })
-                                }
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </AdminCard>
-            </AdminSection>
-          )}
-
-          {activeTab === "users" && (
-            <AdminSection key="users">
-              <AdminCard title="Users">
-                {!user ? (
-                  <EmptyState text="No local user found." />
-                ) : (
-                  <div className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-                    <div>
-                      <p className="font-serif text-2xl font-medium">
-                        {user.name}
-                      </p>
-                      <p className="text-sm text-[#211000]/55 font-medium mt-1">
-                        {user.email}
-                      </p>
-                      <p className="text-xs text-[#211000]/40 font-medium mt-1">
-                        Phone: {user.phone || "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <StatusBadge
-                        status={
-                          user.idVerified || profile?.idVerified
-                            ? "verified"
-                            : "unverified"
-                        }
-                      />
-                      <ActionButton
-                        label="Suspend"
-                        tone="danger"
-                        onClick={() => setToast("User suspension saved")}
-                      />
-                    </div>
-                  </div>
-                )}
-              </AdminCard>
-            </AdminSection>
-          )}
-
-          {activeTab === "support" && (
-            <AdminSection key="support">
-              <AdminCard title="Support inbox">
-                {contactMessages.length === 0 && !supportTicket ? (
-                  <EmptyState text="No support messages found." />
-                ) : (
-                  <div className="space-y-4">
-                    {supportTicket && (
-                      <div className="rounded-2xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-4">
-                        <p className="text-xs font-bold uppercase tracking-wider text-[#B66B44]">
-                          Live chat ticket
-                        </p>
-                        <p className="font-bold mt-1">{supportTicket.id}</p>
-                        <p className="text-xs text-[#211000]/55 mt-1">
-                          {supportTicket.topic} · {supportTicket.status}
-                        </p>
-                      </div>
-                    )}
-
-                    {contactMessages
-                      .filter((m) => searchable(m, search))
-                      .map((msg) => (
-                        <div
-                          key={msg.id}
-                          className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-4"
-                        >
-                          <p className="font-bold">{msg.subject}</p>
-                          <p className="text-sm text-[#211000]/55 mt-1">
-                            {msg.message}
-                          </p>
-                          <p className="text-[10px] text-[#211000]/35 mt-2">
-                            {msg.email} · {msg.ticketId}
-                          </p>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </AdminCard>
-            </AdminSection>
-          )}
+                  ))}
+                </div>
+              )}
+            </AdminCard>
+          </AdminSection>
         </AnimatePresence>
       </div>
 
       <AnimatePresence>
+        {selectedListing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
+          >
+            <div
+              className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+              onClick={closeListingModal}
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#211000]/10"
+            >
+              <button
+                onClick={closeListingModal}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white hover:bg-[#211000]/5 transition-colors z-10 shadow-sm"
+              >
+                <X className="size-4 text-[#211000]/60" />
+              </button>
+
+              {selectedListing.photos?.[0] && (
+                <div className="aspect-video w-full overflow-hidden rounded-t-3xl">
+                  <img
+                    src={selectedListing.photos[0]}
+                    alt={selectedListing.itemTitle}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {selectedListing.photos?.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto px-6 pt-4">
+                  {selectedListing.photos.slice(1).map((p: string, i: number) => (
+                    <div
+                      key={i}
+                      className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-[#211000]/8"
+                    >
+                      <img src={p} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="p-6 space-y-5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">
+                    {selectedListing.category}
+                    {selectedListing.brand && ` · ${selectedListing.brand}`}
+                  </p>
+                  <h2 className="font-serif text-2xl font-medium mt-1">
+                    {selectedListing.itemTitle}
+                  </h2>
+                  {selectedListing.model && (
+                    <p className="text-xs text-[#211000]/50 font-medium mt-0.5">
+                      Model: {selectedListing.model}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="text-2xl font-bold">
+                    {formatNaira(Number(selectedListing.sellingPrice) || 0)}
+                  </span>
+                  {selectedListing.originalPrice && (
+                    <span className="text-sm text-[#211000]/40 line-through">
+                      {formatNaira(Number(selectedListing.originalPrice) || 0)}
+                    </span>
+                  )}
+                  {selectedListing.negotiable && (
+                    <span className="text-[10px] font-bold bg-[#E8CEB0]/40 px-2 py-0.5 rounded-full">
+                      Negotiable
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <InfoBlock label="Condition" value={selectedListing.condition || "—"} />
+                  <InfoBlock label="Age" value={selectedListing.age || "—"} />
+                  <InfoBlock label="Color" value={selectedListing.color || "—"} />
+                  <InfoBlock label="Material" value={selectedListing.material || "—"} />
+                  <InfoBlock
+                    label="Dimensions"
+                    value={
+                      selectedListing.dimLength || selectedListing.dimWidth || selectedListing.dimHeight
+                        ? `${selectedListing.dimLength || "—"} × ${selectedListing.dimWidth || "—"} × ${selectedListing.dimHeight || "—"} cm`
+                        : "—"
+                    }
+                  />
+                  <InfoBlock label="Weight" value={selectedListing.dimWeight ? `${selectedListing.dimWeight} kg` : "—"} />
+                  <InfoBlock label="Seller" value={`${selectedListing.sellerName} · ${selectedListing.phone}`} />
+                  <InfoBlock label="Email" value={selectedListing.email || "—"} />
+                  <InfoBlock
+                    label="Location"
+                    value={`${selectedListing.address || "—"}${selectedListing.lga ? `, ${selectedListing.lga}` : ""}, ${selectedListing.state || "—"}`}
+                  />
+                  <InfoBlock label="Sell reason" value={selectedListing.sellReason || "—"} />
+                  <InfoBlock label="Availability" value={selectedListing.availability || "—"} />
+                  <InfoBlock label="Urgency" value={selectedListing.urgency || "—"} />
+                </div>
+
+                {selectedListing.defects?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">
+                      Reported defects
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedListing.defects.map((d: string) => (
+                        <span
+                          key={d}
+                          className="text-[10px] font-bold bg-red-50 border border-red-200 text-red-700 px-2 py-0.5 rounded-full"
+                        >
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-[#211000]/8 pt-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-1.5">
+                    Description
+                  </p>
+                  <p className="text-sm text-[#211000]/70 font-medium leading-relaxed">
+                    {selectedListing.description}
+                  </p>
+                  {selectedListing.conditionNotes && (
+                    <div className="mt-3 pt-3 border-t border-[#211000]/6">
+                      <p className="text-xs font-bold text-[#211000]/50 mb-1">Condition notes:</p>
+                      <p className="text-xs text-[#211000]/60 leading-relaxed">
+                        {selectedListing.conditionNotes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {selectedListing.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedListing.tags.map((tag: string, i: number) => (
+                      <span
+                        key={i}
+                        className="text-[10px] font-bold bg-[#E8CEB0]/30 border border-[#E8CEB0] px-2 py-0.5 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {selectedListing.warranty && selectedListing.warranty !== "None" && (
+                  <InfoBlock
+                    label="Warranty"
+                    value={`${selectedListing.warranty}${selectedListing.warrantyDuration ? ` · ${selectedListing.warrantyDuration}` : ""}`}
+                  />
+                )}
+
+                <div className="border-t border-[#211000]/8 pt-5">
+                  {!showRejectBox ? (
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={approveFromModal}
+                        className="flex-1 inline-flex items-center justify-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                      >
+                        <CheckCircle2 className="size-4" />
+                        Approve listing
+                      </button>
+                      <button
+                        onClick={() => setShowRejectBox(true)}
+                        className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                      >
+                        <X className="size-4" />
+                        Reject listing
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block">
+                        Reason for rejection (shown to the seller)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder="e.g. Photos are unclear — please add clearer images of the item."
+                        className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={confirmRejectFromModal}
+                          disabled={!rejectReason.trim()}
+                          className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                        >
+                          Confirm rejection
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowRejectBox(false);
+                            setRejectReason("");
+                          }}
+                          className="rounded-full border border-[#211000]/10 hover:border-[#211000]/25 bg-white px-5 py-3 text-sm font-bold transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: 20, x: "-50%" }}

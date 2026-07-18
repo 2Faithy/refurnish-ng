@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,7 +40,10 @@ async function apiFetch(url: string, body: object) {
 
 export default function AuthPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const searchParams = useSearchParams();
+  const nextUrl = searchParams.get("next");
+  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -108,6 +111,7 @@ export default function AuthPage() {
         if (!res.ok) {
           if (data.needsEmailVerification) {
             localStorage.setItem("pending_verification_email", data.email);
+            if (nextUrl) localStorage.setItem("pending_verification_next", nextUrl);
             router.push("/login/email-verification");
             return;
           }
@@ -115,9 +119,12 @@ export default function AuthPage() {
           return;
         }
 
-        localStorage.setItem("refurnish_user", JSON.stringify(data.user));
+        localStorage.setItem(
+          "refurnish_user",
+          JSON.stringify({ ...data.user, token: data.token })
+        );
         setSuccess(`Welcome back, ${data.user.name.split(" ")[0]}!`);
-        setTimeout(() => router.push("/dashboard"), 1200);
+        setTimeout(() => router.push(nextUrl || "/dashboard"), 1200);
       } else {
         if (!form.name || !form.email || !form.password) {
           setError("Please fill in all required fields.");
@@ -153,6 +160,7 @@ export default function AuthPage() {
             email: form.email,
             name: form.name,
             devCode: data.devCode,
+            next: nextUrl || null,
           })
         );
         setSuccess("Account created! Verifying your email…");

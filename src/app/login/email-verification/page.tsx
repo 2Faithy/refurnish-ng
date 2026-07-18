@@ -30,11 +30,13 @@ export default function EmailVerificationPage() {
   useEffect(() => {
     const signupData = localStorage.getItem("pending_signup");
     const loginEmail = localStorage.getItem("pending_verification_email");
+    const loginNext = localStorage.getItem("pending_verification_next");
 
     if (signupData) {
-      setPendingUser(JSON.parse(signupData));
+      const parsed = JSON.parse(signupData);
+      setPendingUser(parsed);
     } else if (loginEmail) {
-      setPendingUser({ email: loginEmail });
+      setPendingUser({ email: loginEmail, next: loginNext || null });
     } else {
       router.push("/login");
     }
@@ -104,11 +106,18 @@ export default function EmailVerificationPage() {
         return;
       }
 
-      localStorage.setItem("refurnish_user", JSON.stringify(data.user));
+      localStorage.setItem(
+        "refurnish_user",
+        JSON.stringify({ ...data.user, token: data.token })
+      );
       localStorage.removeItem("pending_signup");
       localStorage.removeItem("pending_verification_email");
+      localStorage.removeItem("pending_verification_next");
       setSuccess(true);
-      setTimeout(() => router.push("/dashboard"), 1500);
+      setTimeout(
+        () => router.push(pendingUser?.next || "/dashboard"),
+        1500
+      );
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -296,7 +305,9 @@ export default function EmailVerificationPage() {
                   Email verified!
                 </h2>
                 <p className="text-sm text-[#211000]/55 font-medium">
-                  Redirecting you to your dashboard…
+                  {pendingUser?.next
+                    ? "Redirecting you back to finish your listing…"
+                    : "Redirecting you to your dashboard…"}
                 </p>
                 <div className="mt-6 flex justify-center">
                   <Loader2 className="size-5 text-[#B66B44] animate-spin" />

@@ -18,23 +18,78 @@ model User {
   name      String
   email     String   @unique
   phone     String?
-  password  String?  // nullable because Google/Facebook users won't have one
+  password  String?
 
-  // Email verification
   emailVerified     Boolean  @default(false)
   verificationCode  String?
 
-  // Password reset flow
   resetCode        String?
   resetCodeExpiry  DateTime?
 
-  // OAuth
-  provider    String   @default("local") // "local" | "google" | "facebook"
+  provider    String   @default("local")
   googleId    String?  @unique
   facebookId  String?  @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  listings Listing[]
+
   @@map("users")
+}
+
+model Listing {
+  id          String   @id @default(uuid())
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id])
+
+  photos      String[]
+  itemTitle   String
+  category    String
+  brand       String?
+  model       String?
+
+  condition       String
+  defects         String[]
+  conditionNotes  String?
+  age             String
+  color           String
+  material        String
+
+  dimLength   String?
+  dimWidth    String?
+  dimHeight   String?
+  dimWeight   String?
+
+  description String
+  tags        String[]
+
+  originalPrice String?
+  sellingPrice  String
+  negotiable    Boolean @default(true)
+  sellReason    String?
+  availability  String?
+  urgency       String?
+
+  sellerName  String
+  phone       String
+  email       String?
+  whatsapp    String?
+  callTime    String?
+
+  address        String
+  state          String
+  lga            String?
+
+  warranty         String?
+  warrantyDuration String?
+
+  status          String   @default("pending")
+  rejectionReason String?
+  reviewedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("listings")
 }

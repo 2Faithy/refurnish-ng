@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,7 +59,6 @@ const STEPS = [
   { id: "condition", label: "Condition", icon: Star },
   { id: "description", label: "Description", icon: MessageCircle },
   { id: "pricing", label: "Pricing", icon: DollarSign },
-  { id: "shipping", label: "Shipping", icon: Truck },
   { id: "location", label: "Location", icon: MapPin },
   { id: "review", label: "Review", icon: CheckCircle2 },
 ];
@@ -198,33 +197,6 @@ const CALL_TIMES = [
   "Weekends only",
 ];
 
-const DELIVERY_OPTIONS = [
-  {
-    id: "pickup",
-    label: "Buyer Pickup",
-    desc: "Buyer collects from your location",
-    icon: Package,
-  },
-  {
-    id: "deliver",
-    label: "I Can Deliver",
-    desc: "You deliver to buyer's location (within city)",
-    icon: Truck,
-  },
-  {
-    id: "halfway",
-    label: "Meet Halfway",
-    desc: "Meet at a convenient public location",
-    icon: Users,
-  },
-  {
-    id: "shipping",
-    label: "Nationwide Shipping",
-    desc: "Ship anywhere in Nigeria (extra cost)",
-    icon: Package,
-  },
-];
-
 const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue",
   "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT",
@@ -260,8 +232,14 @@ const DEFECTS = [
 
 export default function CreateListingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(0);
+  const [restoredNotice, setRestoredNotice] = useState(false);
+  const [editingListingId, setEditingListingId] = useState<string | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [editLoadError, setEditLoadError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -296,30 +274,151 @@ export default function CreateListingPage() {
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [callTime, setCallTime] = useState("");
-  const [deliveryOption, setDeliveryOption] = useState("");
   const [address, setAddress] = useState("");
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
-  const [shippingCost, setShippingCost] = useState("");
-  const [shippingTime, setShippingTime] = useState("");
   const [warranty, setWarranty] = useState("");
   const [warrantyDuration, setWarrantyDuration] = useState("");
 
-  // Photos handler
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const populateForm = (data: any) => {
+    setPhotos(data.photos || []);
+    setItemTitle(data.itemTitle || "");
+    setCategory(data.category || "");
+    setBrand(data.brand || "");
+    setModel(data.model || "");
+    setCondition(data.condition || "");
+    setDefects(data.defects || []);
+    setConditionNotes(data.conditionNotes || "");
+    setAge(data.age || "");
+    setColor(data.color || "");
+    setMaterial(data.material || "");
+    setDimLength(data.dimLength || "");
+    setDimWidth(data.dimWidth || "");
+    setDimHeight(data.dimHeight || "");
+    setDimWeight(data.dimWeight || "");
+    setDescription(data.description || "");
+    setTags(data.tags || []);
+    setOriginalPrice(data.originalPrice || "");
+    setSellingPrice(data.sellingPrice || "");
+    setNegotiable(data.negotiable ?? true);
+    setSellReason(data.sellReason || "");
+    setAvailability(data.availability || "");
+    setUrgency(data.urgency || "");
+    setSellerName(data.sellerName || "");
+    setPhone(data.phone || "");
+    setEmail(data.email || "");
+    setWhatsapp(data.whatsapp || "");
+    setCallTime(data.callTime || "");
+    setAddress(data.address || "");
+    setState(data.state || "");
+    setLga(data.lga || "");
+    setWarranty(data.warranty || "");
+    setWarrantyDuration(data.warrantyDuration || "");
+  };
+
+  // Load a rejected listing for editing (via ?edit=<id>)
+  useEffect(() => {
+    if (!editId) return;
+
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+
+    if (!user?.token) {
+      router.push(`/login?next=${encodeURIComponent(`/sell/create?edit=${editId}`)}`);
+      return;
+    }
+
+    const loadListing = async () => {
+      setLoadingEdit(true);
+      setEditLoadError("");
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/listings/${editId}`,
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.message || "Could not load this listing.");
+        }
+
+        populateForm(data.listing);
+        setEditingListingId(editId);
+        setStep(6); // jump to review
+      } catch (err: any) {
+        setEditLoadError(err.message || "Could not load this listing.");
+      } finally {
+        setLoadingEdit(false);
+      }
+    };
+
+    loadListing();
+  }, [editId]);
+
+  // Restore a listing that was saved before the person was sent to sign up
+  useEffect(() => {
+    if (editId) return; // editing takes priority over a stale draft
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+    const pending = localStorage.getItem("refurnish_pending_listing");
+    if (user && pending) {
+      try {
+        const data = JSON.parse(pending);
+        populateForm(data);
+        setStep(6); // jump to review
+        setRestoredNotice(true);
+      } catch {
+        localStorage.removeItem("refurnish_pending_listing");
+      }
+    }
+  }, []);
+
+  // Photos handler — uploads directly to Cloudinary
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [photoError, setPhotoError] = useState("");
+
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", preset as string);
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      { method: "POST", body: formData }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error?.message || "Failed to upload image.");
+    }
+
+    return data.secure_url as string;
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
+
+    setPhotoError("");
 
     const remaining = 10 - photos.length;
     const toAdd = Array.from(files).slice(0, remaining);
 
-    toAdd.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setPhotos((prev) => [...prev, ev.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setUploadingCount((c) => c + toAdd.length);
+
+    for (const file of toAdd) {
+      try {
+        const url = await uploadToCloudinary(file);
+        setPhotos((prev) => [...prev, url]);
+      } catch (err: any) {
+        console.error(err);
+        setPhotoError(err.message || "Failed to upload one or more photos. Please try again.");
+      } finally {
+        setUploadingCount((c) => Math.max(0, c - 1));
+      }
+    }
 
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -351,7 +450,7 @@ export default function CreateListingPage() {
   const canProceed = () => {
     switch (step) {
       case 0:
-        return photos.length >= 1 && itemTitle.trim();
+        return photos.length >= 1 && itemTitle.trim() && uploadingCount === 0;
   
       case 1:
         return category && age && color && material;
@@ -366,12 +465,9 @@ export default function CreateListingPage() {
         return !!sellingPrice;
   
       case 5:
-        return !!deliveryOption;
-  
-      case 6:
         return sellerName.trim() && phone.trim() && address.trim() && state;
   
-      case 7:
+      case 6:
         return true;
   
       default:
@@ -393,12 +489,71 @@ export default function CreateListingPage() {
     }
   };
 
+  const buildListingPayload = () => ({
+    photos, itemTitle, category, brand, model, condition, defects,
+    conditionNotes, age, color, material, dimLength, dimWidth, dimHeight,
+    dimWeight, description, tags, originalPrice, sellingPrice, negotiable,
+    sellReason, availability, urgency, sellerName, phone, email, whatsapp,
+    callTime, address, state, lga, warranty, warrantyDuration,
+  });
+
+  const [submitError, setSubmitError] = useState("");
+
   const handleSubmit = async () => {
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+
+    if (!user?.token) {
+      // Save the completed form and send them to sign up first
+      localStorage.setItem(
+        "refurnish_pending_listing",
+        JSON.stringify(buildListingPayload())
+      );
+      router.push("/login?mode=signup&next=/sell/create");
+      return;
+    }
+
+    setSubmitError("");
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSubmitting(false);
-    setSubmitted(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      const isEditing = !!editingListingId;
+      const url = isEditing
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/listings/${editingListingId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/listings`;
+
+      const res = await fetch(url, {
+        method: isEditing ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify(buildListingPayload()),
+      });
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Response wasn't JSON (e.g. a raw server error page)
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message ||
+            (res.status === 413
+              ? "Your photos are too large. Try removing a few or using smaller images."
+              : "Failed to submit listing.")
+        );
+      }
+
+      localStorage.removeItem("refurnish_pending_listing");
+      setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err: any) {
+      console.error(err);
+      setSubmitError(err.message || "Something went wrong submitting your listing. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -429,8 +584,11 @@ export default function CreateListingPage() {
             transition={{ delay: 0.3 }}
             className="text-sm text-[#211000]/55 font-medium mb-8 max-w-md mx-auto"
           >
-            Your listing for <strong>"{itemTitle}"</strong> is now under review.
-            We'll notify you once it's live — usually within 24 hours.
+            {editingListingId ? (
+              <>Your updated listing for <strong>"{itemTitle}"</strong> has been resubmitted for review. We'll reach out within a few hours.</>
+            ) : (
+              <>Your listing for <strong>"{itemTitle}"</strong> is now under review. We've sent a confirmation to your email, and we'll reach out within a few hours to let you know if it's approved.</>
+            )}
           </motion.p>
 
           <motion.div
@@ -479,6 +637,38 @@ export default function CreateListingPage() {
             List your piece
           </h1>
         </div>
+
+        {restoredNotice && (
+          <div className="mb-6 rounded-xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-4 flex gap-3">
+            <CheckCircle2 className="size-5 text-[#5F7161] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#211000]/65 font-medium">
+              Welcome back! We saved your listing — just review and publish below.
+            </p>
+          </div>
+        )}
+
+        {editingListingId && !loadingEdit && (
+          <div className="mb-6 rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-4 flex gap-3">
+            <Info className="size-5 text-[#B66B44] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#211000]/65 font-medium">
+              Editing your listing — make the needed changes and resubmit for review.
+            </p>
+          </div>
+        )}
+
+        {loadingEdit && (
+          <div className="mb-6 rounded-xl bg-white border border-[#211000]/10 p-6 flex items-center justify-center gap-3">
+            <Loader2 className="size-5 animate-spin text-[#B66B44]" />
+            <p className="text-sm text-[#211000]/55 font-medium">Loading your listing…</p>
+          </div>
+        )}
+
+        {editLoadError && (
+          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-4 flex gap-3">
+            <AlertCircle className="size-5 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700 font-medium">{editLoadError}</p>
+          </div>
+        )}
 
         {/* Progress */}
         <div className="mb-10">
@@ -583,7 +773,17 @@ export default function CreateListingPage() {
                     </div>
                   ))}
 
-                  {photos.length < 10 && (
+                  {uploadingCount > 0 &&
+                    Array.from({ length: uploadingCount }).map((_, i) => (
+                      <div
+                        key={`uploading-${i}`}
+                        className="aspect-square rounded-xl bg-white border border-[#211000]/10 flex items-center justify-center"
+                      >
+                        <Loader2 className="size-5 text-[#B66B44] animate-spin" />
+                      </div>
+                    ))}
+
+                  {photos.length + uploadingCount < 10 && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="aspect-square rounded-xl border-2 border-dashed border-[#211000]/15 bg-white hover:bg-[#E8CEB0]/20 hover:border-[#B66B44]/40 transition-all flex flex-col items-center justify-center gap-1.5"
@@ -608,6 +808,13 @@ export default function CreateListingPage() {
                 <p className="text-xs text-[#211000]/40 font-medium">
                   {photos.length}/10 photos uploaded (first photo will be the cover)
                 </p>
+
+                {photoError && (
+                  <div className="rounded-xl bg-red-50 border border-red-200 p-3 flex gap-2">
+                    <AlertCircle className="size-4 text-red-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700 font-medium">{photoError}</p>
+                  </div>
+                )}
 
                 {/* Item title */}
                 <div>
@@ -1095,122 +1302,8 @@ export default function CreateListingPage() {
               </div>
             )}
 
-            {/* === STEP 5: Shipping === */}
+            {/* === STEP 5: Location & Contact === */}
             {step === 5 && (
-              <div className="space-y-8">
-                <SectionTitle
-                  title="Shipping & Delivery"
-                  subtitle="Let buyers know how they can get this item."
-                />
-
-                {/* Delivery options */}
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-3">
-                    Delivery Method *
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {DELIVERY_OPTIONS.map((opt) => {
-                      const Icon = opt.icon;
-                      const isSelected = deliveryOption === opt.id;
-                      return (
-                        <motion.button
-                          key={opt.id}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setDeliveryOption(opt.id)}
-                          className={`p-4 rounded-xl border text-left transition-all duration-200 ${
-                            isSelected
-                              ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
-                              : "bg-white border-[#211000]/10 hover:border-[#B66B44]/30"
-                          }`}
-                        >
-                          <Icon className="size-5 mb-2" />
-                          <p className="text-sm font-bold">{opt.label}</p>
-                          <p
-                            className={`text-[11px] mt-0.5 font-medium ${
-                              isSelected
-                                ? "text-[#E8CEB0]/70"
-                                : "text-[#211000]/45"
-                            }`}
-                          >
-                            {opt.desc}
-                          </p>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Conditional shipping details */}
-                {(deliveryOption === "deliver" || deliveryOption === "shipping") && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-4 pt-4 border-t border-[#211000]/10"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                          Shipping Cost (₦) <span className="text-[#211000]/40">(Optional)</span>
-                        </label>
-                        <PriceInput
-                          value={shippingCost}
-                          onChange={setShippingCost}
-                          placeholder="0"
-                        />
-                        <p className="text-[11px] text-[#211000]/40 font-medium mt-1.5">
-                          Leave blank if cost depends on location.
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                          Estimated Delivery Time
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 2-3 business days"
-                          value={shippingTime}
-                          onChange={(e) => setShippingTime(e.target.value)}
-                          className="w-full rounded-xl bg-white border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-                        />
-                      </div>
-                    </div>
-
-                    {deliveryOption === "shipping" && (
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                          Shipping Regions
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {NIGERIAN_STATES.slice(0, 10).map((stateName) => (
-                            <span
-                              key={stateName}
-                              className="px-2.5 py-1 rounded-full bg-[#E8CEB0]/30 border border-[#E8CEB0] text-[10px] font-bold"
-                            >
-                              {stateName}
-                            </span>
-                          ))}
-                          <span className="px-2.5 py-1 rounded-full bg-white border border-[#211000]/10 text-[10px] font-bold text-[#211000]/50">
-                            +27 more
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {deliveryOption === "pickup" && (
-                  <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-4 flex gap-3">
-                    <Info className="size-5 text-[#B66B44] shrink-0 mt-0.5" />
-                    <p className="text-xs text-[#211000]/65 font-medium">
-                      Buyers will arrange pickup at your address. Make sure to provide exact location details in the next step.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* === STEP 6: Location & Contact === */}
-            {step === 6 && (
               <div className="space-y-8">
                 <SectionTitle
                   title="Location & Contact"
@@ -1335,8 +1428,8 @@ export default function CreateListingPage() {
               </div>
             )}
 
-            {/* === STEP 7: Review === */}
-            {step === 7 && (
+            {/* === STEP 6: Review === */}
+            {step === 6 && (
               <div className="space-y-8">
                 <SectionTitle
                   title="Review Your Listing"
@@ -1404,23 +1497,6 @@ export default function CreateListingPage() {
                         value={`${address}${lga ? `, ${lga}` : ""}, ${state}`}
                       />
                       <ReviewRow label="Contact" value={`${sellerName} · ${phone}`} />
-                      <ReviewRow
-                        label="Delivery"
-                        value={
-                          DELIVERY_OPTIONS.find((d) => d.id === deliveryOption)
-                            ?.label || "—"
-                        }
-                      />
-                      {(deliveryOption === "deliver" || deliveryOption === "shipping") && (
-                        <>
-                          {shippingCost && (
-                            <ReviewRow label="Shipping Cost" value={`₦${Number(shippingCost).toLocaleString("en-NG")}`} />
-                          )}
-                          {shippingTime && (
-                            <ReviewRow label="Delivery Time" value={shippingTime} />
-                          )}
-                        </>
-                      )}
                       {warranty && warranty !== "None" && (
                         <ReviewRow label="Warranty" value={warranty} />
                       )}
@@ -1502,6 +1578,13 @@ export default function CreateListingPage() {
           </motion.div>
         </AnimatePresence>
 
+        {submitError && (
+          <div className="mt-6 rounded-xl bg-red-50 border border-red-200 p-4 flex gap-3">
+            <AlertCircle className="size-5 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700 font-medium">{submitError}</p>
+          </div>
+        )}
+
         {/* Navigation */}
         <div className="flex items-center justify-between gap-4 mt-10 pt-6 border-t border-[#211000]/8">
           <button
@@ -1535,12 +1618,12 @@ export default function CreateListingPage() {
               {submitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Publishing…
+                  {editingListingId ? "Resubmitting…" : "Publishing…"}
                 </>
               ) : (
                 <>
                   <Sparkles className="size-4" />
-                  Publish Listing
+                  {editingListingId ? "Resubmit Listing" : "Publish Listing"}
                 </>
               )}
             </button>

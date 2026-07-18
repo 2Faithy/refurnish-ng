@@ -28,7 +28,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", { session: false, failureRedirect: "/login" }),
   function (req, res) {
-    var user = req.user;
+    var user = req.user as any;
     var token = signToken({ userId: user.id, email: user.email });
     var frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     var userPayload = encodeURIComponent(
@@ -52,7 +52,7 @@ router.get(
   "/facebook/callback",
   passport.authenticate("facebook", { session: false, failureRedirect: "/login" }),
   function (req, res) {
-    var user = req.user;
+    var user = req.user as any;
     var token = signToken({ userId: user.id, email: user.email });
     var frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     var userPayload = encodeURIComponent(

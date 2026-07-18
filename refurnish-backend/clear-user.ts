@@ -1,3 +1,6 @@
+﻿import dotenv from "dotenv";
+dotenv.config();
+
 import { prisma } from "./src/config/prisma";
 
 const EMAIL_TO_CLEAR = "faithonwuemeri2008@gmail.com";

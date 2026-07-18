@@ -70,3 +70,90 @@ export async function sendPasswordResetEmail(to: string, code: string) {
     html,
   });
 }
+
+export async function sendListingSubmittedEmail(to: string, name: string, itemTitle: string) {
+  const html = emailShell(
+    "We've got your listing!",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, thanks for listing <strong>"${itemTitle}"</strong> on Refurnish.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0;">
+      Our team will review it shortly — we'll reach out within a few hours to let
+      you know if it's approved or if we need any changes.
+    </p>`
+  );
+
+  return resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "We've got your listing!",
+    html,
+  });
+}
+
+export async function sendListingApprovedEmail(
+  to: string,
+  name: string,
+  itemTitle: string,
+  shopUrl: string
+) {
+  const html = emailShell(
+    "Your listing is live! 🎉",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, great news — <strong>"${itemTitle}"</strong> has been approved and is now live.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 16px 0;">
+      Head over to the shop page to check it out, and share it on WhatsApp,
+      Telegram, or Facebook to help it sell faster.
+    </p>
+    <div style="text-align:center;">
+      <a href="${shopUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        View your listing
+      </a>
+    </div>`
+  );
+
+  return resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Your listing is live! 🎉",
+    html,
+  });
+}
+
+export async function sendListingRejectedEmail(
+  to: string,
+  name: string,
+  itemTitle: string,
+  reason: string,
+  editUrl: string
+) {
+  const html = emailShell(
+    "An update on your listing",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, unfortunately <strong>"${itemTitle}"</strong> wasn't approved this time.
+    </p>
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; opacity:0.5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin:0 0 6px 0;">Reason</p>
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0;">${reason}</p>
+    </div>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 16px 0;">
+      You can fix the issue above and resubmit without starting over.
+    </p>
+    <div style="text-align:center;">
+      <a href="${editUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        Edit & resubmit listing
+      </a>
+    </div>`
+  );
+
+  return resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "An update on your listing",
+    html,
+  });
+}
