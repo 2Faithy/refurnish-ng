@@ -7,6 +7,7 @@ import {
   getListingById,
   resubmitListing,
   getActiveListings,
+  getActiveListingById,
   getAllListings,
   reviewListing,
   deleteListing,
@@ -17,6 +18,7 @@ const router = Router();
 router.get("/", getActiveListings);
 router.post("/", requireAuth, createListing);
 router.get("/mine", requireAuth, getMyListings);
+router.get("/public/:id", getActiveListingById);
 router.get("/:id", requireAuth, getListingById);
 router.patch("/:id", requireAuth, resubmitListing);
 

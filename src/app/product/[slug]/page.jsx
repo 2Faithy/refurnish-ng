@@ -17,6 +17,7 @@ import {
   X,
   CheckCircle2,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 import {
   FaWhatsapp,
@@ -25,12 +26,57 @@ import {
   FaLinkedinIn,
   FaTwitter,
 } from "react-icons/fa";
-import {
-  getProductBySlug,
-  getRelatedProducts,
-  formatNaira,
-} from "@/lib/data";
-import { ProductCard } from "@/components/site/ProductCard";
+import { formatNaira } from "@/lib/data";
+
+const CONDITION_LABELS = {
+  "brand-new": "Brand New",
+  "like-new": "Like New",
+  "very-good": "Very Good",
+  good: "Good",
+  fair: "Fair",
+  "needs-repair": "Needs Repair",
+};
+
+const DEFECT_LABELS = {
+  scratches: "Scratches / Scuff marks",
+  stains: "Stains / Discoloration",
+  dents: "Dents / Dings",
+  chips: "Chips / Cracks",
+  tears: "Tears / Holes (upholstery)",
+  loose: "Loose parts / Handles",
+  structural: "Structural damage",
+  odors: "Odors / Smoke damage",
+};
+
+function mapListingToProduct(listing) {
+  return {
+    id: listing.id,
+    slug: listing.id,
+    title: listing.itemTitle,
+    brand: listing.brand || listing.category,
+    images: listing.photos?.length ? listing.photos : [],
+    condition: CONDITION_LABELS[listing.condition] || listing.condition,
+    price: Number(listing.sellingPrice) || 0,
+    originalPrice: listing.originalPrice ? Number(listing.originalPrice) : undefined,
+    description: listing.description,
+    material: listing.material,
+    color: listing.color,
+    age: listing.age,
+    dimensions: [listing.dimLength, listing.dimWidth, listing.dimHeight]
+      .filter(Boolean)
+      .join(" × ") + (listing.dimLength ? " cm" : ""),
+    weight: listing.dimWeight ? `${listing.dimWeight} kg` : null,
+    style: listing.category,
+    room: listing.category,
+    location: listing.state || "",
+    conditionNotes: listing.conditionNotes,
+    defects: (listing.defects || []).map((d) => DEFECT_LABELS[d] || d),
+    warranty: listing.warranty && listing.warranty !== "None" ? listing.warranty : null,
+    warrantyDuration: listing.warrantyDuration,
+    negotiable: listing.negotiable,
+    seller: { name: listing.sellerName },
+  };
+}
 
 const SAVED_KEY = "refurnish_saved";
 const CART_KEY = "refurnish_cart";
@@ -46,13 +92,44 @@ export default function ProductPage() {
   const router = useRouter();
 
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
-  const product = getProductBySlug(slug);
+
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const [active, setActive] = useState(0);
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [productUrl, setProductUrl] = useState("");
+
+  useEffect(() => {
+    if (!slug) return;
+
+    const fetchProduct = async () => {
+      setLoading(true);
+      setNotFound(false);
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/listings/public/${slug}`
+        );
+        if (res.status === 404) {
+          setNotFound(true);
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to load listing.");
+        setProduct(mapListingToProduct(data.listing));
+      } catch (err) {
+        console.error(err);
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [slug]);
 
   useEffect(() => {
     if (!product) return;
@@ -75,7 +152,15 @@ export default function ProductPage() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  if (!product) {
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#FAF4EC] text-[#211000] pt-32 px-6 flex items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-[#B66B44]" />
+      </main>
+    );
+  }
+
+  if (notFound || !product) {
     return (
       <main className="min-h-screen bg-[#FAF4EC] text-[#211000] pt-32 px-6 text-center">
         <h1 className="font-serif text-4xl">Piece not found</h1>
@@ -89,8 +174,6 @@ export default function ProductPage() {
       </main>
     );
   }
-
-  const related = getRelatedProducts(product.id, 4);
 
   const handleToggleSave = () => {
     try {
@@ -257,13 +340,6 @@ export default function ProductPage() {
               )}
             </motion.div>
 
-            <motion.p
-              variants={fadeUp}
-              className="text-xs text-[#211000]/50 mt-1 font-medium"
-            >
-              + delivery from ₦8,500 to Lagos, or self-pickup where available
-            </motion.p>
-
             <motion.div
               variants={fadeUp}
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-white border border-[#211000]/8 px-3.5 py-1.5 text-xs font-medium"
@@ -323,10 +399,8 @@ export default function ProductPage() {
             >
               <TrustRow
                 icon={<BadgeCheck className="size-4 text-[#5F7161]" />}
-                label="Verified seller"
-                value={`${product.seller?.name || "Seller"} · ${
-                  product.seller?.rating || "4.8"
-                }★`}
+                label="Seller"
+                value={product.seller?.name || "Seller"}
               />
 
               <TrustRow
@@ -355,53 +429,56 @@ export default function ProductPage() {
               <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 text-sm border-t border-[#211000]/10 pt-6">
                 <Spec label="Material" value={product.material} />
                 <Spec label="Color" value={product.color} />
+                <Spec label="Age" value={product.age} />
                 <Spec label="Dimensions" value={product.dimensions} />
-                <Spec label="Style" value={product.style} />
+                <Spec label="Weight" value={product.weight} />
                 <Spec label="Room" value={product.room} />
-                <Spec label="Pickup" value={product.location} />
+                <Spec label="Location" value={product.location} />
+                {product.negotiable && <Spec label="Price" value="Negotiable" />}
               </dl>
+
+              {(product.defects?.length > 0 || product.conditionNotes) && (
+                <div className="mt-6 border-t border-[#211000]/10 pt-6">
+                  <h3 className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold mb-3">
+                    Condition details
+                  </h3>
+
+                  {product.defects?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {product.defects.map((d) => (
+                        <span
+                          key={d}
+                          className="text-[11px] font-bold bg-[#E8CEB0]/30 border border-[#E8CEB0] text-[#211000]/70 px-2.5 py-1 rounded-full"
+                        >
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {product.conditionNotes && (
+                    <p className="text-sm text-[#211000]/70 leading-relaxed font-medium">
+                      {product.conditionNotes}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {product.warranty && (
+                <div className="mt-6 border-t border-[#211000]/10 pt-6">
+                  <h3 className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold mb-2">
+                    Warranty
+                  </h3>
+                  <p className="text-sm text-[#211000]/70 font-medium">
+                    {product.warranty}
+                    {product.warrantyDuration && ` · ${product.warrantyDuration}`}
+                  </p>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         </div>
 
-        {/* Related */}
-        <section className="mt-24 sm:mt-32">
-          <motion.h2
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="font-serif text-3xl md:text-4xl font-medium tracking-tight"
-          >
-            Pairs well with
-          </motion.h2>
-
-          <motion.div
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            variants={{
-              hidden: { opacity: 0 },
-              show: { opacity: 1, transition: { staggerChildren: 0.1 } },
-            }}
-            className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-10"
-          >
-            {related.map((p) => (
-              <motion.div
-                key={p.id}
-                variants={{
-                  hidden: { opacity: 0, y: 15 },
-                  show: {
-                    opacity: 1,
-                    y: 0,
-                    transition: { duration: 0.5, ease: "easeOut" },
-                  },
-                }}
-              >
-                <ProductCard product={p} />
-              </motion.div>
-            ))}
-          </motion.div>
-        </section>
       </div>
 
       {/* Share Modal */}
