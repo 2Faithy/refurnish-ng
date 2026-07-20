@@ -21,19 +21,58 @@ import {
   Truck,
   X,
 } from "lucide-react";
-import { products, formatNaira, type Product } from "@/lib/data";
+import { formatNaira } from "@/lib/data";
 
 const CART_KEY = "refurnish_cart";
 const SAVED_KEY = "refurnish_saved";
 const QTY_KEY = "refurnish_cart_quantities";
 
+const CONDITION_LABELS: Record<string, string> = {
+  "brand-new": "Brand New",
+  "like-new": "Like New",
+  "very-good": "Very Good",
+  good: "Good",
+  fair: "Fair",
+  "needs-repair": "Needs Repair",
+};
+
+type Product = {
+  id: string;
+  slug: string;
+  title: string;
+  brand: string;
+  images: string[];
+  condition: string;
+  price: number;
+  originalPrice?: number;
+  location: string;
+  style?: string;
+};
+
+function mapListingToProduct(listing: any): Product {
+  return {
+    id: listing.id,
+    slug: listing.id,
+    title: listing.itemTitle,
+    brand: listing.brand || listing.category,
+    images: listing.photos?.length ? listing.photos : [],
+    condition: CONDITION_LABELS[listing.condition] || listing.condition,
+    price: Number(listing.sellingPrice) || 0,
+    originalPrice: listing.originalPrice ? Number(listing.originalPrice) : undefined,
+    location: listing.state || "",
+  };
+}
+
 export default function CartPage() {
-  const [cartIds, setCartIds] = useState<number[]>([]);
-  const [savedIds, setSavedIds] = useState<number[]>([]);
+  const [cartIds, setCartIds] = useState<string[]>([]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [promo, setPromo] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [toast, setToast] = useState("");
+
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
   useEffect(() => {
     try {
@@ -47,7 +86,7 @@ export default function CartPage() {
 
         if (!qty) {
           const initialQty: Record<string, number> = {};
-          parsedCart.forEach((id: number) => {
+          parsedCart.forEach((id: string) => {
             initialQty[String(id)] = 1;
           });
           setQuantities(initialQty);
@@ -65,6 +104,24 @@ export default function CartPage() {
   }, []);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      setProductsLoading(true);
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/listings`);
+        const data = await res.json();
+        if (res.ok) {
+          setAllProducts((data.listings || []).map(mapListingToProduct));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2200);
     return () => clearTimeout(t);
@@ -72,9 +129,9 @@ export default function CartPage() {
 
   const cartProducts = useMemo(() => {
     return cartIds
-      .map((id) => products.find((p) => p.id === id))
+      .map((id) => allProducts.find((p) => p.id === id))
       .filter(Boolean) as Product[];
-  }, [cartIds]);
+  }, [cartIds, allProducts]);
 
   const subtotal = useMemo(() => {
     return cartProducts.reduce((sum, product) => {
@@ -84,16 +141,14 @@ export default function CartPage() {
   }, [cartProducts, quantities]);
 
   const discount = promoApplied ? Math.round(subtotal * 0.05) : 0;
-  const deliveryEstimate = cartProducts.length > 0 ? 8500 : 0;
-  const buyerProtection = cartProducts.length > 0 ? 2500 : 0;
-  const total = subtotal - discount + deliveryEstimate + buyerProtection;
+  const total = subtotal - discount;
 
-  const persistCart = (next: number[]) => {
+  const persistCart = (next: string[]) => {
     setCartIds(next);
     localStorage.setItem(CART_KEY, JSON.stringify(next));
   };
 
-  const persistSaved = (next: number[]) => {
+  const persistSaved = (next: string[]) => {
     setSavedIds(next);
     localStorage.setItem(SAVED_KEY, JSON.stringify(next));
   };
@@ -103,7 +158,7 @@ export default function CartPage() {
     localStorage.setItem(QTY_KEY, JSON.stringify(next));
   };
 
-  const updateQuantity = (id: number, nextQty: number) => {
+  const updateQuantity = (id: string, nextQty: number) => {
     if (nextQty < 1) return;
     persistQty({
       ...quantities,
@@ -111,7 +166,7 @@ export default function CartPage() {
     });
   };
 
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (id: string) => {
     const nextCart = cartIds.filter((x) => x !== id);
     const nextQty = { ...quantities };
     delete nextQty[String(id)];
@@ -194,7 +249,11 @@ export default function CartPage() {
           </div>
         </div>
 
-        {cartProducts.length === 0 ? (
+        {productsLoading ? (
+          <div className="py-24 flex justify-center">
+            <div className="size-8 rounded-full border-2 border-[#B66B44] border-t-transparent animate-spin" />
+          </div>
+        ) : cartProducts.length === 0 ? (
           <EmptyCart />
         ) : (
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-10">
@@ -253,7 +312,7 @@ export default function CartPage() {
                             setPromo(e.target.value);
                             setPromoApplied(false);
                           }}
-                          placeholder="REFURNISH5"
+                          placeholder="Enter promo code"
                           className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/8 pl-9 pr-3 py-3 text-xs font-bold placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44]"
                         />
                       </div>
@@ -285,15 +344,7 @@ export default function CartPage() {
                         positive
                       />
                     )}
-                    <SummaryRow
-                      label="Delivery estimate"
-                      value={formatNaira(deliveryEstimate)}
-                    />
-                    <SummaryRow
-                      label="Buyer protection"
-                      value={formatNaira(buyerProtection)}
-                    />
-                  </div>
+                    </div>
 
                   <div className="border-t border-[#211000]/10 pt-5 flex items-center justify-between">
                     <span className="font-serif text-xl font-medium">
@@ -406,11 +457,6 @@ function CartItem({
             <span className="text-[10px] font-bold bg-[#E8CEB0] px-2 py-1 rounded-md">
               {product.condition}
             </span>
-            {product.style && (
-              <span className="text-[10px] font-bold bg-[#FAF4EC] border border-[#211000]/8 px-2 py-1 rounded-md">
-                {product.style}
-              </span>
-            )}
           </div>
 
           <div className="mt-auto pt-6 flex flex-col sm:flex-row sm:items-end justify-between gap-5">

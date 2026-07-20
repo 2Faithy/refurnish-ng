@@ -16,16 +16,54 @@ import {
   Check,
   Sparkles,
 } from "lucide-react";
-import { products, formatNaira, type Product } from "@/lib/data";
+import { formatNaira } from "@/lib/data";
 
 const SAVED_KEY = "refurnish_saved";
 const CART_KEY = "refurnish_cart";
 
+const CONDITION_LABELS: Record<string, string> = {
+  "brand-new": "Brand New",
+  "like-new": "Like New",
+  "very-good": "Very Good",
+  good: "Good",
+  fair: "Fair",
+  "needs-repair": "Needs Repair",
+};
+
+type Product = {
+  id: string;
+  slug: string;
+  title: string;
+  brand: string;
+  images: string[];
+  condition: string;
+  price: number;
+  originalPrice?: number;
+  location: string;
+};
+
+function mapListingToProduct(listing: any): Product {
+  return {
+    id: listing.id,
+    slug: listing.id,
+    title: listing.itemTitle,
+    brand: listing.brand || listing.category,
+    images: listing.photos?.length ? listing.photos : [],
+    condition: CONDITION_LABELS[listing.condition] || listing.condition,
+    price: Number(listing.sellingPrice) || 0,
+    originalPrice: listing.originalPrice ? Number(listing.originalPrice) : undefined,
+    location: listing.state || "",
+  };
+}
+
 export default function SavedPage() {
-  const [savedIds, setSavedIds] = useState<number[]>([]);
-  const [cartIds, setCartIds] = useState<number[]>([]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [cartIds, setCartIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
+
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
   useEffect(() => {
     try {
@@ -41,6 +79,24 @@ export default function SavedPage() {
   }, []);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      setProductsLoading(true);
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/listings`);
+        const data = await res.json();
+        if (res.ok) {
+          setAllProducts((data.listings || []).map(mapListingToProduct));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2200);
     return () => clearTimeout(t);
@@ -48,32 +104,33 @@ export default function SavedPage() {
 
   const savedProducts = useMemo(() => {
     const list = savedIds
-      .map((id) => products.find((p) => p.id === id))
-      .filter(Boolean) as Product[];
+      .map((id) => allProducts.find((p) => p.id === id))
+      .filter(Boolean);
 
     if (!search.trim()) return list;
 
     const q = search.toLowerCase();
-    return list.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q) ||
-        p.style?.toLowerCase().includes(q)
-    );
-  }, [savedIds, search]);
+    return list
+  .filter((p): p is Product => Boolean(p))
+  .filter(
+    (p) =>
+      p.title.toLowerCase().includes(q) ||
+      p.brand?.toLowerCase().includes(q) ||
+      p.location?.toLowerCase().includes(q)
+  );
+  }, [savedIds, allProducts, search]);
 
-  const persistSaved = (next: number[]) => {
+  const persistSaved = (next: string[]) => {
     setSavedIds(next);
     localStorage.setItem(SAVED_KEY, JSON.stringify(next));
   };
 
-  const persistCart = (next: number[]) => {
+  const persistCart = (next: string[]) => {
     setCartIds(next);
     localStorage.setItem(CART_KEY, JSON.stringify(next));
   };
 
-  const removeSaved = (id: number) => {
+  const removeSaved = (id: string) => {
     const next = savedIds.filter((x) => x !== id);
     persistSaved(next);
     setToast("Removed from saved items");
@@ -189,16 +246,18 @@ export default function SavedPage() {
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-14"
           >
             <AnimatePresence mode="popLayout">
-              {savedProducts.map((product) => (
-                <SavedProductCard
-                  key={product.id}
-                  product={product}
-                  inCart={cartIds.includes(product.id)}
-                  onRemove={() => removeSaved(product.id)}
-                  onAddToCart={() => addToCart(product)}
-                />
-              ))}
-            </AnimatePresence>
+  {savedProducts
+    .filter((product): product is Product => Boolean(product)) // or product !== undefined
+    .map((product) => (
+      <SavedProductCard
+        key={product.id}
+        product={product}
+        inCart={cartIds.includes(product.id)}
+        onRemove={() => removeSaved(product.id)}
+        onAddToCart={() => addToCart(product)}
+      />
+    ))}
+</AnimatePresence>
           </motion.div>
         )}
       </div>
