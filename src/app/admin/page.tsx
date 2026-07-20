@@ -81,15 +81,28 @@ export default function AdminPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectBox, setShowRejectBox] = useState(false);
 
+  const getAdminToken = () => {
+    const session = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null");
+    return session?.token || "";
+  };
+
   const fetchListings = async () => {
     setListingsLoading(true);
     setListingsError("");
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/listings/admin/all`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/listings/admin/all`,
+        { headers: { Authorization: `Bearer ${getAdminToken()}` } }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to load listings.");
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          router.push("/admin/login");
+          return;
+        }
+        throw new Error(data?.message || "Failed to load listings.");
+      }
       setListings(data.listings || []);
     } catch (err: any) {
       console.error(err);
@@ -244,7 +257,10 @@ export default function AdminPage() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/listings/${id}/review`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAdminToken()}`,
+          },
           body: JSON.stringify({ status, rejectionReason }),
         }
       );
@@ -267,7 +283,10 @@ export default function AdminPage() {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/listings/${id}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${getAdminToken()}` },
+        }
       );
       const data = await res.json();
 
@@ -574,12 +593,25 @@ export default function AdminPage() {
                           )}
 
                           {listingTab === "approved" && (
-                            <Link
-                              href={`/product/${listing.id}`}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
-                            >
-                              View
-                            </Link>
+                            <>
+                              <Link
+                                href={`/product/${listing.id}`}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                              >
+                                View
+                              </Link>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Delete "${listing.itemTitle}"? This can't be undone.`)) {
+                                    deleteListing(listing.id);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 text-red-500 px-3 py-2 text-xs font-bold hover:bg-red-50"
+                              >
+                                <Trash2 className="size-3.5" />
+                                Delete
+                              </button>
+                            </>
                           )}
 
                           {listingTab === "rejected" && (

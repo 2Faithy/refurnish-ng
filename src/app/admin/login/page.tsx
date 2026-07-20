@@ -18,11 +18,6 @@ import {
 
 const ADMIN_SESSION_KEY = "refurnish_admin_session";
 
-// Prototype credentials.
-// For production, this must be checked by your backend.
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@refurnish.ng";
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "Admin@12345";
-
 export default function AdminLoginPage() {
   const router = useRouter();
 
@@ -40,27 +35,41 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 800));
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: form.email.trim(),
+            password: form.password,
+          }),
+        }
+      );
 
-    if (
-      form.email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() &&
-      form.password === ADMIN_PASSWORD
-    ) {
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Invalid admin email or password.");
+        return;
+      }
+
       localStorage.setItem(
         ADMIN_SESSION_KEY,
         JSON.stringify({
-          email: ADMIN_EMAIL,
-          role: "admin",
+          email: data.admin.email,
+          token: data.token,
           loggedInAt: new Date().toISOString(),
         })
       );
 
       router.push("/admin");
-    } else {
-      setError("Invalid admin email or password.");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -169,13 +178,6 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 rounded-2xl bg-[#E8CEB0]/35 border border-[#E8CEB0] p-4">
-            <p className="text-xs text-[#211000]/65 font-medium leading-relaxed">
-              Demo admin: <strong>{ADMIN_EMAIL}</strong>
-              <br />
-              Password: <strong>{ADMIN_PASSWORD}</strong>
-            </p>
-          </div>
         </motion.div>
       </div>
     </main>

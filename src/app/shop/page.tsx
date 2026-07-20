@@ -28,18 +28,34 @@ import {
   Package,
   Loader2,
 } from "lucide-react";
-import { products, formatNaira, type Product } from "@/lib/data";
+import { formatNaira } from "@/lib/data";
+
+type Product = {
+  id: string;
+  slug: string;
+  title: string;
+  brand: string;
+  images: string[];
+  room: string;
+  condition: string;
+  conditionLabel: string;
+  material: string;
+  price: number;
+  originalPrice?: number;
+  location: string;
+  description?: string;
+};
 
 const CATEGORIES = [
   { id: "all", label: "All Pieces", icon: Sparkles },
-  { id: "Living Room", label: "Living Room", icon: Sofa },
-  { id: "Bedroom", label: "Bedroom", icon: BedDouble },
-  { id: "Dining", label: "Dining", icon: UtensilsCrossed },
-  { id: "Office", label: "Office", icon: Briefcase },
-  { id: "Kitchen", label: "Kitchen", icon: ChefHat },
-  { id: "Outdoor", label: "Outdoor", icon: TreePine },
-  { id: "Lighting", label: "Lighting", icon: Lamp },
-  { id: "Decor", label: "Decor", icon: ImageIcon },
+  { id: "living-room", label: "Living Room", icon: Sofa },
+  { id: "bedroom", label: "Bedroom", icon: BedDouble },
+  { id: "dining", label: "Dining", icon: UtensilsCrossed },
+  { id: "office", label: "Office", icon: Briefcase },
+  { id: "kitchen", label: "Kitchen", icon: ChefHat },
+  { id: "outdoor", label: "Outdoor", icon: TreePine },
+  { id: "lighting", label: "Lighting", icon: Lamp },
+  { id: "decor", label: "Decor & Art", icon: ImageIcon },
 ];
 
 const SORT_OPTIONS = [
@@ -49,17 +65,56 @@ const SORT_OPTIONS = [
   { id: "name-az", label: "Name: A to Z" },
 ];
 
-const CONDITIONS = ["Brand New", "Like New", "Excellent", "Very Good", "Good", "Fair"];
-const STYLES = [
-  "Afro-minimal",
-  "Japandi",
-  "Modern luxury",
-  "Cozy neutral",
-  "Contemporary African",
-  "Scandinavian warm",
+const CONDITION_LABELS: Record<string, string> = {
+  "brand-new": "Brand New",
+  "like-new": "Like New",
+  "very-good": "Very Good",
+  good: "Good",
+  fair: "Fair",
+  "needs-repair": "Needs Repair",
+};
+
+const CONDITIONS = Object.keys(CONDITION_LABELS);
+
+const MATERIALS = [
+  "Solid Wood",
+  "Engineered Wood",
+  "Metal",
+  "Fabric",
+  "Leather",
+  "Glass",
+  "Rattan",
+  "Plastic",
+  "Stone / Marble",
+  "Velvet",
+  "Linen",
+  "Cotton",
+  "Wool",
+  "Acrylic",
+  "Mixed Materials",
 ];
-const MATERIALS = ["Wood", "Metal", "Fabric", "Leather", "Glass", "Rattan", "Stone"];
-const LOCATIONS = ["Lekki", "Ikoyi", "Yaba", "Surulere", "Ikeja", "Ajah", "Lagos Island"];
+
+const NIGERIAN_STATES = [
+  "Lagos", "Abuja", "Rivers", "Oyo", "Kano", "FCT", "Ogun", "Enugu", "Delta", "Kaduna",
+];
+
+function mapListingToProduct(listing: any): Product {
+  return {
+    id: listing.id,
+    slug: listing.id,
+    title: listing.itemTitle,
+    brand: listing.brand || listing.category,
+    images: listing.photos?.length ? listing.photos : [],
+    room: listing.category,
+    condition: listing.condition,
+    conditionLabel: CONDITION_LABELS[listing.condition] || listing.condition,
+    material: listing.material || "",
+    price: Number(listing.sellingPrice) || 0,
+    originalPrice: listing.originalPrice ? Number(listing.originalPrice) : undefined,
+    location: [listing.lga, listing.state].filter(Boolean).join(", ") || listing.state || "",
+    description: listing.description,
+  };
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -77,15 +132,18 @@ export default function ShopPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [sort, setSort] = useState("newest");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 2000000]);
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
 
-  const [cart, setCart] = useState<number[]>([]);
-  const [saved, setSaved] = useState<number[]>([]);
+  const [cart, setCart] = useState<string[]>([]);
+  const [saved, setSaved] = useState<string[]>([]);
   const [addedToast, setAddedToast] = useState<string | null>(null);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState("");
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +154,25 @@ export default function ShopPage() {
       if (s) setSaved(JSON.parse(s));
       if (c) setCart(JSON.parse(c));
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setProductsLoading(true);
+      setProductsError("");
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/listings`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to load listings.");
+        setProducts((data.listings || []).map(mapListingToProduct));
+      } catch (err: any) {
+        console.error(err);
+        setProductsError(err.message || "Could not load listings.");
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+    fetchProducts();
   }, []);
 
   useEffect(() => {
@@ -120,9 +197,7 @@ export default function ShopPage() {
     let list = [...products];
 
     if (category !== "all") {
-      list = list.filter(
-        (p) => p.room?.toLowerCase() === category.toLowerCase()
-      );
+      list = list.filter((p) => p.room === category);
     }
 
     if (searchQuery.trim()) {
@@ -130,8 +205,7 @@ export default function ShopPage() {
       list = list.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.style?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q) ||
           p.material?.toLowerCase().includes(q) ||
           p.description?.toLowerCase().includes(q)
       );
@@ -143,10 +217,6 @@ export default function ShopPage() {
 
     if (selectedConditions.length > 0) {
       list = list.filter((p) => selectedConditions.includes(p.condition));
-    }
-
-    if (selectedStyles.length > 0) {
-      list = list.filter((p) => selectedStyles.includes(p.style));
     }
 
     if (selectedMaterials.length > 0) {
@@ -180,14 +250,13 @@ export default function ShopPage() {
     }
 
     return list;
-  }, [category, searchQuery, sort, priceRange, selectedConditions, selectedStyles, selectedMaterials, selectedLocations]);
+  }, [products, category, searchQuery, sort, priceRange, selectedConditions, selectedMaterials, selectedLocations]);
 
   const activeFilterCount =
     selectedConditions.length +
-    selectedStyles.length +
     selectedMaterials.length +
     selectedLocations.length +
-    (priceRange[0] > 0 || priceRange[1] < 500000 ? 1 : 0);
+    (priceRange[0] > 0 || priceRange[1] < 2000000 ? 1 : 0);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,7 +264,7 @@ export default function ShopPage() {
     setSearchOpen(false);
   };
 
-  const toggleSaved = (id: number) => {
+  const toggleSaved = (id: string) => {
     setSaved((prev) => {
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
       localStorage.setItem("refurnish_saved", JSON.stringify(next));
@@ -218,10 +287,9 @@ export default function ShopPage() {
 
   const resetFilters = () => {
     setSelectedConditions([]);
-    setSelectedStyles([]);
     setSelectedMaterials([]);
     setSelectedLocations([]);
-    setPriceRange([0, 500000]);
+    setPriceRange([0, 2000000]);
   };
 
   const toggleArrayValue = (arr: string[], setter: (v: string[]) => void, val: string) => {
@@ -408,13 +476,6 @@ export default function ShopPage() {
                 onRemove={() => setSelectedConditions(selectedConditions.filter((x) => x !== c))}
               />
             ))}
-            {selectedStyles.map((s) => (
-              <FilterChip
-                key={s}
-                label={s}
-                onRemove={() => setSelectedStyles(selectedStyles.filter((x) => x !== s))}
-              />
-            ))}
             {selectedMaterials.map((m) => (
               <FilterChip
                 key={m}
@@ -446,7 +507,15 @@ export default function ShopPage() {
 
       {/* ============ PRODUCT GRID ============ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-16 py-8 pb-24">
-        {filteredProducts.length === 0 ? (
+        {productsLoading ? (
+          <div className="py-24 flex justify-center">
+            <Loader2 className="size-8 animate-spin text-[#B66B44]" />
+          </div>
+        ) : productsError ? (
+          <div className="text-center py-24 max-w-md mx-auto">
+            <p className="text-sm text-red-600 font-medium">{productsError}</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-24 max-w-md mx-auto">
             <div className="w-16 h-16 rounded-full bg-[#E8CEB0]/40 flex items-center justify-center mx-auto mb-5">
               <Package className="size-7 text-[#B66B44]" />
@@ -583,7 +652,7 @@ export default function ShopPage() {
                       {products
                         .filter((p) =>
                           p.title.toLowerCase().includes(searchInput.toLowerCase()) ||
-                          p.brand.toLowerCase().includes(searchInput.toLowerCase())
+                          p.brand?.toLowerCase().includes(searchInput.toLowerCase())
                         )
                         .slice(0, 4)
                         .map((p) => (
@@ -658,8 +727,8 @@ export default function ShopPage() {
                     <input
                       type="range"
                       min={0}
-                      max={500000}
-                      step={5000}
+                      max={2000000}
+                      step={10000}
                       value={priceRange[1]}
                       onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
                       className="w-full accent-[#B66B44]"
@@ -683,7 +752,7 @@ export default function ShopPage() {
                         <input
                           type="number"
                           value={priceRange[1]}
-                          onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value) || 500000])}
+                          onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value) || 2000000])}
                           className="w-full mt-1 px-3 py-2 rounded-lg bg-white border border-[#211000]/10 text-xs font-bold focus:outline-none focus:border-[#B66B44]"
                         />
                       </div>
@@ -696,32 +765,11 @@ export default function ShopPage() {
                     {CONDITIONS.map((c) => (
                       <CheckboxRow
                         key={c}
-                        label={c}
+                        label={CONDITION_LABELS[c]}
                         checked={selectedConditions.includes(c)}
                         onChange={() => toggleArrayValue(selectedConditions, setSelectedConditions, c)}
                       />
                     ))}
-                  </div>
-                </FilterSection>
-
-                <FilterSection title="Style">
-                  <div className="flex flex-wrap gap-2">
-                    {STYLES.map((s) => {
-                      const isActive = selectedStyles.includes(s);
-                      return (
-                        <button
-                          key={s}
-                          onClick={() => toggleArrayValue(selectedStyles, setSelectedStyles, s)}
-                          className={`px-3 py-2 rounded-full text-xs font-bold border transition-all ${
-                            isActive
-                              ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
-                              : "bg-white text-[#211000]/70 border-[#211000]/10 hover:border-[#211000]/30"
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      );
-                    })}
                   </div>
                 </FilterSection>
 
@@ -748,7 +796,7 @@ export default function ShopPage() {
 
                 <FilterSection title="Pickup Location">
                   <div className="space-y-2">
-                    {LOCATIONS.map((l) => (
+                    {NIGERIAN_STATES.map((l) => (
                       <CheckboxRow
                         key={l}
                         label={l}
@@ -851,7 +899,7 @@ function ProductCard({
           </button>
 
           <span className="absolute bottom-3 left-3 bg-[#E8CEB0] text-[#211000] text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
-            {product.condition}
+            {product.conditionLabel}
           </span>
 
           <button
@@ -881,10 +929,11 @@ function ProductCard({
             <h3 className="font-serif text-sm sm:text-base font-medium text-[#211000] tracking-tight leading-tight truncate">
               {product.title}
             </h3>
-            <p className="text-[11px] text-[#211000]/45 font-medium mt-1 flex items-center gap-1">
-              <BadgeCheck className="size-3 text-[#5F7161]" />
-              <span className="truncate">{product.location}</span>
-            </p>
+            {product.location && (
+              <p className="text-[11px] text-[#211000]/45 font-medium mt-1 truncate">
+                {product.location}
+              </p>
+            )}
           </div>
 
           <div className="text-right shrink-0">

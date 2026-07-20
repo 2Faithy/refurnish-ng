@@ -6,6 +6,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes";
 import listingsRoutes from "./routes/listings.routes";
+import adminRoutes from "./routes/admin.routes";
 import passport from "./config/passport";
 import "./config/passport-facebook";
 
@@ -24,6 +25,7 @@ app.use(passport.initialize());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingsRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/", (_req, res) => {
   res.send("Refurnish backend is running.");

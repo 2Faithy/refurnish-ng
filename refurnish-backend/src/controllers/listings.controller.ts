@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { prisma } from "../config/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
 import {
@@ -6,6 +6,7 @@ import {
   sendListingApprovedEmail,
   sendListingRejectedEmail,
 } from "../utils/mailer";
+import { validateListingPayload } from "../utils/validateListing";
 
 export async function createListing(req: AuthRequest, res: Response) {
   try {
@@ -24,8 +25,9 @@ export async function createListing(req: AuthRequest, res: Response) {
       callTime, address, state, lga, warranty, warrantyDuration,
     } = req.body;
 
-    if (!itemTitle || !category || !condition || !description || !sellingPrice) {
-      return res.status(400).json({ message: "Missing required listing fields." });
+    const validation = validateListingPayload(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.message });
     }
 
     const listing = await prisma.listing.create({
@@ -118,8 +120,9 @@ export async function resubmitListing(req: AuthRequest, res: Response) {
       callTime, address, state, lga, warranty, warrantyDuration,
     } = req.body;
 
-    if (!itemTitle || !category || !condition || !description || !sellingPrice) {
-      return res.status(400).json({ message: "Missing required listing fields." });
+    const validation = validateListingPayload(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.message });
     }
 
     const listing = await prisma.listing.update({
@@ -169,6 +172,19 @@ export async function resubmitListing(req: AuthRequest, res: Response) {
     return res.status(200).json({ message: "Listing resubmitted for review.", listing });
   } catch (err) {
     console.error("Resubmit listing error:", err);
+    return res.status(500).json({ message: "Something went wrong." });
+  }
+}
+
+export async function getActiveListings(_req: Request, res: Response) {
+  try {
+    const listings = await prisma.listing.findMany({
+      where: { status: "active" },
+      orderBy: { createdAt: "desc" },
+    });
+    return res.status(200).json({ listings });
+  } catch (err) {
+    console.error("Get active listings error:", err);
     return res.status(500).json({ message: "Something went wrong." });
   }
 }
