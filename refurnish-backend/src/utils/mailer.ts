@@ -123,6 +123,234 @@ export async function sendListingApprovedEmail(
   });
 }
 
+export async function sendOrderPendingEmail(
+  to: string,
+  name: string,
+  reference: string,
+  total: string
+) {
+  const html = emailShell(
+    "We're confirming your payment",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, we've received your order <strong>${reference}</strong> for ₦${Number(total).toLocaleString("en-NG")}.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0;">
+      We're confirming your payment and will get back to you shortly — usually within a few hours.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `We're confirming your payment — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (order pending):", result.error);
+  return result;
+}
+
+export async function sendPaymentConfirmedEmail(to: string, name: string, reference: string) {
+  const html = emailShell(
+    "Payment confirmed!",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, your payment for order <strong>${reference}</strong> has been confirmed.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      We're reaching out to the seller now to make sure your item is still available for pickup.
+      We'll get back to you shortly with next steps.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0;">
+      If the item is no longer available, we'll refund your payment immediately — no action needed from you.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Payment confirmed — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (payment confirmed):", result.error);
+  return result;
+}
+
+export async function sendSellerAvailabilityRequestEmail(
+  to: string,
+  name: string,
+  items: any[],
+  confirmUrl: string
+) {
+  const itemsHtml = (items || [])
+    .map(
+      (item: any) => `
+      <div style="border-top:1px solid #21100014; padding:12px 0;">
+        <p style="color:#211000; font-size:13px; font-weight:700; margin:0;">${item.itemTitle}</p>
+        <p style="color:#211000; opacity:0.6; font-size:12px; margin:4px 0 0 0;">Qty: ${item.quantity}</p>
+      </div>`
+    )
+    .join("");
+
+  const html = emailShell(
+    "Your item has been bought!",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 12px 0;">
+      Hi ${name}, great news — someone has purchased the following item(s) from your listing:
+    </p>
+
+    ${itemsHtml}
+
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:16px 0;">
+      Please confirm the item is still available so we can arrange pickup with the buyer.
+    </p>
+
+    <div style="text-align:center; margin:20px 0;">
+      <a href="${confirmUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        Confirm availability
+      </a>
+    </div>
+
+    <p style="color:#211000; opacity:0.5; font-size:12px; margin:0;">
+      This link will let you confirm whether the item is available, or let us know if it isn't so we can refund the buyer.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Your item has been bought — please confirm availability",
+    html,
+  });
+
+  if (result.error) console.error("Resend error (seller availability request):", result.error);
+  return result;
+}
+
+export async function sendPickupReadyEmail(
+  to: string,
+  name: string,
+  reference: string,
+  items: any[]
+) {
+  const itemsHtml = (items || [])
+    .map(
+      (item: any) => `
+      <div style="border-top:1px solid #21100014; padding:12px 0;">
+        <p style="color:#211000; font-size:13px; font-weight:700; margin:0 0 4px 0;">${item.itemTitle}</p>
+        <p style="color:#211000; opacity:0.7; font-size:12px; margin:0;">Seller: ${item.sellerName || "N/A"} · ${item.sellerPhone || ""}</p>
+        <p style="color:#211000; opacity:0.7; font-size:12px; margin:0;">Location: ${item.sellerAddress || ""}, ${item.sellerState || ""}</p>
+      </div>`
+    )
+    .join("");
+
+  const html = emailShell(
+    "Your item is ready for pickup!",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 12px 0;">
+      Hi ${name}, good news — the seller has confirmed your item for order <strong>${reference}</strong> is available. Here are the details so you can arrange pickup:
+    </p>
+
+    ${itemsHtml}
+
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; font-size:13px; font-weight:700; margin:0 0 8px 0;">Safety tips</p>
+      <ul style="color:#211000; opacity:0.75; font-size:12px; line-height:1.7; margin:0; padding-left:18px;">
+        <li>Meet in public, well-lit places whenever possible</li>
+        <li>Avoid meeting late at night</li>
+        <li>Inspect the item carefully before completing the handover</li>
+        <li>Never send additional payment outside the platform</li>
+      </ul>
+    </div>
+
+    <p style="color:#211000; opacity:0.7; font-size:13px; line-height:1.6; margin:0;">
+      If anything feels wrong, the item isn't as described, or you suspect fraud, report it to us immediately by replying to this email.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Your item is ready for pickup — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (pickup ready):", result.error);
+  return result;
+}
+
+export async function sendItemUnavailableEmail(
+  to: string,
+  name: string,
+  reference: string,
+  items: any[]
+) {
+  const itemsHtml = (items || [])
+    .map((item: any) => `<li style="margin-bottom:4px;">${item.itemTitle}</li>`)
+    .join("");
+
+  const html = emailShell(
+    "An update on your order",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, unfortunately the seller let us know the following item(s) from order <strong>${reference}</strong> are no longer available:
+    </p>
+    <ul style="color:#211000; opacity:0.75; font-size:13px; margin:0 0 12px 0; padding-left:18px;">
+      ${itemsHtml}
+    </ul>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0;">
+      We're sorry for the inconvenience. Your payment will be refunded immediately — no action needed from you.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Item unavailable — refund initiated for ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (item unavailable):", result.error);
+  return result;
+}
+
+export async function sendOrderRejectedEmail(
+  to: string,
+  name: string,
+  reference: string,
+  reason: string
+) {
+  const whatsappNumber = "08140190985";
+
+  const html = emailShell(
+    "An update on your payment",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, we were unable to confirm payment for order <strong>${reference}</strong>.
+    </p>
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; opacity:0.5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin:0 0 6px 0;">Reason</p>
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0;">${reason}</p>
+    </div>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0;">
+      If you believe this was a mistake, reach out to us on WhatsApp at
+      <strong>${whatsappNumber}</strong> — we're online 24/7 for immediate assistance.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `An update on your payment — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (order rejected):", result.error);
+  return result;
+}
+
 export async function sendListingRejectedEmail(
   to: string,
   name: string,

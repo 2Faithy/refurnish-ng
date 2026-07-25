@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
-  BadgeCheck,
   Check,
   CheckCircle2,
-  ChevronDown,
   CreditCard,
-  Shield,
   ShieldCheck,
   Lock,
   MapPin,
@@ -25,39 +22,26 @@ import {
   Truck,
   Package,
   Home,
-  Wallet,
   Banknote,
-  Smartphone,
   Loader2,
-  Sparkles,
-  AlertTriangle,
   Headphones,
-  FileText,
-  Scale,
   Timer,
   RefreshCcw,
   X,
   Upload,
-  Eye,
   Calendar,
-  Clock,
   Map,
-  Navigation,
-  Send,
-  Download,
   Copy,
   ExternalLink,
 } from "lucide-react";
-import { products, formatNaira, type Product } from "@/lib/data";
+import { formatNaira } from "@/lib/data";
 
 const CART_KEY = "refurnish_cart";
 const QTY_KEY = "refurnish_cart_quantities";
-const ORDERS_KEY = "refurnish_orders";
+const PENDING_CHECKOUT_KEY = "refurnish_pending_checkout";
 
-// Escrow configuration
-const ESCROW_RELEASE_DAYS = 7;
 const REFUND_WINDOW_DAYS = 3;
-const DELIVERY_FEE = 8500;
+const DELIVERY_ENABLED = false; // flip to true once a logistics API is wired up
 
 const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue",
@@ -67,18 +51,36 @@ const NIGERIAN_STATES = [
   "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara",
 ];
 
+const CONDITION_LABELS = {
+  "brand-new": "Brand New",
+  "like-new": "Like New",
+  "very-good": "Very Good",
+  good: "Good",
+  fair: "Fair",
+  "needs-repair": "Needs Repair",
+};
+
+function mapListingToProduct(listing) {
+  return {
+    id: listing.id,
+    title: listing.itemTitle,
+    brand: listing.brand || listing.category,
+    images: listing.photos?.length ? listing.photos : [],
+    condition: CONDITION_LABELS[listing.condition] || listing.condition,
+    price: Number(listing.sellingPrice) || 0,
+    state: listing.state || "",
+  };
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef(null);
 
-  // Form state
-  const [step, setStep] = useState<"delivery" | "payment" | "confirm">("delivery");
+  const [step, setStep] = useState("delivery");
   const [processing, setProcessing] = useState(false);
-const [orderId, setOrderId] = useState("");
-const [paymentReference, setPaymentReference] = useState("");
-
-const [paymentModal, setPaymentModal] = useState<"success" | "error" | null>(null);
-const [paymentError, setPaymentError] = useState("");
+  const [paymentModal, setPaymentModal] = useState(null);
+  const [paymentError, setPaymentError] = useState("");
+  const [orderReference, setOrderReference] = useState("");
 
   // Delivery info
   const [fullName, setFullName] = useState("");
@@ -88,88 +90,93 @@ const [paymentError, setPaymentError] = useState("");
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
   const [landmark, setLandmark] = useState("");
-  const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
+  const [deliveryType, setDeliveryType] = useState("pickup");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [showMap, setShowMap] = useState(false);
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "transfer" | "ussd">("card");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [cardName, setCardName] = useState("");
-  const [saveCard, setSaveCard] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("paystack");
   const [agreeTerms, setAgreeTerms] = useState(false);
 
-  // Bank transfer
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  // Bank transfer receipt
+  const [receiptUrl, setReceiptUrl] = useState(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState("");
 
   // Cart data
-  const [cartIds, setCartIds] = useState<number[]>([]);
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [sellerLocations, setSellerLocations] = useState<Record<number, { address: string; state: string; lga: string }>>({});
+  const [cartIds, setCartIds] = useState([]);
+  const [quantities, setQuantities] = useState({});
+  const [allProducts, setAllProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
-  // Load cart and user data
+  // Load cart ids/quantities
   useEffect(() => {
     try {
       const cart = localStorage.getItem(CART_KEY);
       const qty = localStorage.getItem(QTY_KEY);
-      if (cart) {
-        const parsed = JSON.parse(cart);
-        if (parsed.length === 0) {
-          router.push("/cart");
-          return;
-        }
-        setCartIds(parsed);
 
-        // Mock seller locations (in production, fetch from product data)
-        const locations: Record<number, { address: string; state: string; lga: string }> = {};
-        parsed.forEach((id: number) => {
-          const product = products.find((p) => p.id === id);
-          if (product) {
-            locations[id] = {
-              address: `${product.location}`,
-              state: "Lagos",
-              lga: product.location.split(",")[0] || "Lagos",
-            };
-          }
-        });
-        setSellerLocations(locations);
+      if (!cart || JSON.parse(cart).length === 0) {
+        router.push("/cart");
+        return;
       }
+
+      setCartIds(JSON.parse(cart));
       if (qty) setQuantities(JSON.parse(qty));
 
-      // Load saved user info
-      const user = localStorage.getItem("refurnish_user");
+      const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
       if (user) {
-        const userData = JSON.parse(user);
-        if (userData.name) setFullName(userData.name);
-        if (userData.email) setEmail(userData.email);
-        if (userData.phone) setPhone(userData.phone);
+        if (user.name) setFullName(user.name);
+        if (user.email) setEmail(user.email);
+        if (user.phone) setPhone(user.phone);
+      }
+
+      // Restore a checkout draft saved before being sent to log in
+      const pending = localStorage.getItem(PENDING_CHECKOUT_KEY);
+      if (pending) {
+        const draft = JSON.parse(pending);
+        setFullName(draft.fullName || "");
+        setPhone(draft.phone || "");
+        setEmail(draft.email || "");
+        setAddress(draft.address || "");
+        setState(draft.state || "");
+        setLga(draft.lga || "");
+        setLandmark(draft.landmark || "");
+        setDeliveryType(draft.deliveryType || "pickup");
+        setDeliveryDate(draft.deliveryDate || "");
+        setDeliveryNotes(draft.deliveryNotes || "");
+        setPaymentMethod(draft.paymentMethod || "paystack");
+        localStorage.removeItem(PENDING_CHECKOUT_KEY);
       }
     } catch {
       router.push("/cart");
     }
   }, [router]);
 
-  // Generate unique payment reference
-  const generatePaymentReference = useCallback(() => {
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `RF-PAY-${timestamp}-${random}`;
-  }, []);
-
+  // Fetch real listings for everything currently in the cart
   useEffect(() => {
-    setPaymentReference(generatePaymentReference());
-  }, [generatePaymentReference]);
+    const fetchProducts = async () => {
+      setProductsLoading(true);
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/listings`);
+        const data = await res.json();
+        if (res.ok) {
+          setAllProducts((data.listings || []).map(mapListingToProduct));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
 
   const cartProducts = useMemo(() => {
     return cartIds
-      .map((id) => products.find((p) => p.id === id))
-      .filter(Boolean) as Product[];
-  }, [cartIds]);
+      .map((id) => allProducts.find((p) => p.id === id))
+      .filter(Boolean);
+  }, [cartIds, allProducts]);
 
   const subtotal = useMemo(() => {
     return cartProducts.reduce((sum, product) => {
@@ -178,151 +185,137 @@ const [paymentError, setPaymentError] = useState("");
     }, 0);
   }, [cartProducts, quantities]);
 
-  const discount = 0;
-  const deliveryFee = deliveryType === "delivery" ? DELIVERY_FEE : 0;
-  const buyerProtection = Math.round(subtotal * 0.01);
-  const total = subtotal - discount + deliveryFee + buyerProtection;
+  const total = subtotal;
 
   const canProceed = () => {
-    // 1. Base contact info & terms checkbox must always be present
     const baseInfoValid = fullName && phone && email && agreeTerms;
     if (!baseInfoValid) return false;
-  
-    // 2. Validate delivery address (always required for home delivery)
+
     if (deliveryType === "delivery") {
       const deliveryValid = address && state && lga;
       if (!deliveryValid) return false;
     }
-  
-    // 3. Only validate payment details when on payment or confirm step
+
     if (step === "payment" || step === "confirm") {
-      if (paymentMethod === "card") {
-        const cardValid = cardNumber && cardExpiry && cardCvv && cardName;
-        if (!cardValid) return false;
-      }
-  
-      if (paymentMethod === "transfer") {
-        const transferValid = receiptFile !== null;
-        if (!transferValid) return false;
-      }
+      if (paymentMethod === "transfer" && !receiptUrl) return false;
     }
-  
+
     return true;
   };
 
-  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadReceiptToCloudinary = async (file) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", preset);
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+      { method: "POST", body: formData }
+    );
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || "Failed to upload receipt.");
+    return data.secure_url;
+  };
+
+  const handleReceiptUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
     if (!validTypes.includes(file.type)) {
-      alert("Please upload a JPG, PNG, or PDF receipt");
+      setReceiptError("Please upload a JPG, PNG, or PDF receipt.");
       return;
     }
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert("File size must be less than 5MB");
+      setReceiptError("File size must be less than 5MB.");
       return;
     }
 
+    setReceiptError("");
     setUploadingReceipt(true);
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setReceiptPreview(ev.target?.result as string);
-      setReceiptFile(file);
+    try {
+      const url = await uploadReceiptToCloudinary(file);
+      setReceiptUrl(url);
+    } catch (err) {
+      setReceiptError(err.message || "Failed to upload receipt.");
+    } finally {
       setUploadingReceipt(false);
-    };
-    reader.readAsDataURL(file);
+    }
 
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handlePlaceOrder = async () => {
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+
+    if (!user?.token) {
+      localStorage.setItem(
+        PENDING_CHECKOUT_KEY,
+        JSON.stringify({
+          fullName, phone, email, address, state, lga, landmark,
+          deliveryType, deliveryDate, deliveryNotes, paymentMethod,
+        })
+      );
+      router.push("/login?mode=login&next=/checkout");
+      return;
+    }
+
     setProcessing(true);
     setPaymentError("");
-  
+
     try {
-      // Simulate payment processing / receipt verification request
-      await new Promise((r) =>
-        setTimeout(r, paymentMethod === "transfer" ? 1500 : 2500)
-      );
-  
-      const newOrderId = `RF-ORD-${Date.now().toString(36).toUpperCase()}`;
-      setOrderId(newOrderId);
-  
-      const newOrder = {
-        id: newOrderId,
-        paymentReference,
-        items: cartProducts.map((p) => ({
-          id: p.id,
-          title: p.title,
-          price: p.price,
-          image: p.images[0],
-          seller: p.brand,
-          sellerLocation: sellerLocations[p.id],
-        })),
-        subtotal,
-        deliveryFee,
-        buyerProtection,
-        total,
-        status:
-          paymentMethod === "transfer"
-            ? "pending_payment_confirmation"
-            : "escrow_active",
-        escrowStatus:
-          paymentMethod === "transfer"
-            ? "awaiting_verification"
-            : "funds_held",
-        deliveryInfo: {
-          type: deliveryType,
-          name: fullName,
+      const cartItems = cartProducts.map((p) => ({
+        listingId: p.id,
+        quantity: quantities[String(p.id)] || 1,
+      }));
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({
+          cartItems,
+          deliveryType,
+          fullName,
           phone,
           email,
-          address: deliveryType === "delivery" ? address : null,
-          state: deliveryType === "delivery" ? state : null,
-          lga: deliveryType === "delivery" ? lga : null,
-          landmark: deliveryType === "delivery" ? landmark : null,
-          date: deliveryDate,
-          notes: deliveryNotes,
-        },
-        paymentMethod,
-        paymentDetails: {
-          cardLast4: paymentMethod === "card" ? cardNumber.slice(-4) : null,
-          transferReceipt: paymentMethod === "transfer" ? true : null,
-        },
-        createdAt: new Date().toISOString(),
-        escrowReleaseDate: new Date(
-          Date.now() + ESCROW_RELEASE_DAYS * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        refundWindowEnds: new Date(
-          Date.now() + REFUND_WINDOW_DAYS * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        paymentConfirmedAt:
-          paymentMethod === "transfer" ? null : new Date().toISOString(),
-      };
-  
-      const existing = localStorage.getItem(ORDERS_KEY);
-      const orders = existing ? JSON.parse(existing) : [];
-      orders.push(newOrder);
-      localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-  
-      // Clear cart only after successful order creation
+          address,
+          state,
+          lga,
+          landmark,
+          deliveryDate,
+          deliveryNotes,
+          paymentMethod,
+          receiptUrl,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to place order.");
+      }
+
       localStorage.removeItem(CART_KEY);
       localStorage.removeItem(QTY_KEY);
-  
-      // Mock email send
-      console.log("Order confirmation sent to:", email);
-      console.log("Payment reference:", paymentReference);
-  
+
+      if (paymentMethod === "paystack" && data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+        return;
+      }
+
+      setOrderReference(data.order.reference);
       setPaymentModal("success");
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       setPaymentError(
-        "We could not confirm your payment at this moment. Your cart has not been cleared, so you can safely try again."
+        err.message || "We could not process your order. Please try again."
       );
       setPaymentModal("error");
     } finally {
@@ -352,13 +345,13 @@ const [paymentError, setPaymentError] = useState("");
                 Complete your order.
               </h1>
               <p className="text-sm text-[#211000]/55 font-medium mt-2 max-w-xl">
-                Your payment is protected by Refurnish Escrow. Funds are only released after you confirm delivery.
+                Your payment is protected. Funds are only released to the seller after your payment is confirmed.
               </p>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 px-4 py-2">
               <ShieldCheck className="size-4 text-[#5F7161]" />
-              <span className="text-xs font-bold text-[#5F7161]">Escrow Protected</span>
+              <span className="text-xs font-bold text-[#5F7161]">Protected checkout</span>
             </div>
           </div>
         </div>
@@ -375,8 +368,7 @@ const [paymentError, setPaymentError] = useState("");
               const isActive = step === s.id;
               const isDone =
                 (step === "payment" && i === 0) ||
-                (step === "confirm" && i < 2) ||
-                (step === "delivery" && i === 0);
+                (step === "confirm" && i < 2);
 
               return (
                 <div key={s.id} className="flex items-center">
@@ -406,6 +398,11 @@ const [paymentError, setPaymentError] = useState("");
           </div>
         </div>
 
+        {productsLoading ? (
+          <div className="py-24 flex justify-center">
+            <Loader2 className="size-8 animate-spin text-[#B66B44]" />
+          </div>
+        ) : (
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-10">
           {/* Main Form */}
           <div className="lg:col-span-7 space-y-6">
@@ -426,45 +423,42 @@ const [paymentError, setPaymentError] = useState("");
                   />
 
                   <div className="rounded-2xl bg-white border border-[#211000]/8 shadow-sm p-6 space-y-6">
-                    {/* Delivery Type */}
                     <div>
                       <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-3">
                         How would you like to receive your order?
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Home Delivery */}
                         <motion.button
-                          whileTap={{ scale: 0.98 }}
+                          disabled={!DELIVERY_ENABLED}
+                          whileTap={DELIVERY_ENABLED ? { scale: 0.98 } : undefined}
                           onClick={() => {
+                            if (!DELIVERY_ENABLED) return;
                             setDeliveryType("delivery");
                             setShowMap(false);
                           }}
                           className={`relative p-5 rounded-xl border text-left transition-all ${
-                            deliveryType === "delivery"
+                            !DELIVERY_ENABLED
+                              ? "bg-[#211000]/5 border-[#211000]/8 cursor-not-allowed opacity-60"
+                              : deliveryType === "delivery"
                               ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
                               : "bg-[#FAF4EC] border-[#211000]/10 hover:border-[#B66B44]/30"
                           }`}
                         >
-                          {deliveryType === "delivery" && (
+                          {deliveryType === "delivery" && DELIVERY_ENABLED && (
                             <div className="absolute top-4 right-4 size-6 rounded-full bg-[#E8CEB0] flex items-center justify-center">
                               <Check className="size-3.5 text-[#211000]" />
                             </div>
                           )}
                           <Truck className="size-6 mb-3" />
                           <p className="text-sm font-bold">Home Delivery</p>
-                          <p
-                            className={`text-[11px] mt-1 ${
-                              deliveryType === "delivery" ? "text-[#E8CEB0]/70" : "text-[#211000]/45"
-                            }`}
-                          >
+                          <p className="text-[11px] mt-1 text-[#211000]/45">
                             Logistics partner delivers to your address
                           </p>
                           <p className="text-xs font-bold mt-2 text-[#B66B44]">
-                            + {formatNaira(DELIVERY_FEE)}
+                            Feature coming soon
                           </p>
                         </motion.button>
 
-                        {/* Pickup from Seller */}
                         <motion.button
                           whileTap={{ scale: 0.98 }}
                           onClick={() => {
@@ -491,14 +485,11 @@ const [paymentError, setPaymentError] = useState("");
                           >
                             Collect directly from seller's location
                           </p>
-                          <p className="text-xs font-bold mt-2 text-[#5F7161]">
-                            Free
-                          </p>
+                          <p className="text-xs font-bold mt-2 text-[#5F7161]">Free</p>
                         </motion.button>
                       </div>
                     </div>
 
-                    {/* Pickup Location Info */}
                     {deliveryType === "pickup" && cartProducts.length > 0 && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -510,24 +501,20 @@ const [paymentError, setPaymentError] = useState("");
                           <p className="text-sm font-bold">Pickup Location(s)</p>
                         </div>
                         <div className="space-y-2">
-                          {cartProducts.map((product) => {
-                            const location = sellerLocations[product.id];
-                            return (
-                              <div key={product.id} className="text-xs text-[#211000]/70">
-                                <p className="font-bold text-[#211000]">{product.title}</p>
-                                <p>{location?.address || product.location}</p>
-                              </div>
-                            );
-                          })}
+                          {cartProducts.map((product) => (
+                            <div key={product.id} className="text-xs text-[#211000]/70">
+                              <p className="font-bold text-[#211000]">{product.title}</p>
+                              <p>{product.state}</p>
+                            </div>
+                          ))}
                         </div>
                         <p className="text-[11px] text-[#211000]/50 flex items-center gap-1">
                           <Info className="size-3" />
-                          Seller location will be shared after payment confirmation
+                          Exact seller location will be shared after payment is confirmed
                         </p>
                       </motion.div>
                     )}
 
-                    {/* Contact Info */}
                     <div className="pt-4 border-t border-[#211000]/8">
                       <h3 className="text-sm font-bold uppercase tracking-wider text-[#211000]/60 mb-4">
                         Contact Information
@@ -574,7 +561,6 @@ const [paymentError, setPaymentError] = useState("");
                       </div>
                     </div>
 
-                    {/* Delivery Address (only for home delivery) */}
                     {deliveryType === "delivery" && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -609,21 +595,20 @@ const [paymentError, setPaymentError] = useState("");
                             placeholder="Select state"
                           />
                           <div>
-  <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-    LGA / Area *
-  </label>
-  <input
-    type="text"
-    placeholder="e.g. Ikeja, Lekki"
-    // Safe-guard in case state is still holding an old object:
-    value={typeof lga === 'object' ? '' : lga} 
-    onChange={(e) => {
-      setLga(e.target.value); // 👈 CHANGE THIS: Gets the string text instead of the event object
-      setShowMap(true);
-    }}
-    className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-  />
-</div>
+                            <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
+                              LGA / Area *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Ikeja, Lekki"
+                              value={lga}
+                              onChange={(e) => {
+                                setLga(e.target.value);
+                                setShowMap(true);
+                              }}
+                              className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
+                            />
+                          </div>
                         </div>
 
                         <IconInput
@@ -634,7 +619,6 @@ const [paymentError, setPaymentError] = useState("");
                           onChange={setLandmark}
                         />
 
-                        {/* Google Map Preview */}
                         {showMap && address && state && (
                           <motion.div
                             initial={{ opacity: 0, scale: 0.98 }}
@@ -673,17 +657,15 @@ const [paymentError, setPaymentError] = useState("");
                             Delivery Notes (Optional)
                           </label>
                           <textarea
-  placeholder="Gate code, floor number, special instructions..."
-  value={deliveryNotes}
-  // Change this line:
-  onChange={(e) => setDeliveryNotes(e.target.value)} 
-  className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
-/>
+                            placeholder="Gate code, floor number, special instructions..."
+                            value={deliveryNotes}
+                            onChange={(e) => setDeliveryNotes(e.target.value)}
+                            className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
+                          />
                         </div>
                       </motion.div>
                     )}
 
-                    {/* Terms */}
                     <div className="pt-4 border-t border-[#211000]/8">
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input
@@ -701,7 +683,7 @@ const [paymentError, setPaymentError] = useState("");
                           <Link href="/privacy" className="text-[#B66B44] font-bold hover:underline">
                             Privacy Policy
                           </Link>
-                          . I understand that my payment will be held in escrow and released to the seller after I confirm delivery.
+                          .
                         </span>
                       </label>
                     </div>
@@ -736,48 +718,19 @@ const [paymentError, setPaymentError] = useState("");
                   />
 
                   <div className="rounded-2xl bg-white border border-[#211000]/8 shadow-sm p-6 space-y-6">
-                    {/* Payment Reference */}
-                    <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/50 mb-1">
-                        Payment Reference ID
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="font-mono text-sm font-bold text-[#211000]">{paymentReference}</p>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(paymentReference);
-                          }}
-                          className="text-[#B66B44] hover:underline text-xs font-bold flex items-center gap-1"
-                        >
-                          <Copy className="size-3" />
-                          Copy
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-[#211000]/50 mt-2">
-                        Keep this reference for your records and payment confirmation
-                      </p>
-                    </div>
-
-                    {/* Payment Options */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
                         {
-                          id: "card",
-                          label: "Card",
-                          desc: "Instant confirmation",
+                          id: "paystack",
+                          label: "Pay with Paystack",
+                          desc: "Card, bank, or USSD — instant confirmation",
                           icon: CreditCard,
                         },
                         {
                           id: "transfer",
-                          label: "Bank Transfer",
+                          label: "Direct Bank Transfer",
                           desc: "Upload receipt for verification",
                           icon: Banknote,
-                        },
-                        {
-                          id: "ussd",
-                          label: "USSD",
-                          desc: "Pay with USSD code",
-                          icon: Smartphone,
                         },
                       ].map((opt) => {
                         const Icon = opt.icon;
@@ -786,7 +739,7 @@ const [paymentError, setPaymentError] = useState("");
                           <motion.button
                             key={opt.id}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => setPaymentMethod(opt.id as "card" | "transfer" | "ussd")}
+                            onClick={() => setPaymentMethod(opt.id)}
                             className={`p-4 rounded-xl border text-center transition-all ${
                               isSelected
                                 ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
@@ -807,94 +760,12 @@ const [paymentError, setPaymentError] = useState("");
                       })}
                     </div>
 
-                    {/* Card Details */}
-                    {paymentMethod === "card" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        className="space-y-4 pt-4 border-t border-[#211000]/8"
-                      >
-                        <div>
-                          <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                            Card Number
-                          </label>
-                          <div className="relative">
-                            <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#211000]/40" />
-                            <input
-                              type="text"
-                              placeholder="0000 0000 0000 0000"
-                              value={cardNumber}
-                              onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, "").slice(0, 16))}
-                              maxLength={16}
-                              className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 pl-11 pr-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                              Expiry Date
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="MM/YY"
-                              value={cardExpiry}
-                              onChange={(e) => setCardExpiry(e.target.value)}
-                              maxLength={5}
-                              className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                              CVV
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="123"
-                              value={cardCvv}
-                              onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))}
-                              maxLength={3}
-                              className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                            Cardholder Name
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Name on card"
-                            value={cardName}
-                            onChange={(e) => setCardName(e.target.value)}
-                            className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-                          />
-                        </div>
-
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={saveCard}
-                            onChange={(e) => setSaveCard(e.target.checked)}
-                            className="size-4 rounded border-[#211000]/20 text-[#B66B44] focus:ring-[#B66B44]"
-                          />
-                          <span className="text-xs text-[#211000]/60 font-medium">
-                            Save card for future purchases
-                          </span>
-                        </label>
-                      </motion.div>
-                    )}
-
-                    {/* Bank Transfer */}
                     {paymentMethod === "transfer" && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         className="space-y-5 pt-4 border-t border-[#211000]/8"
                       >
-                        {/* Account Details */}
                         <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-5 space-y-3">
                           <div className="flex items-center gap-2 text-[#B66B44]">
                             <Banknote className="size-4" />
@@ -903,14 +774,14 @@ const [paymentError, setPaymentError] = useState("");
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                             <div>
                               <p className="text-[#211000]/50 font-medium">Bank</p>
-                              <p className="font-bold text-[#211000]">Refurnish Escrow Account</p>
+                              <p className="font-bold text-[#211000]">First Bank</p>
                             </div>
                             <div>
                               <p className="text-[#211000]/50 font-medium">Account Number</p>
                               <div className="flex items-center gap-2">
-                                <p className="font-bold text-[#211000] font-mono">1234567890</p>
+                                <p className="font-bold text-[#211000] font-mono">0018689465</p>
                                 <button
-                                  onClick={() => navigator.clipboard.writeText("1234567890")}
+                                  onClick={() => navigator.clipboard.writeText("0018689465")}
                                   className="text-[#B66B44] hover:underline"
                                 >
                                   <Copy className="size-3" />
@@ -919,21 +790,17 @@ const [paymentError, setPaymentError] = useState("");
                             </div>
                             <div>
                               <p className="text-[#211000]/50 font-medium">Account Name</p>
-                              <p className="font-bold text-[#211000]">Refurnish NG Ltd</p>
-                            </div>
-                            <div>
-                              <p className="text-[#211000]/50 font-medium">Payment Reference</p>
-                              <p className="font-bold text-[#211000] font-mono text-[10px]">{paymentReference}</p>
+                              <p className="font-bold text-[#211000]">Refurnish NG</p>
                             </div>
                           </div>
-                          <div className="rounded-lg bg-white/50 border border-[#211000]/8 p-3">
-                            <p className="text-[11px] text-[#211000]/60 leading-relaxed">
-                              <strong className="text-[#211000]">Important:</strong> Use the payment reference above as your transfer narration/reference. This helps us match your payment to your order.
+                          <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                            <p className="text-[11px] text-red-700 leading-relaxed font-medium">
+                              A unique payment reference will be generated once you place this order —
+                              you must use it as your transfer narration so we can match your payment.
                             </p>
                           </div>
                         </div>
 
-                        {/* Receipt Upload */}
                         <div>
                           <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-3">
                             Upload Payment Receipt *
@@ -942,19 +809,18 @@ const [paymentError, setPaymentError] = useState("");
                             onClick={() => fileInputRef.current?.click()}
                             className="border-2 border-dashed border-[#211000]/15 rounded-xl p-6 text-center cursor-pointer hover:border-[#B66B44]/40 hover:bg-[#E8CEB0]/10 transition-all"
                           >
-                            {receiptPreview ? (
+                            {receiptUrl ? (
                               <div className="space-y-3">
                                 <div className="relative inline-block">
                                   <img
-                                    src={receiptPreview}
+                                    src={receiptUrl}
                                     alt="Receipt preview"
                                     className="max-h-48 rounded-lg border border-[#211000]/10"
                                   />
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setReceiptFile(null);
-                                      setReceiptPreview(null);
+                                      setReceiptUrl(null);
                                     }}
                                     className="absolute -top-2 -right-2 size-6 rounded-full bg-[#211000] text-white flex items-center justify-center hover:bg-red-500 transition-colors"
                                   >
@@ -976,9 +842,7 @@ const [paymentError, setPaymentError] = useState("");
                                 <p className="text-sm font-bold text-[#211000]">
                                   {uploadingReceipt ? "Uploading..." : "Click to upload receipt"}
                                 </p>
-                                <p className="text-xs text-[#211000]/45">
-                                  JPG, PNG or PDF (max 5MB)
-                                </p>
+                                <p className="text-xs text-[#211000]/45">JPG, PNG or PDF (max 5MB)</p>
                               </div>
                             )}
                           </div>
@@ -989,49 +853,23 @@ const [paymentError, setPaymentError] = useState("");
                             onChange={handleReceiptUpload}
                             className="hidden"
                           />
+                          {receiptError && (
+                            <p className="text-[11px] text-red-600 font-bold mt-2">{receiptError}</p>
+                          )}
                           <p className="text-[11px] text-[#211000]/50 mt-2 flex items-center gap-1">
                             <AlertCircle className="size-3" />
-                            Your order will be confirmed once we verify your payment receipt (usually within 1-2 hours)
+                            We'll confirm your payment and get back to you — usually within a few hours.
                           </p>
                         </div>
                       </motion.div>
                     )}
 
-                    {/* USSD */}
-                    {paymentMethod === "ussd" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-5 space-y-3"
-                      >
-                        <div className="flex items-center gap-2 text-[#B66B44]">
-                          <Smartphone className="size-4" />
-                          <p className="text-sm font-bold">USSD Payment</p>
-                        </div>
-                        <div className="rounded-lg bg-white/50 border border-[#211000]/8 p-4 space-y-2 text-xs">
-                          <p className="text-[#211000]/70">
-                            Dial <strong className="text-[#211000] font-mono">*770*1234567890#</strong> from your registered phone number
-                          </p>
-                          <p className="text-[#211000]/70">
-                            Enter amount: <strong className="text-[#211000]">{formatNaira(total)}</strong>
-                          </p>
-                          <p className="text-[#211000]/70">
-                            Use reference: <strong className="text-[#211000] font-mono">{paymentReference}</strong>
-                          </p>
-                        </div>
-                        <p className="text-[11px] text-[#211000]/50">
-                          Supported banks: GTBank, Zenith, Access, UBA, First Bank
-                        </p>
-                      </motion.div>
-                    )}
-
-                    {/* Escrow Notice */}
                     <div className="rounded-xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-4 flex gap-3">
                       <ShieldCheck className="size-5 text-[#5F7161] shrink-0 mt-0.5" />
                       <div className="text-xs text-[#211000]/65 leading-relaxed">
-                        <p className="font-bold text-[#211000] mb-1">Escrow Protection Active</p>
+                        <p className="font-bold text-[#211000] mb-1">Buyer Protection Active</p>
                         <p>
-                          Your payment is held securely until you confirm delivery. You have {REFUND_WINDOW_DAYS} days to report any issues. Funds auto-release after {ESCROW_RELEASE_DAYS} days if no dispute is raised.
+                          You have {REFUND_WINDOW_DAYS} days to report any issues after receiving your order.
                         </p>
                       </div>
                     </div>
@@ -1073,7 +911,6 @@ const [paymentError, setPaymentError] = useState("");
                   />
 
                   <div className="rounded-2xl bg-white border border-[#211000]/8 shadow-sm p-6 space-y-6">
-                    {/* Order Items */}
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-wider text-[#211000]/60 mb-4">
                         Order Items
@@ -1082,11 +919,13 @@ const [paymentError, setPaymentError] = useState("");
                         {cartProducts.map((product) => (
                           <div key={product.id} className="flex items-center gap-4 p-3 rounded-xl bg-[#FAF4EC]">
                             <div className="w-16 h-16 rounded-lg overflow-hidden bg-white shrink-0">
-                              <img
-                                src={product.images[0]}
-                                alt={product.title}
-                                className="w-full h-full object-cover"
-                              />
+                              {product.images[0] && (
+                                <img
+                                  src={product.images[0]}
+                                  alt={product.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/45">
@@ -1105,7 +944,6 @@ const [paymentError, setPaymentError] = useState("");
                       </div>
                     </div>
 
-                    {/* Delivery Info */}
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-wider text-[#211000]/60 mb-4">
                         Delivery Information
@@ -1121,7 +959,7 @@ const [paymentError, setPaymentError] = useState("");
                         {deliveryType === "pickup" && (
                           <div className="text-[11px] text-[#211000]/50 flex items-center gap-1">
                             <Info className="size-3" />
-                            Seller location will be shared after payment confirmation
+                            Exact seller location will be shared after payment is confirmed
                           </div>
                         )}
                         <InfoRow icon={<User className="size-4" />} label="Name" value={fullName} />
@@ -1131,39 +969,31 @@ const [paymentError, setPaymentError] = useState("");
                       </div>
                     </div>
 
-                    {/* Payment Info */}
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-wider text-[#211000]/60 mb-4">
                         Payment Method
                       </h3>
                       <div className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          {paymentMethod === "card" && <CreditCard className="size-5 text-[#B66B44]" />}
-                          {paymentMethod === "transfer" && <Banknote className="size-5 text-[#B66B44]" />}
-                          {paymentMethod === "ussd" && <Smartphone className="size-5 text-[#B66B44]" />}
+                        <div className="flex items-center gap-3">
+                          {paymentMethod === "paystack" ? (
+                            <CreditCard className="size-5 text-[#B66B44]" />
+                          ) : (
+                            <Banknote className="size-5 text-[#B66B44]" />
+                          )}
                           <div>
-                            <p className="text-sm font-bold capitalize">{paymentMethod}</p>
+                            <p className="text-sm font-bold">
+                              {paymentMethod === "paystack" ? "Paystack" : "Bank Transfer"}
+                            </p>
                             <p className="text-[11px] text-[#211000]/45">
-                              {paymentMethod === "card" ? `Card ending in ****${cardNumber.slice(-4)}` : "Secure payment"}
+                              {paymentMethod === "paystack"
+                                ? "You'll be redirected to Paystack to complete payment"
+                                : "Receipt uploaded and ready for verification"}
                             </p>
                           </div>
-                        </div>
-                        {paymentMethod === "transfer" && receiptFile && (
-                          <div className="flex items-center gap-2 text-xs text-[#5F7161] font-bold">
-                            <CheckCircle2 className="size-4" />
-                            Receipt uploaded and ready for verification
-                          </div>
-                        )}
-                        <div className="mt-3 pt-3 border-t border-[#211000]/8">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/45 mb-1">
-                            Payment Reference
-                          </p>
-                          <p className="font-mono text-sm font-bold text-[#211000]">{paymentReference}</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Protection Notice */}
                     <div className="rounded-xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-5 space-y-3">
                       <div className="flex items-center gap-2 text-[#5F7161]">
                         <ShieldCheck className="size-5" />
@@ -1172,15 +1002,11 @@ const [paymentError, setPaymentError] = useState("");
                       <ul className="text-xs text-[#211000]/65 space-y-2">
                         <li className="flex items-start gap-2">
                           <Check className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                          <span>Funds held in escrow until you confirm delivery</span>
+                          <span>{REFUND_WINDOW_DAYS}-day window to report issues after receiving your order</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                          <span>{REFUND_WINDOW_DAYS}-day refund window if item not as described</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <Check className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                          <span>Auto-release after {ESCROW_RELEASE_DAYS} days if no dispute</span>
+                          <span>Seller location and contact shared only after payment is confirmed</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
@@ -1189,7 +1015,6 @@ const [paymentError, setPaymentError] = useState("");
                       </ul>
                     </div>
 
-                    {/* Terms */}
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1198,7 +1023,7 @@ const [paymentError, setPaymentError] = useState("");
                         className="mt-0.5 size-4 rounded border-[#211000]/20 text-[#B66B44] focus:ring-[#B66B44]"
                       />
                       <span className="text-xs text-[#211000]/60 leading-relaxed">
-                        I confirm all information is correct and authorize Refurnish to process my payment. I understand the escrow terms and protection policy.
+                        I confirm all information is correct and authorize Refurnish to process my payment.
                       </span>
                     </label>
                   </div>
@@ -1212,22 +1037,22 @@ const [paymentError, setPaymentError] = useState("");
                       Back
                     </button>
                     <button
-  onClick={handlePlaceOrder}
-  disabled={!canProceed() || processing}
-  className="inline-flex items-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] disabled:opacity-60 text-white font-bold text-sm px-8 py-4 rounded-full transition-all shadow-md shadow-[#5F7161]/15"
->
-  {processing ? (
-    <>
-      <Loader2 className="size-4 animate-spin" />
-      Processing...
-    </>
-  ) : (
-    <>
-      <Lock className="size-4" />
-      Confirm Payment
-    </>
-  )}
-</button>
+                      onClick={handlePlaceOrder}
+                      disabled={!canProceed() || processing}
+                      className="inline-flex items-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] disabled:opacity-60 text-white font-bold text-sm px-8 py-4 rounded-full transition-all shadow-md shadow-[#5F7161]/15"
+                    >
+                      {processing ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="size-4" />
+                          {paymentMethod === "paystack" ? "Pay with Paystack" : "Submit Order"}
+                        </>
+                      )}
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -1247,16 +1072,17 @@ const [paymentError, setPaymentError] = useState("");
               </div>
 
               <div className="p-6 space-y-5">
-                {/* Items */}
                 <div className="space-y-3">
                   {cartProducts.map((product) => (
                     <div key={product.id} className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#E8CEB0]/30 shrink-0">
-                        <img
-                          src={product.images[0]}
-                          alt={product.title}
-                          className="w-full h-full object-cover"
-                        />
+                        {product.images[0] && (
+                          <img
+                            src={product.images[0]}
+                            alt={product.title}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/45 truncate">
@@ -1274,11 +1100,8 @@ const [paymentError, setPaymentError] = useState("");
                   ))}
                 </div>
 
-                {/* Totals */}
                 <div className="border-t border-[#211000]/10 pt-5 space-y-3 text-sm">
                   <SummaryRow label="Subtotal" value={formatNaira(subtotal)} />
-                  <SummaryRow label="Delivery" value={deliveryType === "delivery" ? formatNaira(deliveryFee) : "Free"} />
-                  <SummaryRow label="Buyer Protection (1%)" value={formatNaira(buyerProtection)} />
                 </div>
 
                 <div className="border-t border-[#211000]/10 pt-5 flex items-center justify-between">
@@ -1286,34 +1109,28 @@ const [paymentError, setPaymentError] = useState("");
                   <span className="text-2xl font-bold">{formatNaira(total)}</span>
                 </div>
 
-                {/* Trust Badges */}
                 <div className="grid gap-3 pt-4">
                   <TrustBadge
                     icon={<ShieldCheck className="size-4 text-[#5F7161]" />}
-                    title="Escrow Protection"
-                    text="Funds held until delivery confirmed"
+                    title="Buyer Protection"
+                    text="Report issues within 3 days of receiving"
                   />
                   <TrustBadge
                     icon={<Timer className="size-4 text-[#B66B44]" />}
-                    title={`${REFUND_WINDOW_DAYS}-Day Refund`}
-                    text="Report issues within 3 days"
+                    title="Fast confirmation"
+                    text="We confirm payments within a few hours"
                   />
                   <TrustBadge
                     icon={<Headphones className="size-4 text-[#5F7161]" />}
                     title="24/7 Support"
-                    text="Live chat for any disputes"
+                    text="Reach out any time for help"
                   />
                 </div>
 
-                {/* Support CTA */}
                 <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-4 text-center">
                   <MessageCircle className="size-5 text-[#B66B44] mx-auto mb-2" />
-                  <p className="text-xs font-bold text-[#211000] mb-1">
-                    Have questions?
-                  </p>
-                  <p className="text-[11px] text-[#211000]/55 mb-3">
-                    Our support team is here to help
-                  </p>
+                  <p className="text-xs font-bold text-[#211000] mb-1">Have questions?</p>
+                  <p className="text-[11px] text-[#211000]/55 mb-3">Our support team is here to help</p>
                   <Link
                     href="/support"
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-[#B66B44] hover:underline"
@@ -1326,252 +1143,25 @@ const [paymentError, setPaymentError] = useState("");
             </div>
           </aside>
         </div>
+        )}
       </div>
+
       <PaymentResultModal
-  status={paymentModal}
-  orderId={orderId}
-  paymentReference={paymentReference}
-  total={total}
-  paymentMethod={paymentMethod}
-  deliveryType={deliveryType}
-  email={email}
-  errorMessage={paymentError}
-  onRetry={() => {
-    setPaymentModal(null);
-    setStep("payment");
-  }}
-/>
+        status={paymentModal}
+        orderReference={orderReference}
+        total={total}
+        paymentMethod={paymentMethod}
+        email={email}
+        errorMessage={paymentError}
+        onRetry={() => setPaymentModal(null)}
+      />
     </main>
   );
 }
 
-/* =========================================
-   ORDER SUCCESS PAGE
-   ========================================= */
-function OrderSuccess({
-  orderId,
-  paymentReference,
-  total,
-  paymentMethod,
-  deliveryType,
-  email,
-}: {
-  orderId: string;
-  paymentReference: string;
-  total: number;
-  paymentMethod: string;
-  deliveryType: string;
-  email: string;
-}) {
-  const isTransfer = paymentMethod === "transfer";
+/* ==== Helper components ==== */
 
-  return (
-    <main className="min-h-screen bg-[#FAF4EC] text-[#211000] font-sans antialiased pt-28 sm:pt-32 lg:pt-40 pb-24 px-4 sm:px-8 lg:px-16">
-      <div className="max-w-2xl mx-auto text-center">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
-          className="w-24 h-24 rounded-full bg-[#5F7161]/10 flex items-center justify-center mx-auto mb-6"
-        >
-          <CheckCircle2 className="size-12 text-[#5F7161]" />
-        </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mb-3"
-        >
-          {isTransfer ? "Order Submitted!" : "Order Confirmed!"}
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-sm text-[#211000]/55 font-medium mb-2"
-        >
-          Order ID: <strong className="text-[#211000]">{orderId}</strong>
-        </motion.p>
-
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="text-sm text-[#211000]/55 font-medium mb-8"
-        >
-          Total: <strong className="text-[#211000]">{formatNaira(total)}</strong>
-        </motion.p>
-
-        {/* Payment Reference */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="rounded-2xl bg-white border border-[#211000]/8 shadow-sm p-6 mb-8 text-left"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-[#B66B44]/10 flex items-center justify-center">
-              <FileText className="size-5 text-[#B66B44]" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">Payment Reference</p>
-              <p className="text-xs text-[#211000]/50">Keep this for your records</p>
-            </div>
-          </div>
-          <div className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-4 flex items-center justify-between">
-            <p className="font-mono text-sm font-bold text-[#211000]">{paymentReference}</p>
-            <button
-              onClick={() => navigator.clipboard.writeText(paymentReference)}
-              className="text-[#B66B44] hover:underline text-xs font-bold flex items-center gap-1"
-            >
-              <Copy className="size-3" />
-              Copy
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Escrow Status Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="rounded-2xl bg-white border border-[#211000]/8 shadow-sm p-6 mb-8 text-left"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-[#5F7161]/10 flex items-center justify-center">
-              <ShieldCheck className="size-5 text-[#5F7161]" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">
-                {isTransfer ? "Payment Pending Verification" : "Payment Held in Escrow"}
-              </p>
-              <p className="text-xs text-[#211000]/50">
-                {isTransfer ? "We're verifying your receipt" : "Your funds are secure until delivery"}
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-3 text-xs text-[#211000]/65">
-            {isTransfer ? (
-              <>
-                <div className="flex items-start gap-2">
-                  <Check className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                  <span>Order submitted successfully</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="size-3.5 rounded-full border-2 border-[#B66B44] shrink-0 mt-0.5" />
-                  <span>Receipt verification in progress (1-2 hours)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="size-3.5 rounded-full border-2 border-[#211000]/20 shrink-0 mt-0.5" />
-                  <span>Confirmation email will be sent to <strong>{email}</strong></span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="size-3.5 rounded-full border-2 border-[#211000]/20 shrink-0 mt-0.5" />
-                  <span>Seller will be notified to prepare your order</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-start gap-2">
-                  <Check className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                  <span>Payment received and held securely</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="size-3.5 rounded-full border-2 border-[#B66B44] shrink-0 mt-0.5" />
-                  <span>Seller will be notified to {deliveryType === "delivery" ? "ship" : "prepare"} your order</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="size-3.5 rounded-full border-2 border-[#211000]/20 shrink-0 mt-0.5" />
-                  <span>Confirm {deliveryType === "delivery" ? "delivery" : "pickup"} to release payment</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="size-3.5 rounded-full border-2 border-[#211000]/20 shrink-0 mt-0.5" />
-                  <span>{ESCROW_RELEASE_DAYS}-day window to report issues</span>
-                </div>
-              </>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Email Confirmation Notice */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="rounded-2xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-6 mb-8"
-        >
-          <div className="flex items-center gap-2 text-[#B66B44] mb-3 justify-center">
-            <Mail className="size-5" />
-            <p className="text-sm font-bold">Confirmation Email Sent</p>
-          </div>
-          <p className="text-xs text-[#211000]/65 text-center">
-            We've sent all order details and payment reference to <strong>{email}</strong>. Please check your inbox (and spam folder).
-          </p>
-        </motion.div>
-
-        {/* Next Steps */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55 }}
-          className="rounded-2xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-6 mb-8"
-        >
-          <h3 className="font-serif text-lg font-medium mb-3">What happens next?</h3>
-          <ol className="text-xs text-[#211000]/65 space-y-2 text-left">
-            <li><strong>1.</strong> {isTransfer ? "We verify your payment receipt (1-2 hours)" : "You'll receive an email confirmation shortly"}</li>
-            <li><strong>2.</strong> Seller prepares your order for {deliveryType === "delivery" ? "delivery" : "pickup"}</li>
-            <li><strong>3.</strong> Track your order in your dashboard</li>
-            <li><strong>4.</strong> Confirm {deliveryType === "delivery" ? "delivery" : "pickup"} to release payment to seller</li>
-            <li><strong>5.</strong> Enjoy your new piece!</li>
-          </ol>
-        </motion.div>
-
-        {/* Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="flex flex-col sm:flex-row gap-3 justify-center"
-        >
-          <Link
-            href="/dashboard/orders"
-            className="inline-flex items-center justify-center gap-2 bg-[#B66B44] hover:bg-[#a05934] text-white font-bold text-xs px-6 py-3.5 rounded-full transition-all shadow-md shadow-[#B66B44]/15"
-          >
-            Track Order
-            <ArrowRight className="size-4" />
-          </Link>
-          <Link
-            href="/shop"
-            className="inline-flex items-center justify-center gap-2 border border-[#211000]/15 bg-white hover:bg-[#E8CEB0]/20 text-[#211000] font-bold text-xs px-6 py-3.5 rounded-full transition-colors"
-          >
-            Continue Shopping
-          </Link>
-        </motion.div>
-
-        {/* Support */}
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="text-xs text-[#211000]/45 font-medium mt-8"
-        >
-          Need help?{" "}
-          <Link href="/support" className="text-[#B66B44] font-bold hover:underline">
-            Contact support
-          </Link>
-        </motion.p>
-      </div>
-    </main>
-  );
-}
-
-/* =========================================
-   HELPER COMPONENTS
-   ========================================= */
-function SectionTitle({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+function SectionTitle({ icon, title, subtitle }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 text-[#B66B44] mb-2">
@@ -1584,32 +1174,14 @@ function SectionTitle({ icon, title, subtitle }: { icon: React.ReactNode; title:
   );
 }
 
-function IconInput({
-  icon,
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  required = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  type?: string;
-  required?: boolean;
-}) {
+function IconInput({ icon, label, value, onChange, placeholder, type = "text", required = false }) {
   return (
     <div>
       <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
         {label}
       </label>
       <div className="relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#211000]/40">
-          {icon}
-        </span>
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#211000]/40">{icon}</span>
         <input
           type={type}
           placeholder={placeholder}
@@ -1623,19 +1195,7 @@ function IconInput({
   );
 }
 
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  placeholder: string;
-}) {
+function SelectField({ label, value, onChange, options, placeholder }) {
   return (
     <div>
       <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
@@ -1660,7 +1220,7 @@ function SelectField({
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function InfoRow({ icon, label, value }) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-[#211000]/40">{icon}</span>
@@ -1672,7 +1232,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-[#211000]/55 font-medium">{label}</span>
@@ -1681,7 +1241,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TrustBadge({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function TrustBadge({ icon, title, text }) {
   return (
     <div className="flex items-start gap-3 rounded-xl bg-[#FAF4EC] border border-[#211000]/6 p-3">
       <span className="mt-0.5">{icon}</span>
@@ -1693,29 +1253,7 @@ function TrustBadge({ icon, title, text }: { icon: React.ReactNode; title: strin
   );
 }
 
-function PaymentResultModal({
-  status,
-  orderId,
-  paymentReference,
-  total,
-  paymentMethod,
-  deliveryType,
-  email,
-  errorMessage,
-  onRetry,
-}: {
-  status: "success" | "error" | null;
-  orderId: string;
-  paymentReference: string;
-  total: number;
-  paymentMethod: string;
-  deliveryType: string;
-  email: string;
-  errorMessage: string;
-  onRetry: () => void;
-}) {
-  const isTransfer = paymentMethod === "transfer";
-
+function PaymentResultModal({ status, orderReference, total, paymentMethod, email, errorMessage, onRetry }) {
   return (
     <AnimatePresence>
       {status && (
@@ -1746,48 +1284,21 @@ function PaymentResultModal({
                 </motion.div>
 
                 <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
-                  {isTransfer ? "Receipt submitted" : "Payment confirmed"}
+                  Order submitted
                 </p>
 
                 <h2 className="font-serif text-3xl font-medium tracking-tight mt-2 mb-3">
-                  {isTransfer
-                    ? "We’re verifying your transfer."
-                    : "Your order is protected."}
+                  We're confirming your payment.
                 </h2>
 
                 <p className="text-sm text-[#211000]/60 font-medium leading-relaxed max-w-sm mx-auto">
-                  {isTransfer
-                    ? `Your receipt has been submitted. Once payment is confirmed, we’ll send the confirmation to ${email} and notify the seller.`
-                    : "Your funds are now held safely in Refurnish Escrow. The seller only receives payment after you confirm delivery or pickup."}
+                  Your receipt has been submitted for order <strong>{orderReference}</strong>. We'll confirm
+                  your payment and send an update to <strong>{email}</strong> — usually within a few hours.
                 </p>
 
                 <div className="mt-6 rounded-2xl bg-white border border-[#211000]/8 p-4 text-left space-y-3">
-                  <InfoLine label="Order ID" value={orderId} />
-                  <InfoLine label="Payment reference" value={paymentReference} mono />
+                  <InfoLine label="Order reference" value={orderReference} mono />
                   <InfoLine label="Amount" value={formatNaira(total)} />
-                  <InfoLine
-                    label="Fulfilment"
-                    value={
-                      deliveryType === "delivery"
-                        ? "Home delivery by logistics partner"
-                        : "Pickup from seller"
-                    }
-                  />
-                </div>
-
-                <div className="mt-5 rounded-2xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-4 text-left">
-                  <div className="flex items-start gap-3">
-                    <ShieldCheck className="size-5 text-[#5F7161] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-[#211000]">
-                        Escrow protection is active
-                      </p>
-                      <p className="text-xs text-[#211000]/60 font-medium leading-relaxed mt-1">
-                        You can request support or a refund if the item is not as described.
-                        If no dispute is raised, payment is automatically released after the protection window.
-                      </p>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1798,7 +1309,6 @@ function PaymentResultModal({
                     View orders
                     <ArrowRight className="size-4" />
                   </Link>
-
                   <Link
                     href="/shop"
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#E8CEB0]/25 border border-[#211000]/12 text-[#211000] px-5 py-3.5 text-xs font-bold uppercase tracking-wider transition-colors"
@@ -1806,16 +1316,6 @@ function PaymentResultModal({
                     Continue shopping
                   </Link>
                 </div>
-
-                <p className="mt-5 text-[11px] text-[#211000]/45 font-medium">
-                  Need help?{" "}
-                  <Link
-                    href="/support"
-                    className="text-[#B66B44] font-bold hover:underline"
-                  >
-                    Contact support
-                  </Link>
-                </p>
               </div>
             ) : (
               <div className="p-7 sm:p-9 text-center">
@@ -1829,22 +1329,16 @@ function PaymentResultModal({
                 </motion.div>
 
                 <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-red-500">
-                  Payment issue
+                  Order issue
                 </p>
 
                 <h2 className="font-serif text-3xl font-medium tracking-tight mt-2 mb-3">
-                  We couldn’t confirm payment.
+                  We couldn't place your order.
                 </h2>
 
                 <p className="text-sm text-[#211000]/60 font-medium leading-relaxed max-w-sm mx-auto">
-                  {errorMessage ||
-                    "Something went wrong while confirming your payment. Please try again or contact support."}
+                  {errorMessage || "Something went wrong. Please try again or contact support."}
                 </p>
-
-                <div className="mt-6 rounded-2xl bg-white border border-[#211000]/8 p-4 text-left">
-                  <InfoLine label="Payment reference" value={paymentReference} mono />
-                  <InfoLine label="Amount" value={formatNaira(total)} />
-                </div>
 
                 <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
@@ -1854,7 +1348,6 @@ function PaymentResultModal({
                     Try again
                     <RefreshCcw className="size-4" />
                   </button>
-
                   <Link
                     href="/support"
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#E8CEB0]/25 border border-[#211000]/12 text-[#211000] px-5 py-3.5 text-xs font-bold uppercase tracking-wider transition-colors"
@@ -1862,13 +1355,6 @@ function PaymentResultModal({
                     Contact support
                   </Link>
                 </div>
-
-                <Link
-                  href="/shop"
-                  className="mt-5 inline-flex text-xs font-bold text-[#B66B44] hover:underline"
-                >
-                  Continue shopping
-                </Link>
               </div>
             )}
           </motion.div>
@@ -1878,23 +1364,11 @@ function PaymentResultModal({
   );
 }
 
-function InfoLine({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function InfoLine({ label, value, mono = false }) {
   return (
     <div className="flex items-start justify-between gap-4 text-sm">
       <span className="text-[#211000]/45 font-medium">{label}</span>
-      <span
-        className={`font-bold text-right text-[#211000] ${
-          mono ? "font-mono text-xs" : ""
-        }`}
-      >
+      <span className={`font-bold text-right text-[#211000] ${mono ? "font-mono text-xs" : ""}`}>
         {value}
       </span>
     </div>

@@ -19,10 +19,14 @@ router.post("/reset-password", resetPassword);
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerificationCode);
 
-router.get(
-  "/google",
-  passport.authenticate("google", { scope: ["profile", "email"], session: false })
-);
+router.get("/google", function (req, res, next) {
+  var nextUrl = typeof req.query.next === "string" ? req.query.next : "";
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+    state: nextUrl,
+  })(req, res, next);
+});
 
 router.get(
   "/google/callback",
@@ -39,14 +43,20 @@ router.get(
         phone: user.phone,
       })
     );
-    res.redirect(frontendUrl + "/auth/callback?token=" + token + "&user=" + userPayload);
+    var nextUrl = typeof req.query.state === "string" ? req.query.state : "";
+    var nextParam = nextUrl ? "&next=" + encodeURIComponent(nextUrl) : "";
+    res.redirect(frontendUrl + "/auth/callback?token=" + token + "&user=" + userPayload + nextParam);
   }
 );
 
-router.get(
-  "/facebook",
-  passport.authenticate("facebook", { scope: ["email"], session: false })
-);
+router.get("/facebook", function (req, res, next) {
+  var nextUrl = typeof req.query.next === "string" ? req.query.next : "";
+  passport.authenticate("facebook", {
+    scope: ["email"],
+    session: false,
+    state: nextUrl,
+  })(req, res, next);
+});
 
 router.get(
   "/facebook/callback",
@@ -63,7 +73,9 @@ router.get(
         phone: user.phone,
       })
     );
-    res.redirect(frontendUrl + "/auth/callback?token=" + token + "&user=" + userPayload);
+    var nextUrl = typeof req.query.state === "string" ? req.query.state : "";
+    var nextParam = nextUrl ? "&next=" + encodeURIComponent(nextUrl) : "";
+    res.redirect(frontendUrl + "/auth/callback?token=" + token + "&user=" + userPayload + nextParam);
   }
 );
 

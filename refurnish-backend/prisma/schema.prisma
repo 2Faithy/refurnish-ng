@@ -34,8 +34,67 @@ model User {
   updatedAt DateTime @updatedAt
 
   listings Listing[]
+  orders   Order[]
 
   @@map("users")
+}
+
+model SellerConfirmation {
+  id           String    @id @default(uuid())
+  orderId      String
+  order        Order     @relation(fields: [orderId], references: [id])
+  sellerEmail  String
+  sellerName   String
+  token        String    @unique
+  items        Json
+  availability String?   // null | "available" | "unavailable"
+  respondedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@map("seller_confirmations")
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  reference   String   @unique // e.g. RF-000001
+  referenceSeq Int     @unique @default(autoincrement())
+
+  buyerId     String
+  buyer       User     @relation(fields: [buyerId], references: [id])
+
+  items       Json     // snapshot of listing(s) at time of purchase
+  subtotal    String
+  buyerProtection String
+  total       String
+
+  deliveryType String   // "pickup" | "delivery"
+  fullName    String
+  phone       String
+  email       String
+  address     String?
+  state       String?
+  lga         String?
+  landmark    String?
+  deliveryDate String?
+  deliveryNotes String?
+
+  paymentMethod String  // "paystack" | "transfer"
+  paystackReference String?
+  receiptUrl  String?
+
+  status      String   @default("pending_payment") 
+  // pending_payment -> pending_verification (transfer) -> confirmed -> rejected
+  // paystack: pending_payment -> confirmed (auto) 
+
+  rejectionReason String?
+  reviewedAt  DateTime?
+
+  sellerConfirmations SellerConfirmation[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("orders")
 }
 
 model Listing {

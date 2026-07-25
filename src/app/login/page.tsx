@@ -195,7 +195,6 @@ export default function AuthPage() {
         return;
       }
 
-      if (data.devCode) setGeneratedCode(data.devCode);
       setForgotStep("code");
     } catch {
       setForgotError("Something went wrong. Please try again.");
@@ -204,21 +203,13 @@ export default function AuthPage() {
     }
   };
 
-  // Forgot password step 2: verify code
+  // Forgot password step 2: the code itself is verified when resetPassword is
+  // actually submitted (server checks it against the real code + expiry).
+  // This step just captures the code and moves on.
   const handleCodeVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError("");
-    setForgotLoading(true);
-
-    await new Promise((r) => setTimeout(r, 700));
-
-    if (forgotCode === generatedCode) {
-      setForgotStep("reset");
-    } else {
-      setForgotError("Invalid code. Please check your email and try again.");
-    }
-
-    setForgotLoading(false);
+    setForgotStep("reset");
   };
 
   // Forgot password step 3: set new password
@@ -583,12 +574,16 @@ export default function AuthPage() {
                 <SocialButton
                   label="Google"
                   icon={<GoogleIcon />}
-                  href={`${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`}
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/api/auth/google${
+                    nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""
+                  }`}
                 />
                 <SocialButton
                   label="Facebook"
                   icon={<FacebookIcon />}
-                  href={`${process.env.NEXT_PUBLIC_API_URL}/api/auth/facebook`}
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/api/auth/facebook${
+                    nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""
+                  }`}
                 />
               </div>
 

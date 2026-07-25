@@ -10,13 +10,13 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const token = searchParams.get("token");
     const userParam = searchParams.get("user");
+    const next = searchParams.get("next");
 
     if (token && userParam) {
       try {
         const user = JSON.parse(decodeURIComponent(userParam));
-        localStorage.setItem("refurnish_token", token);
-        localStorage.setItem("refurnish_user", JSON.stringify(user));
-        router.push("/dashboard");
+        localStorage.setItem("refurnish_user", JSON.stringify({ ...user, token }));
+        router.push(next || "/dashboard");
       } catch {
         router.push("/login");
       }

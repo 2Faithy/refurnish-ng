@@ -53,6 +53,7 @@ type AdminTab =
 
 const tabs: { id: AdminTab; label: string; icon: any }[] = [
   { id: "listings", label: "Listings", icon: Package },
+  { id: "orders", label: "Orders", icon: ListChecks },
 ];
 
 export default function AdminPage() {
@@ -80,6 +81,14 @@ export default function AdminPage() {
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectBox, setShowRejectBox] = useState(false);
+
+  const [ordersData, setOrdersData] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState("");
+  const [orderTab, setOrderTab] = useState<"pending" | "confirmed" | "rejected">("pending");
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orderRejectReason, setOrderRejectReason] = useState("");
+  const [showOrderRejectBox, setShowOrderRejectBox] = useState(false);
 
   const getAdminToken = () => {
     const session = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null");
@@ -112,6 +121,32 @@ export default function AdminPage() {
     }
   };
 
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    setOrdersError("");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/admin/all`,
+        { headers: { Authorization: `Bearer ${getAdminToken()}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          router.push("/admin/login");
+          return;
+        }
+        throw new Error(data?.message || "Failed to load orders.");
+      }
+      setOrdersData(data.orders || []);
+    } catch (err: any) {
+      console.error(err);
+      setOrdersError(err.message || "Could not load orders.");
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
   useEffect(() => {
     try {
       const session = localStorage.getItem(ADMIN_SESSION_KEY);
@@ -123,6 +158,7 @@ export default function AdminPage() {
 
       setAdmin(JSON.parse(session));
       fetchListings();
+      fetchOrders();
     } catch {
       router.push("/admin/login");
     } finally {
@@ -208,6 +244,73 @@ export default function AdminPage() {
     if (!selectedListing || !rejectReason.trim()) return;
     await updateListingStatus(selectedListing.id, "rejected", rejectReason.trim());
     closeListingModal();
+  };
+
+  const filteredOrders = useMemo(() => {
+    const statusMap: Record<string, string[]> = {
+      pending: ["pending_verification", "pending_payment"],
+      confirmed: ["confirmed"],
+      rejected: ["rejected", "payment_failed"],
+    };
+    return ordersData
+      .filter((o) => statusMap[orderTab].includes(o.status))
+      .filter((o) => searchable(o, search));
+  }, [ordersData, orderTab, search]);
+
+  const orderTabCounts = useMemo(
+    () => ({
+      pending: ordersData.filter((o) => ["pending_verification", "pending_payment"].includes(o.status)).length,
+      confirmed: ordersData.filter((o) => o.status === "confirmed").length,
+      rejected: ordersData.filter((o) => ["rejected", "payment_failed"].includes(o.status)).length,
+    }),
+    [ordersData]
+  );
+
+  const updateOrderStatus = async (id: string, status: string, rejectionReason?: string) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/${id}/review`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAdminToken()}`,
+          },
+          body: JSON.stringify({ status, rejectionReason }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to update order.");
+      setToast(`Order marked as ${status}`);
+      await fetchOrders();
+    } catch (err: any) {
+      console.error(err);
+      setToast(err.message || "Failed to update order.");
+    }
+  };
+
+  const openOrderModal = (order: any) => {
+    setSelectedOrder(order);
+    setShowOrderRejectBox(false);
+    setOrderRejectReason("");
+  };
+
+  const closeOrderModal = () => {
+    setSelectedOrder(null);
+    setShowOrderRejectBox(false);
+    setOrderRejectReason("");
+  };
+
+  const confirmOrderFromModal = async () => {
+    if (!selectedOrder) return;
+    await updateOrderStatus(selectedOrder.id, "confirmed");
+    closeOrderModal();
+  };
+
+  const confirmOrderRejectFromModal = async () => {
+    if (!selectedOrder || !orderRejectReason.trim()) return;
+    await updateOrderStatus(selectedOrder.id, "rejected", orderRejectReason.trim());
+    closeOrderModal();
   };
 
   const stats = useMemo(() => {
@@ -493,6 +596,7 @@ export default function AdminPage() {
         )}
 
         <AnimatePresence mode="wait">
+          {activeTab === "listings" && (
           <AdminSection key="listings">
             <AdminCard title="Listings moderation">
               <div className="flex gap-1.5 mb-6">
@@ -631,6 +735,90 @@ export default function AdminPage() {
               )}
             </AdminCard>
           </AdminSection>
+          )}
+
+          {activeTab === "orders" && (
+          <AdminSection key="orders">
+            <AdminCard title="Order & payment review">
+              <div className="flex gap-1.5 mb-6">
+                {(["pending", "confirmed", "rejected"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setOrderTab(t)}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
+                      orderTab === t
+                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
+                    }`}
+                  >
+                    {t}
+                    <span
+                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                        orderTab === t ? "bg-[#E8CEB0] text-[#211000]" : "bg-[#211000]/8 text-[#211000]/60"
+                      }`}
+                    >
+                      {orderTabCounts[t]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {ordersLoading ? (
+                <div className="py-14 flex justify-center">
+                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                </div>
+              ) : ordersError ? (
+                <div className="py-14 text-center">
+                  <p className="text-sm text-red-600 font-medium mb-3">{ordersError}</p>
+                  <button onClick={fetchOrders} className="text-xs font-bold text-[#B66B44] hover:underline">
+                    Try again
+                  </button>
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <EmptyState
+                  text={
+                    orderTab === "pending"
+                      ? "No orders awaiting review."
+                      : orderTab === "confirmed"
+                      ? "No confirmed orders yet."
+                      : "No rejected orders."
+                  }
+                />
+              ) : (
+                <div className="divide-y divide-[#211000]/6">
+                  {filteredOrders.map((order) => (
+                    <div key={order.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div>
+                        <p className="font-bold font-mono text-sm">{order.reference}</p>
+                        <p className="text-xs text-[#211000]/55 font-medium mt-1">
+                          {formatNaira(Number(order.total))} · {order.paymentMethod} · {order.fullName}
+                        </p>
+                        <p className="text-[10px] text-[#211000]/35 mt-1">
+                          {order.email} · {order.createdAt?.split("T")[0]}
+                        </p>
+                        {order.status === "rejected" && order.rejectionReason && (
+                          <p className="text-[11px] text-red-600 font-medium mt-1">
+                            Reason: {order.rejectionReason}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status={order.status} />
+                        {order.status === "pending_verification" && order.paymentMethod === "transfer" && (
+                          <ActionButton label="Review" onClick={() => openOrderModal(order)} />
+                        )}
+                        {order.status !== "pending_verification" && (
+                          <ActionButton label="View" onClick={() => openOrderModal(order)} />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </AdminCard>
+          </AdminSection>
+          )}
         </AnimatePresence>
       </div>
 
@@ -847,6 +1035,141 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {selectedOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
+          >
+            <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={closeOrderModal} />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#211000]/10"
+            >
+              <button
+                onClick={closeOrderModal}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white hover:bg-[#211000]/5 transition-colors z-10 shadow-sm"
+              >
+                <X className="size-4 text-[#211000]/60" />
+              </button>
+
+              <div className="p-6 space-y-5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">
+                    {selectedOrder.paymentMethod === "transfer" ? "Bank Transfer" : "Paystack"}
+                  </p>
+                  <h2 className="font-serif text-2xl font-medium mt-1 font-mono">{selectedOrder.reference}</h2>
+                  <StatusBadge status={selectedOrder.status} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <InfoBlock label="Buyer" value={selectedOrder.fullName} />
+                  <InfoBlock label="Phone" value={selectedOrder.phone} />
+                  <InfoBlock label="Email" value={selectedOrder.email} />
+                  <InfoBlock label="Amount" value={formatNaira(Number(selectedOrder.total))} />
+                  <InfoBlock label="Delivery" value={selectedOrder.deliveryType === "delivery" ? "Home delivery" : "Pickup"} />
+                  <InfoBlock label="Created" value={selectedOrder.createdAt?.split("T")[0]} />
+                </div>
+
+                {selectedOrder.deliveryType === "delivery" && (
+                  <InfoBlock
+                    label="Delivery address"
+                    value={`${selectedOrder.address || "—"}, ${selectedOrder.lga || ""}, ${selectedOrder.state || ""}`}
+                  />
+                )}
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">Items</p>
+                  <div className="space-y-2">
+                    {(selectedOrder.items || []).map((item: any, i: number) => (
+                      <div key={i} className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-3 text-xs">
+                        <p className="font-bold">{item.itemTitle}</p>
+                        <p className="text-[#211000]/55 mt-0.5">
+                          Qty {item.quantity} · {formatNaira(item.price)} · Seller: {item.sellerName}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedOrder.receiptUrl && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">
+                      Payment receipt
+                    </p>
+                    <a href={selectedOrder.receiptUrl} target="_blank" rel="noreferrer">
+                      <img
+                        src={selectedOrder.receiptUrl}
+                        alt="Receipt"
+                        className="max-h-64 rounded-xl border border-[#211000]/10"
+                      />
+                    </a>
+                  </div>
+                )}
+
+                {selectedOrder.status === "pending_verification" && selectedOrder.paymentMethod === "transfer" && (
+                  <div className="border-t border-[#211000]/8 pt-5">
+                    {!showOrderRejectBox ? (
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={confirmOrderFromModal}
+                          className="flex-1 inline-flex items-center justify-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                        >
+                          <CheckCircle2 className="size-4" />
+                          Confirm payment
+                        </button>
+                        <button
+                          onClick={() => setShowOrderRejectBox(true)}
+                          className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                        >
+                          <X className="size-4" />
+                          Reject payment
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block">
+                          Reason for rejection (shown to the buyer)
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={orderRejectReason}
+                          onChange={(e) => setOrderRejectReason(e.target.value)}
+                          placeholder="e.g. We could not find a matching transfer for this reference."
+                          className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
+                        />
+                        <div className="flex gap-3">
+                          <button
+                            onClick={confirmOrderRejectFromModal}
+                            disabled={!orderRejectReason.trim()}
+                            className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                          >
+                            Confirm rejection
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowOrderRejectBox(false);
+                              setOrderRejectReason("");
+                            }}
+                            className="rounded-full border border-[#211000]/10 hover:border-[#211000]/25 bg-white px-5 py-3 text-sm font-bold transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

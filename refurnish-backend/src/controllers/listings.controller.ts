@@ -176,21 +176,21 @@ export async function resubmitListing(req: AuthRequest, res: Response) {
   }
 }
 
+function toPublicListing(listing: any) {
+  const { phone, email, whatsapp, address, lga, sellerId, ...publicFields } = listing;
+  return publicFields;
+}
+
 export async function getActiveListingById(req: Request, res: Response) {
   try {
-    const { id } = req.params;
-
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid listing ID provided." });
-    }
-
+    const id = req.params.id as string;
     const listing = await prisma.listing.findUnique({ where: { id } });
 
     if (!listing || listing.status !== "active") {
       return res.status(404).json({ message: "Listing not found." });
     }
 
-    return res.status(200).json({ listing });
+    return res.status(200).json({ listing: toPublicListing(listing) });
   } catch (err) {
     console.error("Get active listing by id error:", err);
     return res.status(500).json({ message: "Something went wrong." });
@@ -203,7 +203,7 @@ export async function getActiveListings(_req: Request, res: Response) {
       where: { status: "active" },
       orderBy: { createdAt: "desc" },
     });
-    return res.status(200).json({ listings });
+    return res.status(200).json({ listings: listings.map(toPublicListing) });
   } catch (err) {
     console.error("Get active listings error:", err);
     return res.status(500).json({ message: "Something went wrong." });

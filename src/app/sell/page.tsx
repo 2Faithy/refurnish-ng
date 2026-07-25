@@ -79,6 +79,87 @@ export default function SellLandingPage() {
         </motion.div>
       </section>
 
+      {/* ── 4. TWO WAYS TO SELL ─────────────────────────────────── */}
+      <section className="bg-[#C4613A] text-white py-20 px-4 sm:px-8 lg:px-16">
+        <div className="max-w-5xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="font-serif text-3xl sm:text-4xl font-medium text-center mb-12 tracking-tight"
+          >
+            There are two ways to sell on Refurnish
+          </motion.h2>
+
+          <motion.div
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            variants={{ show: { transition: { staggerChildren: 0.12 } } }}
+            className="grid md:grid-cols-2 gap-6"
+          >
+            {/* Professional */}
+            <motion.div
+              variants={fadeUp}
+              className="rounded-2xl border border-white/20 p-7 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-full bg-white text-[#C4613A] text-xs font-bold flex items-center justify-center shrink-0">
+                  1
+                </span>
+                <h3 className="font-serif text-xl font-medium">
+                  Professional sellers
+                </h3>
+              </div>
+              <p className="text-sm text-white/80 leading-relaxed">
+                If you run a business dealing in vintage, antiques or
+                refurbished pieces, apply for a professional account and receive
+                exclusive benefits.
+              </p>
+              <p className="text-sm font-bold text-white">
+                Commission: 17% on the first ₦2,500,000 per item, then 10% on
+                any amount above ₦2,500,000.
+              </p>
+              <button
+                onClick={() => router.push("/sell/create?type=professional")}
+                className="inline-flex items-center gap-2 bg-white text-[#211000] font-bold text-xs px-5 py-2.5 rounded-full hover:bg-[#FAF4EC] transition-all"
+              >
+                I'm a professional seller
+              </button>
+            </motion.div>
+
+            {/* Individual */}
+            <motion.div
+              variants={fadeUp}
+              className="rounded-2xl border border-white/20 p-7 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-full bg-white text-[#C4613A] text-xs font-bold flex items-center justify-center shrink-0">
+                  2
+                </span>
+                <h3 className="font-serif text-xl font-medium">
+                  Individual sellers
+                </h3>
+              </div>
+              <p className="text-sm text-white/80 leading-relaxed">
+                For anyone who has a quality piece of pre-loved furniture to
+                rehome — quick, fair, and fully supported.
+              </p>
+              <p className="text-sm font-bold text-white">
+                Commission: Flat 24% on the item price.
+              </p>
+              <button
+                onClick={() => router.push("/sell/create")}
+                className="inline-flex items-center gap-2 bg-white text-[#211000] font-bold text-xs px-5 py-2.5 rounded-full hover:bg-[#FAF4EC] transition-all"
+              >
+                I'm an individual seller
+              </button>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ── 2. WHY SELL WITH US ─────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-16 pt-20 pb-10">
         <motion.h2
@@ -170,87 +251,6 @@ export default function SellLandingPage() {
               no longer need — and we offset the carbon footprint on the
               delivery of every piece sold.
             </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── 4. TWO WAYS TO SELL ─────────────────────────────────── */}
-      <section className="bg-[#C4613A] text-white py-20 px-4 sm:px-8 lg:px-16">
-        <div className="max-w-5xl mx-auto">
-          <motion.h2
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="font-serif text-3xl sm:text-4xl font-medium text-center mb-12 tracking-tight"
-          >
-            There are two ways to sell on Refurnish
-          </motion.h2>
-
-          <motion.div
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            variants={{ show: { transition: { staggerChildren: 0.12 } } }}
-            className="grid md:grid-cols-2 gap-6"
-          >
-            {/* Professional */}
-            <motion.div
-              variants={fadeUp}
-              className="rounded-2xl border border-white/20 p-7 space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-7 h-7 rounded-full bg-white text-[#C4613A] text-xs font-bold flex items-center justify-center shrink-0">
-                  1
-                </span>
-                <h3 className="font-serif text-xl font-medium">
-                  Professional sellers
-                </h3>
-              </div>
-              <p className="text-sm text-white/80 leading-relaxed">
-                If you run a business dealing in vintage, antiques or
-                refurbished pieces, apply for a professional account and receive
-                exclusive benefits.
-              </p>
-              <p className="text-sm font-bold text-white">
-                Commission: 17% on the first ₦2,500,000 per item, then 10% on
-                any amount above ₦2,500,000.
-              </p>
-              <button
-                onClick={() => router.push("/sell/create?type=professional")}
-                className="inline-flex items-center gap-2 bg-white text-[#211000] font-bold text-xs px-5 py-2.5 rounded-full hover:bg-[#FAF4EC] transition-all"
-              >
-                I'm a professional seller
-              </button>
-            </motion.div>
-
-            {/* Individual */}
-            <motion.div
-              variants={fadeUp}
-              className="rounded-2xl border border-white/20 p-7 space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-7 h-7 rounded-full bg-white text-[#C4613A] text-xs font-bold flex items-center justify-center shrink-0">
-                  2
-                </span>
-                <h3 className="font-serif text-xl font-medium">
-                  Individual sellers
-                </h3>
-              </div>
-              <p className="text-sm text-white/80 leading-relaxed">
-                For anyone who has a quality piece of pre-loved furniture to
-                rehome — quick, fair, and fully supported.
-              </p>
-              <p className="text-sm font-bold text-white">
-                Commission: Flat 24% on the item price.
-              </p>
-              <button
-                onClick={() => router.push("/sell/create")}
-                className="inline-flex items-center gap-2 bg-white text-[#211000] font-bold text-xs px-5 py-2.5 rounded-full hover:bg-[#FAF4EC] transition-all"
-              >
-                I'm an individual seller
-              </button>
-            </motion.div>
           </motion.div>
         </div>
       </section>

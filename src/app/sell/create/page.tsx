@@ -54,10 +54,8 @@ const fadeUp = {
 };
 
 const STEPS = [
-  { id: "photos", label: "Photos & Info", icon: Camera },
-  { id: "category", label: "Category", icon: Layers },
+  { id: "description", label: "Description", icon: Camera },
   { id: "condition", label: "Condition", icon: Star },
-  { id: "description", label: "Description", icon: MessageCircle },
   { id: "pricing", label: "Pricing", icon: DollarSign },
   { id: "location", label: "Location", icon: MapPin },
   { id: "review", label: "Review", icon: CheckCircle2 },
@@ -187,16 +185,6 @@ const AVAILABILITY = [
   "Flexible / Appointment only",
 ];
 
-const URGENCY = ["Not urgent", "Somewhat urgent", "Very urgent - Sell ASAP"];
-
-const CALL_TIMES = [
-  "Anytime",
-  "Morning (8am - 12pm)",
-  "Afternoon (12pm - 5pm)",
-  "Evening (5pm - 9pm)",
-  "Weekends only",
-];
-
 const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue",
   "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT",
@@ -242,6 +230,20 @@ export default function CreateListingPage() {
   const [editLoadError, setEditLoadError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Require login before starting a new listing at all
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+
+    if (!user?.token) {
+      const target = editId ? `/sell/create?edit=${editId}` : "/sell/create";
+      router.push(`/login?mode=signup&next=${encodeURIComponent(target)}`);
+      return;
+    }
+
+    setCheckingAuth(false);
+  }, []);
 
   // Form state
   const [photos, setPhotos] = useState<string[]>([]);
@@ -268,17 +270,12 @@ export default function CreateListingPage() {
   const [negotiable, setNegotiable] = useState(true);
   const [sellReason, setSellReason] = useState("");
   const [availability, setAvailability] = useState("");
-  const [urgency, setUrgency] = useState("");
   const [sellerName, setSellerName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [callTime, setCallTime] = useState("");
   const [address, setAddress] = useState("");
   const [state, setState] = useState("");
-  const [lga, setLga] = useState("");
-  const [warranty, setWarranty] = useState("");
-  const [warrantyDuration, setWarrantyDuration] = useState("");
 
   const populateForm = (data: any) => {
     setPhotos(data.photos || []);
@@ -303,17 +300,12 @@ export default function CreateListingPage() {
     setNegotiable(data.negotiable ?? true);
     setSellReason(data.sellReason || "");
     setAvailability(data.availability || "");
-    setUrgency(data.urgency || "");
     setSellerName(data.sellerName || "");
     setPhone(data.phone || "");
     setEmail(data.email || "");
     setWhatsapp(data.whatsapp || "");
-    setCallTime(data.callTime || "");
     setAddress(data.address || "");
     setState(data.state || "");
-    setLga(data.lga || "");
-    setWarranty(data.warranty || "");
-    setWarrantyDuration(data.warrantyDuration || "");
   };
 
   // Load a rejected listing for editing (via ?edit=<id>)
@@ -343,7 +335,7 @@ export default function CreateListingPage() {
 
         populateForm(data.listing);
         setEditingListingId(editId);
-        setStep(6); // jump to review
+        setStep(4); // jump to review
       } catch (err: any) {
         setEditLoadError(err.message || "Could not load this listing.");
       } finally {
@@ -354,22 +346,19 @@ export default function CreateListingPage() {
     loadListing();
   }, [editId]);
 
-  // Restore a listing that was saved before the person was sent to sign up
+  // Prefill contact info from the signed-in user's account (only what signup actually asked for)
   useEffect(() => {
-    if (editId) return; // editing takes priority over a stale draft
-    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+    if (editId) return; // don't overwrite data loaded for editing
     const pending = localStorage.getItem("refurnish_pending_listing");
-    if (user && pending) {
-      try {
-        const data = JSON.parse(pending);
-        populateForm(data);
-        setStep(6); // jump to review
-        setRestoredNotice(true);
-      } catch {
-        localStorage.removeItem("refurnish_pending_listing");
-      }
+    if (pending) return; // don't overwrite a restored draft
+
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+    if (user) {
+      if (user.name) setSellerName(user.name);
+      if (user.email) setEmail(user.email);
+      if (user.phone) setPhone(user.phone);
     }
-  }, []);
+  }, []);;
 
   // Photos handler — uploads directly to Cloudinary
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -450,26 +439,28 @@ export default function CreateListingPage() {
   const canProceed = () => {
     switch (step) {
       case 0:
-        return photos.length >= 1 && itemTitle.trim() && uploadingCount === 0;
-  
+        return (
+          photos.length >= 1 &&
+          itemTitle.trim() &&
+          uploadingCount === 0 &&
+          category &&
+          age &&
+          color &&
+          material
+        );
+
       case 1:
-        return category && age && color && material;
-  
+        return !!condition && description.trim().length >= 20;
+
       case 2:
-        return !!condition;
-  
-      case 3:
-        return description.trim().length >= 20;
-  
-      case 4:
         return !!sellingPrice;
-  
-      case 5:
+
+      case 3:
         return sellerName.trim() && phone.trim() && address.trim() && state;
-  
-      case 6:
+
+      case 4:
         return true;
-  
+
       default:
         return false;
     }
@@ -493,8 +484,8 @@ export default function CreateListingPage() {
     photos, itemTitle, category, brand, model, condition, defects,
     conditionNotes, age, color, material, dimLength, dimWidth, dimHeight,
     dimWeight, description, tags, originalPrice, sellingPrice, negotiable,
-    sellReason, availability, urgency, sellerName, phone, email, whatsapp,
-    callTime, address, state, lga, warranty, warrantyDuration,
+    sellReason, availability, sellerName, phone, email, whatsapp,
+    address, state,
   });
 
   const [submitError, setSubmitError] = useState("");
@@ -503,11 +494,6 @@ export default function CreateListingPage() {
     const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
 
     if (!user?.token) {
-      // Save the completed form and send them to sign up first
-      localStorage.setItem(
-        "refurnish_pending_listing",
-        JSON.stringify(buildListingPayload())
-      );
       router.push("/login?mode=signup&next=/sell/create");
       return;
     }
@@ -613,6 +599,14 @@ export default function CreateListingPage() {
             </Link>
           </motion.div>
         </div>
+      </main>
+    );
+  }
+
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen bg-[#FAF4EC] flex items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-[#B66B44]" />
       </main>
     );
   }
@@ -724,12 +718,12 @@ export default function CreateListingPage() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            {/* === STEP 0: Photos & Info === */}
+            {/* === STEP 0: Description (Photos & Info) === */}
             {step === 0 && (
               <div className="space-y-8">
                 <SectionTitle
-                  title="Photos & Item Name"
-                  subtitle="Add up to 10 high-quality photos. First photo is the main image."
+                  title="Photos & Item Details"
+                  subtitle="Add photos and tell us what this piece is."
                 />
 
                 {/* Photo tip */}
@@ -860,16 +854,6 @@ export default function CreateListingPage() {
                     />
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* === STEP 1: Category & Details === */}
-            {step === 1 && (
-              <div className="space-y-8">
-                <SectionTitle
-                  title="Category & Physical Details"
-                  subtitle="Help buyers find your piece by selecting the right category and physical attributes."
-                />
 
                 {/* Category grid */}
                 <div>
@@ -967,45 +951,15 @@ export default function CreateListingPage() {
                     Measure in centimeters. Weight helps with shipping quotes.
                   </p>
                 </div>
-
-                {/* Warranty info */}
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-3">
-                    Warranty Information <span className="text-[#211000]/40">(Optional)</span>
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <SelectField
-                      label="Warranty Status"
-                      value={warranty}
-                      onChange={setWarranty}
-                      options={["None", "Remaining manufacturer warranty", "Seller warranty (terms apply)"]}
-                      placeholder="Select warranty status"
-                    />
-                    {warranty && warranty !== "None" && (
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                          Warranty Duration
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 6 months, 1 year"
-                          value={warrantyDuration}
-                          onChange={(e) => setWarrantyDuration(e.target.value)}
-                          className="w-full rounded-xl bg-white border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* === STEP 2: Condition === */}
-            {step === 2 && (
+            {/* === STEP 1: Condition (Condition & Description) === */}
+            {step === 1 && (
               <div className="space-y-8">
                 <SectionTitle
-                  title="Item Condition"
-                  subtitle="Be honest — accurate condition descriptions build trust and reduce returns."
+                  title="Condition & Description"
+                  subtitle="Be honest about condition, then describe what makes this piece special."
                 />
 
                 {/* Condition selection */}
@@ -1092,30 +1046,6 @@ export default function CreateListingPage() {
                         Transparency leads to faster sales and happier buyers.
                       </p>
                     </div>
-
-                    {/* Repair history */}
-                    <div>
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-3">
-                        Has this item been repaired or refurbished?
-                      </label>
-                      <div className="flex gap-3">
-                        {["Yes", "No"].map((opt) => (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => {
-                              // You can store this in state if needed
-                            }}
-                            className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
-                              // Add state for this if you want to capture it
-                              "bg-white border-[#211000]/10 hover:border-[#B66B44]/30"
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </motion.div>
                 )}
 
@@ -1127,18 +1057,9 @@ export default function CreateListingPage() {
                     </p>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* === STEP 3: Description === */}
-            {step === 3 && (
-              <div className="space-y-8">
-                <SectionTitle
-                  title="Description"
-                  subtitle="Write a detailed description. Mention what makes this piece special."
-                />
-
-                <div>
+                {/* Detailed Description */}
+                <div className="pt-4 border-t border-[#211000]/8">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
                     Detailed Description *
                   </label>
@@ -1210,13 +1131,20 @@ export default function CreateListingPage() {
               </div>
             )}
 
-            {/* === STEP 4: Pricing === */}
-            {step === 4 && (
+            {/* === STEP 2: Pricing === */}
+            {step === 2 && (
               <div className="space-y-8">
                 <SectionTitle
                   title="Pricing"
                   subtitle="Set a competitive price. Items priced fairly sell 3× faster."
                 />
+
+                <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-4 flex gap-3">
+                  <Info className="size-5 text-[#B66B44] shrink-0 mt-0.5" />
+                  <p className="text-xs text-[#211000]/65 font-medium">
+                    <strong className="text-[#211000] font-bold">Commission:</strong> Flat 24% on the item price. This is deducted from your payout when the item sells.
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -1244,6 +1172,11 @@ export default function CreateListingPage() {
                     {originalPrice && sellingPrice && Number(originalPrice) > Number(sellingPrice) && (
                       <p className="text-[11px] text-[#5F7161] font-bold mt-1.5">
                         That's {Math.round(((Number(originalPrice) - Number(sellingPrice)) / Number(originalPrice)) * 100)}% off original price — attractive!
+                      </p>
+                    )}
+                    {sellingPrice && Number(sellingPrice) > 0 && (
+                      <p className="text-[11px] text-[#211000]/45 font-medium mt-1.5">
+                        You'll receive ~₦{Math.round(Number(sellingPrice) * 0.76).toLocaleString("en-NG")} after commission.
                       </p>
                     )}
                   </div>
@@ -1291,19 +1224,11 @@ export default function CreateListingPage() {
                     placeholder="Select availability"
                   />
                 </div>
-
-                <SelectField
-                  label="How urgent is the sale?"
-                  value={urgency}
-                  onChange={setUrgency}
-                  options={URGENCY}
-                  placeholder="Select urgency"
-                />
               </div>
             )}
 
-            {/* === STEP 5: Location & Contact === */}
-            {step === 5 && (
+            {/* === STEP 3: Location === */}
+            {step === 3 && (
               <div className="space-y-8">
                 <SectionTitle
                   title="Location & Contact"
@@ -1347,14 +1272,6 @@ export default function CreateListingPage() {
                       type="tel"
                     />
                   </div>
-
-                  <SelectField
-                    label="Best Time to Call"
-                    value={callTime}
-                    onChange={setCallTime}
-                    options={CALL_TIMES}
-                    placeholder="Select preferred time"
-                  />
                 </div>
 
                 {/* Address */}
@@ -1371,27 +1288,13 @@ export default function CreateListingPage() {
                     required
                   />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <SelectField
-                      label="State"
-                      value={state}
-                      onChange={setState}
-                      options={NIGERIAN_STATES}
-                      placeholder="Select state"
-                    />
-                    <div>
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                        LGA / Area / Neighborhood
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Ikeja, Lekki Phase 1"
-                        value={lga}
-                        onChange={(e) => setLga(e.target.value)}
-                        className="w-full rounded-xl bg-white border border-[#211000]/12 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all"
-                      />
-                    </div>
-                  </div>
+                  <SelectField
+                    label="State"
+                    value={state}
+                    onChange={setState}
+                    options={NIGERIAN_STATES}
+                    placeholder="Select state"
+                  />
 
                   {/* Map embed placeholder */}
                   {address && state && (
@@ -1402,7 +1305,7 @@ export default function CreateListingPage() {
                     >
                       <iframe
                         src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                          `${address}, ${lga}, ${state}, Nigeria`
+                          `${address}, ${state}, Nigeria`
                         )}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                         className="w-full h-52 border-0"
                         loading="lazy"
@@ -1428,8 +1331,8 @@ export default function CreateListingPage() {
               </div>
             )}
 
-            {/* === STEP 6: Review === */}
-            {step === 6 && (
+            {/* === STEP 4: Review === */}
+            {step === 4 && (
               <div className="space-y-8">
                 <SectionTitle
                   title="Review Your Listing"
@@ -1492,14 +1395,8 @@ export default function CreateListingPage() {
                         />
                       )}
                       {dimWeight && <ReviewRow label="Weight" value={`${dimWeight} kg`} />}
-                      <ReviewRow
-                        label="Location"
-                        value={`${address}${lga ? `, ${lga}` : ""}, ${state}`}
-                      />
+                      <ReviewRow label="Location" value={`${address}, ${state}`} />
                       <ReviewRow label="Contact" value={`${sellerName} · ${phone}`} />
-                      {warranty && warranty !== "None" && (
-                        <ReviewRow label="Warranty" value={warranty} />
-                      )}
                     </div>
 
                     {defects.length > 0 && (
