@@ -6,6 +6,8 @@ import {
   getMyListings,
   getListingById,
   resubmitListing,
+  markListingSold,
+  deleteMyListing,
   getActiveListings,
   getActiveListingById,
   getAllListings,
@@ -21,6 +23,8 @@ router.get("/mine", requireAuth, getMyListings);
 router.get("/public/:id", getActiveListingById);
 router.get("/:id", requireAuth, getListingById);
 router.patch("/:id", requireAuth, resubmitListing);
+router.post("/:id/sold", requireAuth, markListingSold);
+router.delete("/mine/:id", requireAuth, deleteMyListing);
 
 router.get("/admin/all", requireAdmin, getAllListings);
 router.post("/:id/review", requireAdmin, reviewListing);

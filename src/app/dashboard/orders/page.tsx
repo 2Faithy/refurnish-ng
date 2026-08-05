@@ -21,51 +21,48 @@ import {
 } from "lucide-react";
 import { formatNaira } from "@/lib/data";
 
-const ORDERS_KEY = "refurnish_orders";
-
 const STATUS_FILTERS = [
   { id: "all", label: "All orders" },
-  { id: "escrow_active", label: "In escrow" },
-  { id: "pending_payment_confirmation", label: "Pending" },
-  { id: "delivered", label: "Delivered" },
+  { id: "pending_verification", label: "Awaiting confirmation" },
+  { id: "confirmed", label: "Confirmed" },
   { id: "completed", label: "Completed" },
+  { id: "rejected", label: "Rejected" },
 ];
 
 function getStatusConfig(order: any) {
-  const escrow = order.escrowStatus;
   const status = order.status;
 
-  if (escrow === "funds_held" || status === "escrow_active") {
+  if (status === "pending_verification" || status === "pending_payment") {
     return {
-      label: "In escrow",
-      color: "bg-[#B66B44]/10 text-[#B66B44]",
-      icon: ShieldCheck,
-    };
-  }
-  if (status === "pending_payment_confirmation" || escrow === "awaiting_verification") {
-    return {
-      label: "Pending payment",
+      label: "Awaiting confirmation",
       color: "bg-yellow-50 text-yellow-700",
       icon: Clock,
     };
   }
-  if (status === "delivered") {
+  if (status === "confirmed") {
     return {
-      label: "Delivered",
+      label: "Confirmed",
       color: "bg-[#5F7161]/10 text-[#5F7161]",
-      icon: Truck,
+      icon: CheckCircle2,
     };
   }
-  if (escrow === "released" || status === "completed") {
+  if (status === "completed") {
     return {
       label: "Completed",
       color: "bg-[#5F7161]/10 text-[#5F7161]",
       icon: CheckCircle2,
     };
   }
-  if (escrow === "refunded") {
+  if (status === "disputed") {
     return {
-      label: "Refunded",
+      label: "Disputed",
+      color: "bg-red-50 text-red-600",
+      icon: AlertCircle,
+    };
+  }
+  if (status === "rejected" || status === "payment_failed") {
+    return {
+      label: "Rejected",
       color: "bg-red-50 text-red-600",
       icon: RefreshCcw,
     };
@@ -77,35 +74,47 @@ function getStatusConfig(order: any) {
     icon: Clock,
   };
 }
-
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(ORDERS_KEY);
-      if (stored) setOrders(JSON.parse(stored).reverse());
-    } catch {}
+    const fetchOrders = async () => {
+      const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+      if (!user?.token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/mine`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        const data = await res.json();
+        if (res.ok) setOrders((data.orders || []).reverse());
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
   }, []);
 
   const filtered = useMemo(() => {
     let list = [...orders];
 
     if (filter !== "all") {
-      list = list.filter(
-        (o) => o.status === filter || o.escrowStatus === filter
-      );
+      list = list.filter((o) => o.status === filter);
     }
 
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
         (o) =>
-          o.id?.toLowerCase().includes(q) ||
-          o.paymentReference?.toLowerCase().includes(q) ||
-          o.items?.some((i: any) => i.title?.toLowerCase().includes(q))
+          o.reference?.toLowerCase().includes(q) ||
+          o.items?.some((i: any) => i.itemTitle?.toLowerCase().includes(q))
       );
     }
 
@@ -127,12 +136,12 @@ export default function OrdersPage() {
         </p>
       </div>
 
-      {/* Escrow reminder banner */}
+      {/* Info banner */}
       <div className="mb-6 rounded-2xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-4 flex items-start gap-3">
         <ShieldCheck className="size-5 text-[#5F7161] shrink-0 mt-0.5" />
         <div className="text-xs text-[#211000]/70 leading-relaxed">
-          <strong className="text-[#211000] font-bold">Escrow protection is active.</strong>
-          {" "}Your payment is held safely until you confirm delivery. Only confirm receipt when you physically have the item in your hands.
+          <strong className="text-[#211000] font-bold">Payments are reviewed before confirmation.</strong>
+          {" "}We'll email you once your payment is confirmed with the seller's pickup details.
         </div>
       </div>
 
@@ -175,7 +184,11 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders list */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="rounded-2xl bg-white border border-[#211000]/6 py-16 text-center">
+          <p className="text-sm text-[#211000]/50 font-medium">Loading orders…</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="rounded-2xl bg-white border border-[#211000]/6 py-16 text-center">
           <div className="size-14 rounded-full bg-[#E8CEB0]/40 mx-auto grid place-items-center mb-4">
             <Package className="size-6 text-[#B66B44]" />
@@ -235,7 +248,7 @@ export default function OrdersPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-bold truncate">
-                            {order.items?.[0]?.title || "Order"}
+                            {order.items?.[0]?.itemTitle || "Order"}
                             {order.items?.length > 1 && (
                               <span className="text-[#211000]/45 font-medium">
                                 {" "}+{order.items.length - 1} more
@@ -244,7 +257,7 @@ export default function OrdersPage() {
                           </p>
 
                           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#211000]/45 font-medium">
-                            <span>{order.id}</span>
+                            <span className="font-mono">{order.reference}</span>
                             <span>·</span>
                             <span>{order.createdAt?.split("T")[0]}</span>
                             {order.paymentMethod && (
@@ -268,33 +281,27 @@ export default function OrdersPage() {
                         </span>
 
                         <span className="text-sm font-bold">
-                          {formatNaira(order.total)}
+                          {formatNaira(Number(order.total) || 0)}
                         </span>
                       </div>
 
                       {/* Delivery info */}
-                      {order.deliveryInfo?.type && (
+                      {order.deliveryType && (
                         <p className="mt-2 text-[11px] text-[#211000]/45 font-medium flex items-center gap-1">
                           <Truck className="size-3" />
-                          {order.deliveryInfo.type === "delivery"
-                            ? `Delivery to ${order.deliveryInfo.lga || ""}, ${order.deliveryInfo.state || ""}`
+                          {order.deliveryType === "delivery"
+                            ? `Delivery to ${order.lga || ""}, ${order.state || ""}`
                             : "Seller pickup"}
+                        </p>
+                      )}
+
+                      {order.status === "rejected" && order.rejectionReason && (
+                        <p className="mt-2 text-[11px] text-red-600 font-medium">
+                          {order.rejectionReason}
                         </p>
                       )}
                     </div>
                   </div>
-
-                  {/* Escrow bar */}
-                  {order.escrowStatus === "funds_held" && (
-                    <div className="px-4 sm:px-5 pb-4">
-                      <div className="rounded-xl bg-[#B66B44]/8 border border-[#B66B44]/15 px-3.5 py-2.5 flex items-center gap-2">
-                        <ShieldCheck className="size-4 text-[#B66B44] shrink-0" />
-                        <p className="text-[11px] text-[#B66B44] font-bold">
-                          Payment is held in escrow — confirm receipt to release funds.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </Link>
               </motion.div>
             );

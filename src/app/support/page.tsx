@@ -12,9 +12,7 @@ import {
   Bot,
   User,
   ShieldCheck,
-  Clock,
   CheckCircle2,
-  AlertCircle,
   Headphones,
   Package,
   CreditCard,
@@ -27,7 +25,8 @@ import {
   ImageIcon,
   Search,
   Lock,
-  Sparkles,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { formatNaira } from "@/lib/data";
 
@@ -47,117 +46,77 @@ type ChatMessage = {
   text: string;
   createdAt: string;
   attachments?: Attachment[];
-  quickReplies?: string[];
 };
 
 type SupportTicket = {
   id: string;
+  reference: string;
   topic: string;
   orderId?: string;
   status: "open" | "waiting_for_agent" | "resolved";
+  userLastReadAt?: string;
   createdAt: string;
+  updatedAt: string;
+};
+
+type Order = {
+  id: string;
+  reference: string;
+  status: string;
+  total: number;
+  paymentReference?: string;
 };
 
 const MESSAGES_KEY = "refurnish_support_messages";
 const TICKET_KEY = "refurnish_support_ticket";
-const ORDERS_KEY = "refurnish_orders";
 
 const SUPPORT_TOPICS = [
-  {
-    id: "escrow",
-    title: "Escrow protection",
-    desc: "Payment release, received item, seller payout",
-    icon: ShieldCheck,
-  },
-  {
-    id: "refund",
-    title: "Refund / dispute",
-    desc: "Item not as described, damaged item, return request",
-    icon: RefreshCcw,
-  },
-  {
-    id: "payment",
-    title: "Payment issue",
-    desc: "Bank transfer receipt, card payment, payment reference",
-    icon: CreditCard,
-  },
-  {
-    id: "delivery",
-    title: "Delivery / pickup",
-    desc: "Logistics partner, pickup address, delivery updates",
-    icon: Truck,
-  },
-  {
-    id: "order",
-    title: "Order support",
-    desc: "Track order, update contact info, seller details",
-    icon: Package,
-  },
-  {
-    id: "general",
-    title: "General question",
-    desc: "Anything else you need help with",
-    icon: MessageCircle,
-  },
+  { id: "escrow", title: "Escrow protection", desc: "Payment release, received item, seller payout", icon: ShieldCheck },
+  { id: "refund", title: "Refund / dispute", desc: "Item not as described, damaged item, return request", icon: RefreshCcw },
+  { id: "payment", title: "Payment issue", desc: "Bank transfer receipt, card payment, payment reference", icon: CreditCard },
+  { id: "delivery", title: "Delivery / pickup", desc: "Logistics partner, pickup address, delivery updates", icon: Truck },
+  { id: "order", title: "Order support", desc: "Track order, update contact info, seller details", icon: Package },
+  { id: "general", title: "General question", desc: "Anything else you need help with", icon: MessageCircle },
 ];
 
 const FAQS = [
-  {
-    q: "When is money released to the seller?",
-    a: "Funds are released when the buyer confirms delivery/pickup, or automatically after the protection window if no dispute is raised.",
-  },
-  {
-    q: "What if the buyer never clicks received?",
-    a: "Seller protection applies. If there is delivery proof and no dispute, Refurnish can automatically release funds after the protection window.",
-  },
-  {
-    q: "Can I request a refund?",
-    a: "Yes. If the item is not as described, damaged, or missing parts, open a dispute and upload photos within the refund window.",
-  },
-  {
-    q: "How do bank transfers get confirmed?",
-    a: "Use your payment reference in the transfer narration, upload your receipt, and our team verifies it before notifying the seller.",
-  },
+  { q: "When is money released to the seller?", a: "Funds are released when the buyer confirms delivery/pickup, or automatically after the protection window if no dispute is raised." },
+  { q: "What if the buyer never clicks received?", a: "Seller protection applies. If there is delivery proof and no dispute, Refurnish can automatically release funds after the protection window." },
+  { q: "Can I request a refund?", a: "Yes. If the item is not as described, damaged, or missing parts, open a dispute and upload photos within the refund window." },
+  { q: "How do bank transfers get confirmed?", a: "Use your payment reference in the transfer narration, upload your receipt, and our team verifies it before notifying the seller." },
 ];
 
 function makeId(prefix = "id") {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function makeTicketId() {
-  return `RF-SUP-${Date.now().toString(36).toUpperCase()}`;
-}
-
 function formatTime(dateString: string) {
-  return new Date(dateString).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return new Date(dateString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function shorten(text: string, count = 36) {
-  return text.length > count ? `${text.slice(0, count)}…` : text;
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function SupportPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [selectedOrderId, setSelectedOrderId] = useState("");
-  const [selectedTopic, setSelectedTopic] = useState("escrow");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>("");
+  const [selectedTopic, setSelectedTopic] = useState("general");
   const [input, setInput] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
-  const [agentTyping, setAgentTyping] = useState(false);
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [toast, setToast] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [searchOrders, setSearchOrders] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [initialFetched, setInitialFetched] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedOrder = useMemo(() => {
     return orders.find((order) => order.id === selectedOrderId);
@@ -165,148 +124,161 @@ export default function SupportPage() {
 
   const filteredOrders = useMemo(() => {
     if (!searchOrders.trim()) return orders;
-
     const q = searchOrders.toLowerCase();
-
     return orders.filter((order) => {
       const id = String(order.id || "").toLowerCase();
-      const ref = String(order.paymentReference || "").toLowerCase();
+      const ref = String(order.reference || "").toLowerCase();
       const status = String(order.status || "").toLowerCase();
-
       return id.includes(q) || ref.includes(q) || status.includes(q);
     });
   }, [orders, searchOrders]);
 
-  useEffect(() => {
+  // Fetch ticket and messages
+  const fetchTicket = async () => {
     try {
-      const storedMessages = localStorage.getItem(MESSAGES_KEY);
-      const storedTicket = localStorage.getItem(TICKET_KEY);
-      const storedOrders = localStorage.getItem(ORDERS_KEY);
-
-      if (storedOrders) {
-        const parsedOrders = JSON.parse(storedOrders);
-        setOrders(parsedOrders.reverse());
-        if (parsedOrders.length > 0) {
-          setSelectedOrderId(parsedOrders[0].id);
-        }
-      }
-
-      if (storedTicket) {
-        setTicket(JSON.parse(storedTicket));
-      }
-
-      if (storedMessages) {
-        setMessages(JSON.parse(storedMessages));
-      } else {
-        setMessages([
-          {
+      const res = await fetch("/api/support/mine", { credentials: "include" });
+      const data = await res.json();
+      
+      if (data.ticket) {
+        setTicket(data.ticket);
+        localStorage.setItem(TICKET_KEY, JSON.stringify(data.ticket));
+        
+        if (data.messages && data.messages.length > 0) {
+          const formattedMessages: ChatMessage[] = data.messages.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role,
+            text: msg.text,
+            createdAt: msg.createdAt,
+            attachments: msg.attachments ? JSON.parse(msg.attachments) : undefined,
+          }));
+          setMessages(formattedMessages);
+          localStorage.setItem(MESSAGES_KEY, JSON.stringify(formattedMessages));
+        } else if (data.messages?.length === 0 && !initialFetched) {
+          // First time user - show welcome message
+          setMessages([{
             id: makeId("msg"),
             role: "agent",
             text: "Hi, welcome to Refurnish Support. I can help with escrow, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
             createdAt: new Date().toISOString(),
-            quickReplies: [
-              "I need escrow help",
-              "Open dispute ticket",
-              "Payment receipt issue",
-              "Delivery or pickup help",
-            ],
-          },
-        ]);
+          }]);
+        }
+      } else if (!initialFetched) {
+        // No ticket exists - show welcome message
+        setMessages([{
+          id: makeId("msg"),
+          role: "agent",
+          text: "Hi, welcome to Refurnish Support. I can help with escrow, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
+          createdAt: new Date().toISOString(),
+        }]);
       }
-    } catch {
-      setMessages([
-        {
+    } catch (err) {
+      console.error("Failed to fetch ticket:", err);
+      if (!initialFetched) {
+        setMessages([{
           id: makeId("msg"),
           role: "agent",
           text: "Hi, welcome to Refurnish Support. How can we help today?",
           createdAt: new Date().toISOString(),
-        },
-      ]);
+        }]);
+      }
     }
-  }, []);
+  };
+
+  // Fetch orders
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch("/api/orders/mine", { credentials: "include" });
+      const data = await res.json();
+      if (data.orders) {
+        setOrders(data.orders);
+      }
+    } catch (err) {
+      console.error("Failed to fetch orders:", err);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    const init = async () => {
+      setLoading(true);
+      await Promise.all([fetchTicket(), fetchOrders()]);
+      setLoading(false);
+      setInitialFetched(true);
+    };
+    init();
+  }, []);
+
+  // Restore from localStorage if needed
+  useEffect(() => {
+    if (!loading && !ticket) {
+      try {
+        const storedTicket = localStorage.getItem(TICKET_KEY);
+        const storedMessages = localStorage.getItem(MESSAGES_KEY);
+        
+        if (storedTicket) {
+          setTicket(JSON.parse(storedTicket));
+        }
+        if (storedMessages) {
+          const parsed = JSON.parse(storedMessages);
+          if (parsed.length > 0 && messages.length === 0) {
+            setMessages(parsed);
+          }
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(""), 2200);
+    const t = setTimeout(() => setToast(""), 2500);
     return () => clearTimeout(t);
   }, [toast]);
 
-  const generateAgentResponse = (text: string): ChatMessage => {
-    const lower = text.toLowerCase();
-
-    let reply =
-      "Thanks for sharing that. I’ve noted the details. If this is related to an order, please select the order on the left so our team can investigate faster.";
-    let quickReplies = ["Create support ticket", "Upload evidence", "Talk to an agent"];
-
-    if (
-      lower.includes("refund") ||
-      lower.includes("dispute") ||
-      lower.includes("not as described") ||
-      lower.includes("damaged")
-    ) {
-      reply =
-        "I’m sorry about that. For refund/dispute cases, please upload clear photos or videos showing the issue, the delivery condition, and any visible defects. We can freeze escrow while support reviews the case.";
-      quickReplies = ["Open dispute ticket", "Upload evidence", "Refund policy"];
-    } else if (
-      lower.includes("receipt") ||
-      lower.includes("transfer") ||
-      lower.includes("payment") ||
-      lower.includes("bank")
-    ) {
-      reply =
-        "For bank transfers, please make sure your transfer narration includes your payment reference. Upload your receipt here if you haven’t already. Our team usually verifies receipts within 1–2 hours.";
-      quickReplies = ["Upload receipt", "Create support ticket", "Payment reference help"];
-    } else if (
-      lower.includes("delivery") ||
-      lower.includes("logistics") ||
-      lower.includes("pickup") ||
-      lower.includes("address")
-    ) {
-      reply =
-        "For home delivery, our logistics partner coordinates pickup from the seller and delivery to you. For self-pickup, the seller/pickup location is shared after payment confirmation to keep both parties protected.";
-      quickReplies = ["Track delivery", "Pickup location help", "Talk to an agent"];
-    } else if (
-      lower.includes("received") ||
-      lower.includes("release") ||
-      lower.includes("seller payout") ||
-      lower.includes("escrow")
-    ) {
-      reply =
-        "Escrow funds are released to the seller only after the buyer confirms delivery/pickup, or automatically after the protection window if no dispute is raised. If there is an issue, open a dispute before the window closes.";
-      quickReplies = ["Confirm received", "Open dispute ticket", "Escrow policy"];
-    } else if (
-      lower.includes("agent") ||
-      lower.includes("human") ||
-      lower.includes("support")
-    ) {
-      reply =
-        "I can connect you with a Refurnish support agent. Creating a ticket helps us attach this conversation to your selected order and preserve the transcript.";
-      quickReplies = ["Create support ticket", "Upload evidence", "Continue chatting"];
-    }
-
-    return {
-      id: makeId("msg"),
-      role: "agent",
-      text: reply,
-      createdAt: new Date().toISOString(),
-      quickReplies,
-    };
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToastType(type);
+    setToast(message);
   };
 
+  // Update ticket metadata (topic, orderId)
+  const updateTicketMeta = async (topic?: string, orderId?: string) => {
+    try {
+      const res = await fetch("/api/support/mine", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ topic, orderId }),
+      });
+      const data = await res.json();
+      if (data.ticket) {
+        setTicket(data.ticket);
+        localStorage.setItem(TICKET_KEY, JSON.stringify(data.ticket));
+      }
+    } catch (err) {
+      console.error("Failed to update ticket meta:", err);
+    }
+  };
+
+  // Send message to backend
   const sendMessage = async (overrideText?: string) => {
     const text = typeof overrideText === "string" ? overrideText : input.trim();
 
     if (!text && pendingAttachments.length === 0) return;
+    if (sending) return;
+
+    setSending(true);
 
     const userMessage: ChatMessage = {
       id: makeId("msg"),
       role: "user",
-      text: text || "Uploaded attachment",
+      text: text || "Sent an attachment",
       createdAt: new Date().toISOString(),
       attachments: pendingAttachments.length > 0 ? pendingAttachments : undefined,
     };
@@ -315,107 +287,151 @@ export default function SupportPage() {
     setInput("");
     setPendingAttachments([]);
 
-    setAgentTyping(true);
+    try {
+      // If no ticket exists yet, create one first
+      if (!ticket) {
+        await updateTicketMeta(selectedTopic, selectedOrderId || undefined);
+      } else if (ticket.topic !== selectedTopic || ticket.orderId !== selectedOrderId) {
+        // Update metadata if changed
+        await updateTicketMeta(selectedTopic, selectedOrderId || undefined);
+      }
 
-    setTimeout(() => {
-      const agentReply = generateAgentResponse(text);
-      setMessages((prev) => [...prev, agentReply]);
-      setAgentTyping(false);
-    }, 900);
+      // Build form data for attachments
+      const formData = new FormData();
+      formData.append("text", text || "Sent an attachment");
+      
+      // Handle file uploads - in real implementation, upload to Cloudinary first
+      // For now, we'll send attachment metadata
+      if (pendingAttachments.length > 0) {
+        formData.append("attachments", JSON.stringify(pendingAttachments));
+      }
+
+      const res = await fetch("/api/support/mine/messages", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.ticket && !ticket) {
+        setTicket(data.ticket);
+        localStorage.setItem(TICKET_KEY, JSON.stringify(data.ticket));
+        
+        // Add system message about ticket creation
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: makeId("msg"),
+            role: "system",
+            text: `Support ticket created: ${data.ticket.reference}`,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        
+        showToast("Ticket created - our team will review shortly");
+      }
+
+      if (data.message) {
+        // Add system message indicating message sent
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: makeId("msg"),
+            role: "system",
+            text: "Message sent to support team",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      showToast("Failed to send message. Please try again.", "error");
+      
+      // Remove the optimistic message on error
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+    } finally {
+      setSending(false);
+    }
   };
 
-  const createTicket = (topicLabel?: string) => {
+  // Topic selection handler
+  const handleTopicSelect = (topicId: string) => {
+    setSelectedTopic(topicId);
+    const topic = SUPPORT_TOPICS.find((t) => t.id === topicId);
+    if (topic) {
+      sendMessage(`I need help with ${topic.title}.`);
+    }
+  };
+
+  // Create ticket manually
+  const createTicket = () => {
     if (ticket) {
-      setToast("This chat is already attached to a support ticket");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: makeId("msg"),
-          role: "system",
-          text: `Existing ticket: ${ticket.id}`,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      showToast("This chat is already attached to a support ticket");
       return;
     }
-
-    const topic =
-      topicLabel ||
-      SUPPORT_TOPICS.find((t) => t.id === selectedTopic)?.title ||
-      "General support";
-
-    const newTicket: SupportTicket = {
-      id: makeTicketId(),
-      topic,
-      orderId: selectedOrderId || undefined,
-      status: "open",
-      createdAt: new Date().toISOString(),
-    };
-
-    setTicket(newTicket);
-    localStorage.setItem(TICKET_KEY, JSON.stringify(newTicket));
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: makeId("msg"),
-        role: "system",
-        text: `Support ticket created: ${newTicket.id}`,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: makeId("msg"),
-        role: "agent",
-        text: `Your ticket ${newTicket.id} is open. A Refurnish support specialist will review this conversation${
-          selectedOrderId ? ` and order ${selectedOrderId}` : ""
-        }. You can continue sending messages, receipts, photos, or evidence here.`,
-        createdAt: new Date().toISOString(),
-        quickReplies: ["Upload evidence", "Add more details", "View orders"],
-      },
-    ]);
-
-    setToast("Support ticket created");
+    sendMessage("I'd like to speak with a support agent.");
   };
 
-  const handleQuickReply = (reply: string) => {
-    const lower = reply.toLowerCase();
-
-    if (lower.includes("open dispute")) {
-      setSelectedTopic("refund");
-      createTicket("Refund / dispute");
+  // Resolve ticket (clear chat)
+  const resolveTicket = async () => {
+    if (!ticket) {
+      // Just clear local state
+      clearChatLocal();
       return;
     }
 
-    if (lower.includes("create support ticket") || lower.includes("talk to an agent")) {
-      createTicket();
-      return;
-    }
+    try {
+      const res = await fetch("/api/support/mine/resolve", {
+        method: "POST",
+        credentials: "include",
+      });
 
-    if (
-      lower.includes("upload evidence") ||
-      lower.includes("upload receipt") ||
-      lower.includes("receipt")
-    ) {
-      fileInputRef.current?.click();
-      return;
+      if (res.ok) {
+        clearChatLocal();
+        showToast("Ticket resolved");
+      } else {
+        showToast("Failed to resolve ticket", "error");
+      }
+    } catch (err) {
+      console.error("Failed to resolve ticket:", err);
+      showToast("Failed to resolve ticket", "error");
     }
+  };
 
-    if (lower.includes("view orders") || lower.includes("track")) {
-      setToast("Use the order selector to choose the order you need help with");
-      return;
+  const clearChatLocal = () => {
+    const starter: ChatMessage[] = [{
+      id: makeId("msg"),
+      role: "agent",
+      text: "Chat cleared. How can we help you today?",
+      createdAt: new Date().toISOString(),
+    }];
+
+    setMessages(starter);
+    setTicket(null);
+    localStorage.removeItem(TICKET_KEY);
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(starter));
+    showToast("Chat cleared");
+  };
+
+  const clearChat = () => {
+    if (ticket) {
+      resolveTicket();
+    } else {
+      clearChatLocal();
     }
+  };
 
-    if (lower.includes("refund policy")) {
-      sendMessage("Please explain the refund policy.");
-      return;
-    }
+  const copyTicketId = () => {
+    if (!ticket?.reference) return;
+    navigator.clipboard.writeText(ticket.reference);
+    showToast("Ticket ID copied");
+  };
 
-    if (lower.includes("escrow policy")) {
-      sendMessage("Please explain how escrow protection works.");
-      return;
-    }
-
-    sendMessage(reply);
+  const copyOrderId = () => {
+    if (!selectedOrderId) return;
+    navigator.clipboard.writeText(selectedOrderId);
+    showToast("Order ID copied");
   };
 
   const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -423,18 +439,18 @@ export default function SupportPage() {
     if (files.length === 0) return;
 
     const remaining = 3 - pendingAttachments.length;
-    const selectedFiles = files.slice(0, remaining);
+    const selectedFiles = files.slice(0, Math.max(0, remaining));
 
     selectedFiles.forEach((file) => {
       const validTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
 
       if (!validTypes.includes(file.type)) {
-        setToast("Only JPG, PNG, or PDF files are allowed");
+        showToast("Only JPG, PNG, or PDF files are allowed", "error");
         return;
       }
 
       if (file.size > 5 * 1024 * 1024) {
-        setToast("Each file must be under 5MB");
+        showToast("Each file must be under 5MB", "error");
         return;
       }
 
@@ -462,40 +478,22 @@ export default function SupportPage() {
     setPendingAttachments((prev) => prev.filter((file) => file.id !== id));
   };
 
-  const clearChat = () => {
-    const starter: ChatMessage[] = [
-      {
-        id: makeId("msg"),
-        role: "agent",
-        text: "Chat cleared. How can we help you today?",
-        createdAt: new Date().toISOString(),
-        quickReplies: [
-          "I need escrow help",
-          "Open dispute ticket",
-          "Payment receipt issue",
-          "Delivery or pickup help",
-        ],
-      },
-    ];
-
-    setMessages(starter);
-    setTicket(null);
-    localStorage.removeItem(TICKET_KEY);
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(starter));
-    setToast("Chat cleared");
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    open: { label: "Open", color: "text-[#B66B44] bg-[#B66B44]/10" },
+    waiting_for_agent: { label: "Waiting for agent", color: "text-[#5F7161] bg-[#5F7161]/10" },
+    resolved: { label: "Resolved", color: "text-[#211000]/50 bg-[#211000]/5" },
   };
 
-  const copyTicketId = () => {
-    if (!ticket) return;
-    navigator.clipboard.writeText(ticket.id);
-    setToast("Ticket ID copied");
-  };
-
-  const copyOrderId = () => {
-    if (!selectedOrderId) return;
-    navigator.clipboard.writeText(selectedOrderId);
-    setToast("Order ID copied");
-  };
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#FAF4EC] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="size-8 text-[#B66B44] animate-spin" />
+          <p className="text-sm text-[#211000]/50 font-medium">Loading support...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#FAF4EC] text-[#211000] font-sans antialiased pt-28 sm:pt-32 lg:pt-40 pb-24 px-4 sm:px-8 lg:px-16">
@@ -513,10 +511,10 @@ export default function SupportPage() {
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
-                Live Support
+                Support
               </p>
               <h1 className="font-serif text-3xl sm:text-5xl font-medium tracking-tight mt-2 leading-tight">
-                We’re here to help.
+                We&apos;re here to help.
               </h1>
               <p className="text-sm text-[#211000]/55 font-medium mt-2 max-w-xl">
                 Chat with Refurnish support for escrow, refunds, delivery, pickup, payment verification, and order issues.
@@ -526,7 +524,7 @@ export default function SupportPage() {
             <div className="inline-flex items-center gap-2 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 px-4 py-2">
               <span className="size-2 rounded-full bg-[#5F7161] animate-pulse" />
               <span className="text-xs font-bold text-[#5F7161]">
-                Support online
+                {ticket ? `Ticket: ${ticket.reference}` : "Start a conversation"}
               </span>
             </div>
           </div>
@@ -564,7 +562,7 @@ export default function SupportPage() {
                         Ticket ID
                       </p>
                       <p className="font-mono text-xs font-bold mt-0.5">
-                        {ticket.id}
+                        {ticket.reference}
                       </p>
                     </div>
 
@@ -577,17 +575,20 @@ export default function SupportPage() {
                   </div>
 
                   <div className="mt-3 flex items-center justify-between text-xs">
-                    <span className="text-[#211000]/50 font-medium">
-                      Status
+                    <span className="text-[#211000]/50 font-medium">Status</span>
+                    <span className={`font-bold px-2 py-0.5 rounded-full ${statusConfig[ticket.status]?.color || ""}`}>
+                      {statusConfig[ticket.status]?.label || ticket.status}
                     </span>
-                    <span className="font-bold text-[#5F7161] capitalize">
-                      {ticket.status.replaceAll("_", " ")}
-                    </span>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-[#211000]/8 flex items-center justify-between text-xs">
+                    <span className="text-[#211000]/50 font-medium">Created</span>
+                    <span className="font-medium">{formatDate(ticket.createdAt)}</span>
                   </div>
                 </div>
               ) : (
                 <button
-                  onClick={() => createTicket()}
+                  onClick={createTicket}
                   className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#B66B44] hover:bg-[#a05934] text-white py-3 text-xs font-bold uppercase tracking-wider transition-colors shadow-md shadow-[#B66B44]/15"
                 >
                   <Headphones className="size-4" />
@@ -622,7 +623,7 @@ export default function SupportPage() {
                 <div className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-4 text-center">
                   <Package className="size-6 text-[#211000]/35 mx-auto mb-2" />
                   <p className="text-xs text-[#211000]/50 font-medium">
-                    No orders found yet. You can still chat with support.
+                    No orders found. Your orders will appear here after purchase.
                   </p>
                 </div>
               ) : (
@@ -639,13 +640,18 @@ export default function SupportPage() {
 
                   <select
                     value={selectedOrderId}
-                    onChange={(e) => setSelectedOrderId(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedOrderId(e.target.value);
+                      if (ticket) {
+                        updateTicketMeta(undefined, e.target.value || undefined);
+                      }
+                    }}
                     className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/10 px-4 py-3 text-xs font-bold focus:outline-none focus:border-[#B66B44]"
                   >
                     <option value="">No order selected</option>
                     {filteredOrders.map((order) => (
                       <option key={order.id} value={order.id}>
-                        {order.id} · {order.status?.replaceAll("_", " ")}
+                        {order.reference || order.id} · {order.status?.replaceAll("_", " ")}
                       </option>
                     ))}
                   </select>
@@ -655,10 +661,10 @@ export default function SupportPage() {
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold">
-                            Order ID
+                            Order
                           </p>
                           <p className="font-mono text-xs font-bold mt-0.5">
-                            {selectedOrder.id}
+                            {selectedOrder.reference || selectedOrder.id}
                           </p>
                         </div>
 
@@ -680,12 +686,8 @@ export default function SupportPage() {
 
                       {typeof selectedOrder.total === "number" && (
                         <div className="mt-3 flex items-center justify-between text-xs">
-                          <span className="text-[#211000]/50 font-medium">
-                            Total
-                          </span>
-                          <span className="font-bold">
-                            {formatNaira(selectedOrder.total)}
-                          </span>
+                          <span className="text-[#211000]/50 font-medium">Total</span>
+                          <span className="font-bold">{formatNaira(selectedOrder.total)}</span>
                         </div>
                       )}
                     </div>
@@ -708,10 +710,7 @@ export default function SupportPage() {
                   return (
                     <button
                       key={topic.id}
-                      onClick={() => {
-                        setSelectedTopic(topic.id);
-                        sendMessage(`I need help with ${topic.title}.`);
-                      }}
+                      onClick={() => handleTopicSelect(topic.id)}
                       className={`text-left rounded-2xl border p-3 transition-all ${
                         active
                           ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
@@ -722,11 +721,9 @@ export default function SupportPage() {
                         <Icon className="size-4 mt-0.5 shrink-0" />
                         <div>
                           <p className="text-xs font-bold">{topic.title}</p>
-                          <p
-                            className={`text-[11px] mt-0.5 leading-relaxed ${
-                              active ? "text-[#E8CEB0]/65" : "text-[#211000]/45"
-                            }`}
-                          >
+                          <p className={`text-[11px] mt-0.5 leading-relaxed ${
+                            active ? "text-[#E8CEB0]/65" : "text-[#211000]/45"
+                          }`}>
                             {topic.desc}
                           </p>
                         </div>
@@ -762,7 +759,7 @@ export default function SupportPage() {
               </div>
 
               <button
-                onClick={() => sendMessage("Please explain escrow protection.")}
+                onClick={() => sendMessage("Please explain how escrow protection works.")}
                 className="mt-5 w-full rounded-full bg-[#FAF4EC]/10 hover:bg-[#FAF4EC]/15 border border-[#FAF4EC]/15 py-3 text-xs font-bold transition-colors"
               >
                 Ask about escrow
@@ -790,9 +787,7 @@ export default function SupportPage() {
                       >
                         <span className="text-xs font-bold">{faq.q}</span>
                         <ChevronDown
-                          className={`size-4 text-[#211000]/40 transition-transform ${
-                            open ? "rotate-180" : ""
-                          }`}
+                          className={`size-4 text-[#211000]/40 transition-transform ${open ? "rotate-180" : ""}`}
                         />
                       </button>
 
@@ -833,7 +828,11 @@ export default function SupportPage() {
                       Refurnish Support
                     </h2>
                     <p className="text-xs text-[#211000]/45 font-medium">
-                      Average response: under 2 minutes
+                      {ticket?.status === "waiting_for_agent" 
+                        ? "Waiting for agent response" 
+                        : ticket?.status === "resolved"
+                        ? "This ticket has been resolved"
+                        : "Average response: under 2 minutes"}
                     </p>
                   </div>
                 </div>
@@ -853,11 +852,10 @@ export default function SupportPage() {
                     <MessageBubble
                       key={message.id}
                       message={message}
-                      onQuickReply={handleQuickReply}
                     />
                   ))}
 
-                  {agentTyping && (
+                  {sending && (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -933,31 +931,43 @@ export default function SupportPage() {
                     onClick={() => fileInputRef.current?.click()}
                     className="size-11 rounded-full bg-[#FAF4EC] border border-[#211000]/8 hover:border-[#B66B44]/30 hover:text-[#B66B44] transition-colors grid place-items-center shrink-0"
                     aria-label="Attach file"
+                    disabled={ticket?.status === "resolved"}
                   >
                     <Paperclip className="size-4" />
                   </button>
 
                   <textarea
+                    ref={textareaRef}
                     rows={1}
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      // Auto-resize
+                      e.target.style.height = "auto";
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
                         sendMessage();
                       }
                     }}
-                    placeholder="Type your message..."
-                    className="min-h-11 max-h-32 flex-1 resize-none rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all"
+                    placeholder={ticket?.status === "resolved" ? "This ticket is resolved" : "Type your message..."}
+                    disabled={ticket?.status === "resolved" || sending}
+                    className="min-h-11 max-h-32 flex-1 resize-none rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
 
                   <button
                     onClick={() => sendMessage()}
-                    disabled={!input.trim() && pendingAttachments.length === 0}
+                    disabled={(!input.trim() && pendingAttachments.length === 0) || sending || ticket?.status === "resolved"}
                     className="size-11 rounded-full bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors grid place-items-center shrink-0 shadow-md shadow-[#B66B44]/15"
                     aria-label="Send message"
                   >
-                    <Send className="size-4" />
+                    {sending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Send className="size-4" />
+                    )}
                   </button>
                 </div>
 
@@ -970,25 +980,24 @@ export default function SupportPage() {
         </div>
       </div>
 
-      <Toast message={toast} />
+      <Toast message={toast} type={toastType} />
     </main>
   );
 }
 
-function MessageBubble({
-  message,
-  onQuickReply,
-}: {
-  message: ChatMessage;
-  onQuickReply: (reply: string) => void;
-}) {
+function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
 
   if (isSystem) {
     return (
       <div className="flex justify-center">
-        <div className="rounded-full bg-[#211000]/5 border border-[#211000]/8 px-4 py-2 text-[11px] font-bold text-[#211000]/45">
+        <div className="rounded-full bg-[#211000]/5 border border-[#211000]/8 px-4 py-2 text-[11px] font-bold text-[#211000]/45 flex items-center gap-2">
+          {message.text.includes("sent to support") ? (
+            <CheckCircle2 className="size-3.5 text-[#5F7161]" />
+          ) : message.text.includes("created") ? (
+            <Headphones className="size-3.5 text-[#B66B44]" />
+          ) : null}
           {message.text}
         </div>
       </div>
@@ -1046,20 +1055,6 @@ function MessageBubble({
         <p className="text-[10px] text-[#211000]/35 font-medium mt-1 px-1">
           {formatTime(message.createdAt)}
         </p>
-
-        {!isUser && message.quickReplies && message.quickReplies.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {message.quickReplies.map((reply) => (
-              <button
-                key={reply}
-                onClick={() => onQuickReply(reply)}
-                className="rounded-full bg-white border border-[#211000]/8 hover:border-[#B66B44]/30 hover:text-[#B66B44] px-3 py-1.5 text-[11px] font-bold transition-colors"
-              >
-                {reply}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {isUser && (
@@ -1071,7 +1066,7 @@ function MessageBubble({
   );
 }
 
-function Toast({ message }: { message: string }) {
+function Toast({ message, type }: { message: string; type?: "success" | "error" }) {
   return (
     <AnimatePresence>
       {message && (
@@ -1079,9 +1074,15 @@ function Toast({ message }: { message: string }) {
           initial={{ opacity: 0, y: 20, x: "-50%" }}
           animate={{ opacity: 1, y: 0, x: "-50%" }}
           exit={{ opacity: 0, y: 20, x: "-50%" }}
-          className="fixed bottom-6 left-1/2 z-[90] inline-flex items-center gap-2 bg-[#211000] text-[#FAF4EC] px-5 py-3 rounded-full shadow-2xl"
+          className={`fixed bottom-6 left-1/2 z-[90] inline-flex items-center gap-2 px-5 py-3 rounded-full shadow-2xl ${
+            type === "error" ? "bg-red-600 text-white" : "bg-[#211000] text-[#FAF4EC]"
+          }`}
         >
-          <CheckCircle2 className="size-4 text-[#5F7161]" />
+          {type === "error" ? (
+            <AlertCircle className="size-4" />
+          ) : (
+            <CheckCircle2 className="size-4 text-[#5F7161]" />
+          )}
           <span className="text-xs font-bold">{message}</span>
         </motion.div>
       )}

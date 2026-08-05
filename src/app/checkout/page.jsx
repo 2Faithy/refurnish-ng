@@ -39,6 +39,7 @@ import { formatNaira } from "@/lib/data";
 const CART_KEY = "refurnish_cart";
 const QTY_KEY = "refurnish_cart_quantities";
 const PENDING_CHECKOUT_KEY = "refurnish_pending_checkout";
+const NEGOTIATED_PRICES_KEY = "refurnish_negotiated_prices";
 
 const REFUND_WINDOW_DAYS = 3;
 const DELIVERY_ENABLED = false; // flip to true once a logistics API is wired up
@@ -107,6 +108,7 @@ export default function CheckoutPage() {
   // Cart data
   const [cartIds, setCartIds] = useState([]);
   const [quantities, setQuantities] = useState({});
+  const [negotiatedPrices, setNegotiatedPrices] = useState({});
   const [allProducts, setAllProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
 
@@ -123,6 +125,9 @@ export default function CheckoutPage() {
 
       setCartIds(JSON.parse(cart));
       if (qty) setQuantities(JSON.parse(qty));
+
+      const negotiated = localStorage.getItem(NEGOTIATED_PRICES_KEY);
+      if (negotiated) setNegotiatedPrices(JSON.parse(negotiated));
 
       const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
       if (user) {
@@ -175,8 +180,12 @@ export default function CheckoutPage() {
   const cartProducts = useMemo(() => {
     return cartIds
       .map((id) => allProducts.find((p) => p.id === id))
-      .filter(Boolean);
-  }, [cartIds, allProducts]);
+      .filter(Boolean)
+      .map((p) => {
+        const negotiated = negotiatedPrices[String(p.id)];
+        return negotiated ? { ...p, price: Number(negotiated), negotiated: true } : p;
+      });
+  }, [cartIds, allProducts, negotiatedPrices]);
 
   const subtotal = useMemo(() => {
     return cartProducts.reduce((sum, product) => {
@@ -271,6 +280,7 @@ export default function CheckoutPage() {
       const cartItems = cartProducts.map((p) => ({
         listingId: p.id,
         quantity: quantities[String(p.id)] || 1,
+        ...(p.negotiated ? { negotiatedPrice: p.price } : {}),
       }));
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
@@ -304,6 +314,7 @@ export default function CheckoutPage() {
 
       localStorage.removeItem(CART_KEY);
       localStorage.removeItem(QTY_KEY);
+      localStorage.removeItem(NEGOTIATED_PRICES_KEY);
 
       if (paymentMethod === "paystack" && data.authorizationUrl) {
         window.location.href = data.authorizationUrl;
@@ -932,8 +943,11 @@ export default function CheckoutPage() {
                                 {product.brand}
                               </p>
                               <h4 className="font-serif text-sm font-medium truncate">{product.title}</h4>
-                              <p className="text-[11px] text-[#211000]/45 mt-0.5">
+                              <p className="text-[11px] text-[#211000]/45 mt-0.5 flex items-center gap-1.5">
                                 Qty: {quantities[String(product.id)] || 1}
+                                {product.negotiated && (
+                                  <span className="text-[#5F7161] font-bold">· Negotiated price</span>
+                                )}
                               </p>
                             </div>
                             <p className="text-sm font-bold shrink-0">

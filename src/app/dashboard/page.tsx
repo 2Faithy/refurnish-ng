@@ -24,7 +24,7 @@ import {
   Trash2,
   UserCheck,
 } from "lucide-react";
-import { products, formatNaira } from "@/lib/data";
+import { formatNaira } from "@/lib/data";
 
 const ORDERS_KEY = "refurnish_orders";
 const SAVED_KEY = "refurnish_saved";
@@ -85,21 +85,66 @@ export default function DashboardOverviewPage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [recommendedListings, setRecommendedListings] = useState<any[]>([]);
+
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
-      credentials: "include",
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Not authenticated");
-        return res.json();
-      })
-      .then((data) => setUser(data.user))
-      .catch(() => setUser(null));
+    const storedUser = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+    setUser(storedUser);
+
+    const fetchProfile = async () => {
+      if (!storedUser?.token) {
+        setProfileLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
+          headers: { Authorization: `Bearer ${storedUser.token}` },
+        });
+        const data = await res.json();
+        if (res.ok) setProfile(data.user);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+    fetchProfile();
+
+    const fetchOrders = async () => {
+      if (!storedUser?.token) {
+        setOrdersLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/mine`, {
+          headers: { Authorization: `Bearer ${storedUser.token}` },
+        });
+        const data = await res.json();
+        if (res.ok) setOrders((data.orders || []).reverse());
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    fetchOrders();
+
+    const fetchRecommended = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/listings`);
+        const data = await res.json();
+        if (res.ok) setRecommendedListings((data.listings || []).slice(0, 4));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchRecommended();
 
     try {
-      const o = localStorage.getItem(ORDERS_KEY);
-      if (o) setOrders(JSON.parse(o).reverse());
-
       const s = localStorage.getItem(SAVED_KEY);
       if (s) setSavedIds(JSON.parse(s));
 
@@ -156,14 +201,14 @@ export default function DashboardOverviewPage() {
 
   const stats = useMemo(() => {
     const activeOrders = orders.filter(
-      (o) =>
-        o.status === "escrow_active" ||
-        o.status === "pending_payment_confirmation"
+      (o) => o.status === "pending_verification" || o.status === "pending_payment"
     ).length;
-    const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-    const escrowHeld = orders
-      .filter((o) => o.escrowStatus === "funds_held")
-      .reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalSpent = orders
+      .filter((o) => ["confirmed", "completed"].includes(o.status))
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const pendingAmount = orders
+      .filter((o) => o.status === "pending_verification" || o.status === "pending_payment")
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
     return [
       {
@@ -181,11 +226,11 @@ export default function DashboardOverviewPage() {
         href: "/dashboard/orders",
       },
       {
-        label: "In escrow",
-        value: formatNaira(escrowHeld),
+        label: "Awaiting confirmation",
+        value: formatNaira(pendingAmount),
         icon: ShieldCheck,
         color: "#211000",
-        href: "/dashboard/orders?filter=escrow",
+        href: "/dashboard/orders",
       },
       {
         label: "Saved items",
@@ -198,7 +243,29 @@ export default function DashboardOverviewPage() {
   }, [orders, savedIds]);
 
   const recentOrders = useMemo(() => orders.slice(0, 3), [orders]);
-  const recommendedListings = useMemo(() => products.slice(0, 4), []);
+
+  const profileCompletion = useMemo(() => {
+    if (!profile) return 0;
+    let score = 0;
+    if (profile.name) score += 20;
+    if (profile.email) score += 15;
+    if (profile.phone) score += 15;
+    if (profile.profileImage) score += 15;
+    if (profile.address && profile.state) score += 15;
+    if (profile.idNumber && profile.idImage) score += 10;
+    if (profile.idVerified) score += 10;
+    return Math.min(score, 100);
+  }, [profile]);
+
+  const setupChecklist = useMemo(
+    () => [
+      { label: "Add a profile photo", done: !!profile?.profileImage },
+      { label: "Add your phone number", done: !!profile?.phone },
+      { label: "Add your address", done: !!(profile?.address && profile?.state) },
+      { label: "Verify your identity", done: !!profile?.idVerified },
+    ],
+    [profile]
+  );
 
   return (
     <div className="px-4 md:px-8 py-8 max-w-7xl mx-auto space-y-10 text-[#211000]">
@@ -395,7 +462,11 @@ export default function DashboardOverviewPage() {
               </Link>
             </div>
 
-            {recentOrders.length === 0 ? (
+            {ordersLoading ? (
+              <div className="p-10 text-center text-sm text-[#211000]/50">
+                Loading orders…
+              </div>
+            ) : recentOrders.length === 0 ? (
               <div className="p-10 text-center text-sm text-[#211000]/50">
                 No orders active
               </div>
@@ -423,28 +494,30 @@ export default function DashboardOverviewPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 p-5">
-              {recommendedListings.map((product) => (
+              {recommendedListings.map((listing) => (
                 <Link
-                  key={product.id}
-                  href={`/product/${product.slug}`}
+                  key={listing.id}
+                  href={`/product/${listing.id}`}
                   className="group block space-y-2"
                 >
                   <div className="aspect-square rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200/40">
-                    <img
-                      src={product.images[0]}
-                      alt={product.title}
-                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
-                    />
+                    {listing.photos?.[0] && (
+                      <img
+                        src={listing.photos[0]}
+                        alt={listing.itemTitle}
+                        className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                      />
+                    )}
                   </div>
                   <div className="text-xs md:text-sm min-w-0">
                     <p className="text-[#211000]/50 uppercase text-[10px] tracking-wider font-bold truncate">
-                      {product.brand}
+                      {listing.brand || listing.category}
                     </p>
                     <p className="font-semibold text-[#211000]/90 truncate mt-0.5">
-                      {product.title}
+                      {listing.itemTitle}
                     </p>
                     <p className="font-extrabold text-neutral-900 mt-1">
-                      {formatNaira(product.price)}
+                      {formatNaira(Number(listing.sellingPrice) || 0)}
                     </p>
                   </div>
                 </Link>
@@ -458,15 +531,23 @@ export default function DashboardOverviewPage() {
           {/* Identity Context Card */}
           <div className="bg-neutral-50/60 border border-[#211000]/10 rounded-xl p-6">
             <div className="flex items-center gap-4">
-              <div className="size-12 rounded-full bg-[#E8CEB0]/50 flex items-center justify-center font-serif font-bold text-base text-[#B66B44]">
-                {user?.name ? user.name[0] : "U"}
-              </div>
+              {profile?.profileImage ? (
+                <img
+                  src={profile.profileImage}
+                  alt={profile.name || user?.name || "Profile photo"}
+                  className="size-12 rounded-full object-cover border border-[#211000]/8"
+                />
+              ) : (
+                <div className="size-12 rounded-full bg-[#E8CEB0]/50 flex items-center justify-center font-serif font-bold text-base text-[#B66B44]">
+                  {(profile?.name || user?.name) ? (profile?.name || user?.name)[0] : "U"}
+                </div>
+              )}
               <div>
                 <h3 className="text-base font-bold tracking-tight">
-                  {user?.name || "Marketplace Guest"}
+                  {profile?.name || user?.name || "Marketplace Guest"}
                 </h3>
                 <p className="text-xs md:text-sm text-[#211000]/60 mt-0.5">
-                  {user?.email || "Verification Level 1"}
+                  {profile?.email || user?.email || "Verification Level 1"}
                 </p>
               </div>
             </div>
@@ -481,37 +562,44 @@ export default function DashboardOverviewPage() {
                   Profile Setup
                 </h3>
               </div>
-              <span className="text-sm font-extrabold text-[#5F7161] bg-[#5F7161]/10 px-2.5 py-0.5 rounded-full">
-                75%
-              </span>
+              {!profileLoading && (
+                <span className="text-sm font-extrabold text-[#5F7161] bg-[#5F7161]/10 px-2.5 py-0.5 rounded-full">
+                  {profileCompletion}%
+                </span>
+              )}
             </div>
 
             {/* Native Progress Slider Track */}
             <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
-              <div className="w-[75%] h-full bg-[#5F7161] rounded-full" />
+              <div
+                className="h-full bg-[#5F7161] rounded-full transition-all duration-500"
+                style={{ width: `${profileCompletion}%` }}
+              />
             </div>
 
             <p className="text-xs md:text-sm text-[#211000]/70 leading-relaxed">
-              Complete your profile verification setup layout to instantly
-              minimize escrow release timeframes.
+              {profileCompletion >= 100
+                ? "Your profile is fully set up."
+                : "Complete your profile to build trust and speed up transactions."}
             </p>
 
             <div className="pt-2 border-t border-[#211000]/5 space-y-2.5">
-              <div className="flex items-center justify-between text-xs md:text-sm text-[#211000]/50">
-                <span className="line-through">Verify Phone Identity</span>
-                <CheckCircle2 className="size-4 text-[#5F7161]" />
-              </div>
-              <div className="flex items-center justify-between text-xs md:text-sm text-[#211000]/50">
-                <span className="line-through">Link Financial Node</span>
-                <CheckCircle2 className="size-4 text-[#5F7161]" />
-              </div>
-              <Link
-                href="/dashboard/profile"
-                className="flex items-center justify-between text-xs md:text-sm text-[#B66B44] font-bold group"
-              >
-                <span>Add Secondary Address Matrix</span>
-                <Plus className="size-4 group-hover:scale-110 transition-transform" />
-              </Link>
+              {setupChecklist.map((item) => (
+                <Link
+                  key={item.label}
+                  href="/dashboard/profile"
+                  className={`flex items-center justify-between text-xs md:text-sm group ${
+                    item.done ? "text-[#211000]/50" : "text-[#B66B44] font-bold"
+                  }`}
+                >
+                  <span className={item.done ? "line-through" : ""}>{item.label}</span>
+                  {item.done ? (
+                    <CheckCircle2 className="size-4 text-[#5F7161]" />
+                  ) : (
+                    <Plus className="size-4 group-hover:scale-110 transition-transform" />
+                  )}
+                </Link>
+              ))}
             </div>
           </div>
 
@@ -601,8 +689,8 @@ export default function DashboardOverviewPage() {
 }
 
 function OrderRow({ order }: { order: any }) {
-  const isHeld = order.escrowStatus === "funds_held";
-  const isReleased = order.escrowStatus === "released";
+  const isConfirmed = order.status === "confirmed" || order.status === "completed";
+  const isRejected = order.status === "rejected" || order.status === "payment_failed";
 
   return (
     <Link
@@ -625,7 +713,7 @@ function OrderRow({ order }: { order: any }) {
         </div>
         <div className="min-w-0 text-xs md:text-sm">
           <p className="font-bold text-[#211000] truncate">
-            {order.items?.[0]?.title || "Item Order"}
+            {order.items?.[0]?.itemTitle || "Item Order"}
             {order.items?.length > 1 && (
               <span className="text-neutral-400 font-normal">
                 {" "}
@@ -633,24 +721,24 @@ function OrderRow({ order }: { order: any }) {
               </span>
             )}
           </p>
-          <p className="text-xs text-neutral-400 truncate mt-1">{order.id}</p>
+          <p className="text-xs text-neutral-400 truncate mt-1 font-mono">{order.reference}</p>
         </div>
       </div>
 
       <div className="text-right text-xs md:text-sm shrink-0 space-y-1.5">
         <p className="font-extrabold tracking-tight text-neutral-900">
-          {formatNaira(order.total)}
+          {formatNaira(Number(order.total) || 0)}
         </p>
         <span
           className={`inline-block text-[11px] px-2.5 py-0.5 rounded-full font-bold ${
-            isHeld
-              ? "bg-[#B66B44]/10 text-[#B66B44]"
-              : isReleased
+            isConfirmed
               ? "bg-[#5F7161]/10 text-[#5F7161]"
-              : "bg-neutral-100 text-neutral-600"
+              : isRejected
+              ? "bg-red-50 text-red-600"
+              : "bg-[#B66B44]/10 text-[#B66B44]"
           }`}
         >
-          {isHeld ? "Escrow Vaulted" : isReleased ? "Completed" : "Processing"}
+          {order.status === "completed" ? "Completed" : isConfirmed ? "Confirmed" : isRejected ? "Rejected" : "Pending"}
         </span>
       </div>
     </Link>

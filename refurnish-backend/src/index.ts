@@ -8,6 +8,10 @@ import authRoutes from "./routes/auth.routes";
 import listingsRoutes from "./routes/listings.routes";
 import adminRoutes from "./routes/admin.routes";
 import ordersRoutes from "./routes/orders.routes";
+import messagesRoutes from "./routes/messages.routes";
+import reportsRoutes from "./routes/reports.routes";
+import usersRoutes from "./routes/users.routes";
+import payoutsRoutes from "./routes/payouts.routes";
 import passport from "./config/passport";
 import "./config/passport-facebook";
 
@@ -28,7 +32,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/orders", ordersRoutes);
-
+app.use("/api/conversations", messagesRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/users", usersRoutes);
+app.use("/api/payouts", payoutsRoutes);
 app.get("/", (_req, res) => {
   res.send("Refurnish backend is running.");
 });

@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN     "address" TEXT,
+ADD COLUMN     "city" TEXT,
+ADD COLUMN     "emailNotifications" JSONB,
+ADD COLUMN     "idImage" TEXT,
+ADD COLUMN     "idNumber" TEXT,
+ADD COLUMN     "idType" TEXT,
+ADD COLUMN     "idVerified" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "idVerifiedAt" TIMESTAMP(3),
+ADD COLUMN     "lga" TEXT,
+ADD COLUMN     "passwordChangedAt" TIMESTAMP(3),
+ADD COLUMN     "profileImage" TEXT,
+ADD COLUMN     "pushNotifications" JSONB,
+ADD COLUMN     "smsNotifications" JSONB,
+ADD COLUMN     "state" TEXT,
+ADD COLUMN     "whatsapp" TEXT;

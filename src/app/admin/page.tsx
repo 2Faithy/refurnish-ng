@@ -13,14 +13,18 @@ import {
   Clock,
   FileText,
   Flag,
+  Headphones,
   Home,
   LayoutDashboard,
   ListChecks,
   Loader2,
   LogOut,
+  Mail,
+  MessageCircle,
   Package,
   RefreshCcw,
   Search,
+  Send,
   ShieldCheck,
   Trash2,
   UserCheck,
@@ -54,6 +58,9 @@ type AdminTab =
 const tabs: { id: AdminTab; label: string; icon: any }[] = [
   { id: "listings", label: "Listings", icon: Package },
   { id: "orders", label: "Orders", icon: ListChecks },
+  { id: "verifications", label: "Verifications", icon: UserCheck },
+  { id: "payouts", label: "Payouts", icon: Wallet },
+  { id: "support", label: "Support", icon: Headphones },
 ];
 
 export default function AdminPage() {
@@ -89,6 +96,36 @@ export default function AdminPage() {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderRejectReason, setOrderRejectReason] = useState("");
   const [showOrderRejectBox, setShowOrderRejectBox] = useState(false);
+
+  const [verifications, setVerifications] = useState<any[]>([]);
+  const [verificationsLoading, setVerificationsLoading] = useState(true);
+  const [verificationsError, setVerificationsError] = useState("");
+  const [selectedVerification, setSelectedVerification] = useState<any | null>(null);
+  const [verificationRejectReason, setVerificationRejectReason] = useState("");
+  const [showVerificationRejectBox, setShowVerificationRejectBox] = useState(false);
+
+  const [payoutsData, setPayoutsData] = useState<any[]>([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(true);
+  const [payoutsError, setPayoutsError] = useState("");
+  const [payoutTab, setPayoutTab] = useState<"pending" | "paid">("pending");
+  const [selectedPayout, setSelectedPayout] = useState<any | null>(null);
+  const [payoutReceiptUrl, setPayoutReceiptUrl] = useState("");
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [payoutActionBusy, setPayoutActionBusy] = useState(false);
+
+  // ── Support state ──
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  const [supportLoading, setSupportLoading] = useState(true);
+  const [supportError, setSupportError] = useState("");
+  const [supportTab, setSupportTab] = useState<"waiting_for_agent" | "open" | "resolved">(
+    "waiting_for_agent"
+  );
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [ticketMessagesLoading, setTicketMessagesLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+  const [resolvingTicket, setResolvingTicket] = useState(false);
 
   const getAdminToken = () => {
     const session = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null");
@@ -147,6 +184,84 @@ export default function AdminPage() {
     }
   };
 
+  const fetchVerifications = async () => {
+    setVerificationsLoading(true);
+    setVerificationsError("");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/admin/id-verifications`,
+        { headers: { Authorization: `Bearer ${getAdminToken()}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          router.push("/admin/login");
+          return;
+        }
+        throw new Error(data?.message || "Failed to load verifications.");
+      }
+      setVerifications(data.users || []);
+    } catch (err: any) {
+      console.error(err);
+      setVerificationsError(err.message || "Could not load verifications.");
+    } finally {
+      setVerificationsLoading(false);
+    }
+  };
+
+  const fetchPayouts = async () => {
+    setPayoutsLoading(true);
+    setPayoutsError("");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payouts/admin/all`,
+        { headers: { Authorization: `Bearer ${getAdminToken()}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          router.push("/admin/login");
+          return;
+        }
+        throw new Error(data?.message || "Failed to load payouts.");
+      }
+      setPayoutsData(data.payouts || []);
+    } catch (err: any) {
+      console.error(err);
+      setPayoutsError(err.message || "Could not load payouts.");
+    } finally {
+      setPayoutsLoading(false);
+    }
+  };
+
+  const fetchSupportTickets = async () => {
+    setSupportLoading(true);
+    setSupportError("");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/support/admin/tickets`,
+        { headers: { Authorization: `Bearer ${getAdminToken()}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          router.push("/admin/login");
+          return;
+        }
+        throw new Error(data?.message || "Failed to load support tickets.");
+      }
+      setSupportTickets(data.tickets || []);
+    } catch (err: any) {
+      console.error(err);
+      setSupportError(err.message || "Could not load support tickets.");
+    } finally {
+      setSupportLoading(false);
+    }
+  };
+
   useEffect(() => {
     try {
       const session = localStorage.getItem(ADMIN_SESSION_KEY);
@@ -159,12 +274,24 @@ export default function AdminPage() {
       setAdmin(JSON.parse(session));
       fetchListings();
       fetchOrders();
+      fetchVerifications();
+      fetchPayouts();
+      fetchSupportTickets();
     } catch {
       router.push("/admin/login");
     } finally {
       setCheckingAuth(false);
     }
   }, [router]);
+
+  // Light polling while on the Support tab so new tickets/replies show up
+  useEffect(() => {
+    if (activeTab !== "support") return;
+    const interval = setInterval(() => {
+      fetchSupportTickets();
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   useEffect(() => {
     if (!toast) return;
@@ -249,7 +376,7 @@ export default function AdminPage() {
   const filteredOrders = useMemo(() => {
     const statusMap: Record<string, string[]> = {
       pending: ["pending_verification", "pending_payment"],
-      confirmed: ["confirmed"],
+      confirmed: ["confirmed", "completed", "disputed"],
       rejected: ["rejected", "payment_failed"],
     };
     return ordersData
@@ -260,7 +387,7 @@ export default function AdminPage() {
   const orderTabCounts = useMemo(
     () => ({
       pending: ordersData.filter((o) => ["pending_verification", "pending_payment"].includes(o.status)).length,
-      confirmed: ordersData.filter((o) => o.status === "confirmed").length,
+      confirmed: ordersData.filter((o) => ["confirmed", "completed", "disputed"].includes(o.status)).length,
       rejected: ordersData.filter((o) => ["rejected", "payment_failed"].includes(o.status)).length,
     }),
     [ordersData]
@@ -311,6 +438,257 @@ export default function AdminPage() {
     if (!selectedOrder || !orderRejectReason.trim()) return;
     await updateOrderStatus(selectedOrder.id, "rejected", orderRejectReason.trim());
     closeOrderModal();
+  };
+
+  const updateVerificationStatus = async (id: string, status: string, rejectionReason?: string) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/admin/id-verifications/${id}/review`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAdminToken()}`,
+          },
+          body: JSON.stringify({ status, rejectionReason }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to update verification.");
+      setToast(`ID marked as ${status}`);
+      await fetchVerifications();
+    } catch (err: any) {
+      console.error(err);
+      setToast(err.message || "Failed to update verification.");
+    }
+  };
+
+  const openVerificationModal = (v: any) => {
+    setSelectedVerification(v);
+    setShowVerificationRejectBox(false);
+    setVerificationRejectReason("");
+  };
+
+  const closeVerificationModal = () => {
+    setSelectedVerification(null);
+    setShowVerificationRejectBox(false);
+    setVerificationRejectReason("");
+  };
+
+  const approveVerificationFromModal = async () => {
+    if (!selectedVerification) return;
+    await updateVerificationStatus(selectedVerification.id, "verified");
+    closeVerificationModal();
+  };
+
+  const confirmVerificationRejectFromModal = async () => {
+    if (!selectedVerification || !verificationRejectReason.trim()) return;
+    await updateVerificationStatus(selectedVerification.id, "rejected", verificationRejectReason.trim());
+    closeVerificationModal();
+  };
+
+  const filteredVerifications = useMemo(
+    () => verifications.filter((v) => searchable(v, search)),
+    [verifications, search]
+  );
+
+  const filteredPayouts = useMemo(() => {
+    return payoutsData
+      .filter((p) => (payoutTab === "pending" ? p.status !== "paid" : p.status === "paid"))
+      .filter((p) => searchable(p, search));
+  }, [payoutsData, payoutTab, search]);
+
+  const payoutTabCounts = useMemo(
+    () => ({
+      pending: payoutsData.filter((p) => p.status !== "paid").length,
+      paid: payoutsData.filter((p) => p.status === "paid").length,
+    }),
+    [payoutsData]
+  );
+
+  const requestBankDetails = async (id: string) => {
+    setPayoutActionBusy(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payouts/admin/${id}/request-bank-details`,
+        { method: "POST", headers: { Authorization: `Bearer ${getAdminToken()}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to send reminder.");
+      setToast("Reminder email sent to seller");
+    } catch (err: any) {
+      setToast(err.message || "Failed to send reminder.");
+    } finally {
+      setPayoutActionBusy(false);
+    }
+  };
+
+  const uploadReceiptToCloudinary = async (file: File) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", preset as string);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || "Upload failed.");
+    return data.secure_url as string;
+  };
+
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingReceipt(true);
+    try {
+      const url = await uploadReceiptToCloudinary(file);
+      setPayoutReceiptUrl(url);
+    } catch (err: any) {
+      setToast(err.message || "Couldn't upload receipt.");
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
+  const markPayoutPaidFromModal = async () => {
+    if (!selectedPayout || !payoutReceiptUrl) return;
+    setPayoutActionBusy(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payouts/admin/${selectedPayout.id}/mark-paid`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAdminToken()}`,
+          },
+          body: JSON.stringify({ receiptUrl: payoutReceiptUrl }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to mark payout as paid.");
+      setToast("Payout marked as paid — seller notified");
+      setSelectedPayout(null);
+      setPayoutReceiptUrl("");
+      await fetchPayouts();
+    } catch (err: any) {
+      setToast(err.message || "Failed to mark payout as paid.");
+    } finally {
+      setPayoutActionBusy(false);
+    }
+  };
+
+  // ── Support helpers ──
+
+  const filteredSupportTickets = useMemo(() => {
+    return supportTickets
+      .filter((t) => t.status === supportTab)
+      .filter((t) => searchable(t, search));
+  }, [supportTickets, supportTab, search]);
+
+  const supportTabCounts = useMemo(
+    () => ({
+      waiting_for_agent: supportTickets.filter((t) => t.status === "waiting_for_agent").length,
+      open: supportTickets.filter((t) => t.status === "open").length,
+      resolved: supportTickets.filter((t) => t.status === "resolved").length,
+    }),
+    [supportTickets]
+  );
+
+  const openTicketModal = async (ticket: any) => {
+    setSelectedTicket(ticket);
+    setTicketMessages([]);
+    setReplyText("");
+    setTicketMessagesLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/support/admin/tickets/${ticket.id}/messages`,
+        { headers: { Authorization: `Bearer ${getAdminToken()}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to load conversation.");
+      setSelectedTicket(data.ticket);
+      setTicketMessages(data.messages || []);
+
+      // Clear the "waiting" badge locally since admin has now viewed it
+      setSupportTickets((prev) =>
+        prev.map((t) => (t.id === ticket.id ? { ...t, adminLastReadAt: new Date().toISOString() } : t))
+      );
+    } catch (err: any) {
+      console.error(err);
+      setToast(err.message || "Failed to load conversation.");
+    } finally {
+      setTicketMessagesLoading(false);
+    }
+  };
+
+  const closeTicketModal = () => {
+    setSelectedTicket(null);
+    setTicketMessages([]);
+    setReplyText("");
+  };
+
+  const sendTicketReply = async () => {
+    if (!selectedTicket || !replyText.trim() || sendingReply) return;
+    setSendingReply(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/support/admin/tickets/${selectedTicket.id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAdminToken()}`,
+          },
+          body: JSON.stringify({ text: replyText.trim() }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to send reply.");
+
+      setTicketMessages((prev) => [...prev, data.message]);
+      setReplyText("");
+      setToast("Reply sent — user notified by email");
+
+      // Reflect status change (waiting_for_agent -> open) in list + modal
+      setSelectedTicket((prev: any) => (prev ? { ...prev, status: "open" } : prev));
+      setSupportTickets((prev) =>
+        prev.map((t) => (t.id === selectedTicket.id ? { ...t, status: "open", updatedAt: new Date().toISOString() } : t))
+      );
+    } catch (err: any) {
+      console.error(err);
+      setToast(err.message || "Failed to send reply.");
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const resolveTicketFromModal = async () => {
+    if (!selectedTicket || resolvingTicket) return;
+    setResolvingTicket(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/support/admin/tickets/${selectedTicket.id}/resolve`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${getAdminToken()}` },
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to resolve ticket.");
+      setToast("Ticket resolved");
+      setSupportTickets((prev) =>
+        prev.map((t) => (t.id === selectedTicket.id ? { ...t, status: "resolved" } : t))
+      );
+      closeTicketModal();
+    } catch (err: any) {
+      console.error(err);
+      setToast(err.message || "Failed to resolve ticket.");
+    } finally {
+      setResolvingTicket(false);
+    }
   };
 
   const stats = useMemo(() => {
@@ -435,51 +813,6 @@ export default function AdminPage() {
     setToast("Dispute updated");
   };
 
-  const approveVerification = () => {
-    if (!profile && !user) return;
-
-    const now = new Date().toISOString();
-
-    const nextProfile = {
-      ...(profile || {}),
-      idVerified: true,
-      idVerifiedAt: now,
-      id_uploaded: true,
-      id_verified_at: now,
-    };
-
-    const nextUser = {
-      ...(user || {}),
-      idVerified: true,
-      idUploaded: true,
-    };
-
-    saveProfile(nextProfile);
-    saveUser(nextUser);
-    setToast("User verification approved");
-  };
-
-  const rejectVerification = () => {
-    const nextProfile = {
-      ...(profile || {}),
-      idVerified: false,
-      idVerifiedAt: null,
-      idImage: "",
-      id_uploaded: false,
-      id_verified_at: null,
-    };
-
-    const nextUser = {
-      ...(user || {}),
-      idVerified: false,
-      idUploaded: false,
-    };
-
-    saveProfile(nextProfile);
-    saveUser(nextUser);
-    setToast("Verification rejected");
-  };
-
   if (checkingAuth) {
     return (
       <main className="min-h-screen bg-[#FAF4EC] text-[#211000] flex items-center justify-center">
@@ -556,12 +889,14 @@ export default function AdminPage() {
         <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 mb-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
+            const badgeCount =
+              tab.id === "support" ? supportTabCounts.waiting_for_agent : 0;
 
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold border transition-all ${
+                className={`shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold border transition-all relative ${
                   activeTab === tab.id
                     ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
                     : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
@@ -569,6 +904,11 @@ export default function AdminPage() {
               >
                 <Icon className="size-3.5" />
                 {tab.label}
+                {badgeCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-4 h-4 rounded-full bg-[#B66B44] text-white text-[9px] px-1">
+                    {badgeCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -819,8 +1159,351 @@ export default function AdminPage() {
             </AdminCard>
           </AdminSection>
           )}
+
+          {activeTab === "verifications" && (
+          <AdminSection key="verifications">
+            <AdminCard title="Identity verifications">
+              {verificationsLoading ? (
+                <div className="py-14 flex justify-center">
+                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                </div>
+              ) : verificationsError ? (
+                <div className="py-14 text-center">
+                  <p className="text-sm text-red-600 font-medium mb-3">{verificationsError}</p>
+                  <button onClick={fetchVerifications} className="text-xs font-bold text-[#B66B44] hover:underline">
+                    Try again
+                  </button>
+                </div>
+              ) : filteredVerifications.length === 0 ? (
+                <EmptyState text="No IDs awaiting review." />
+              ) : (
+                <div className="divide-y divide-[#211000]/6">
+                  {filteredVerifications.map((v) => (
+                    <div key={v.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="size-11 rounded-xl overflow-hidden bg-[#E8CEB0]/40 shrink-0">
+                          {v.profileImage ? (
+                            <img src={v.profileImage} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center font-bold text-[#B66B44]">
+                              {v.name?.[0]?.toUpperCase() || "U"}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">{v.name}</p>
+                          <p className="text-xs text-[#211000]/55 font-medium mt-0.5">{v.email}</p>
+                          <p className="text-[10px] text-[#211000]/35 mt-1">
+                            {v.idType} · {v.idNumber}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status="pending" />
+                        <ActionButton label="Review" onClick={() => openVerificationModal(v)} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </AdminCard>
+          </AdminSection>
+          )}
+
+          {activeTab === "payouts" && (
+          <AdminSection key="payouts">
+            <AdminCard title="Seller payouts">
+              <div className="flex gap-1.5 mb-6">
+                {(["pending", "paid"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setPayoutTab(t)}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
+                      payoutTab === t
+                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
+                    }`}
+                  >
+                    {t}
+                    <span
+                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                        payoutTab === t ? "bg-[#E8CEB0] text-[#211000]" : "bg-[#211000]/8 text-[#211000]/60"
+                      }`}
+                    >
+                      {payoutTabCounts[t]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {payoutsLoading ? (
+                <div className="py-14 flex justify-center">
+                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                </div>
+              ) : payoutsError ? (
+                <div className="py-14 text-center">
+                  <p className="text-sm text-red-600 font-medium mb-3">{payoutsError}</p>
+                  <button onClick={fetchPayouts} className="text-xs font-bold text-[#B66B44] hover:underline">
+                    Try again
+                  </button>
+                </div>
+              ) : filteredPayouts.length === 0 ? (
+                <EmptyState text={payoutTab === "pending" ? "No pending payouts." : "No payouts made yet."} />
+              ) : (
+                <div className="divide-y divide-[#211000]/6">
+                  {filteredPayouts.map((payout) => {
+                    const hasBank = !!(payout.seller?.bankName && payout.seller?.accountNumber);
+                    return (
+                      <div key={payout.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-sm">{payout.itemTitle}</p>
+                          <p className="text-xs text-[#211000]/55 font-medium mt-1">
+                            {payout.seller?.name} · {payout.seller?.email}
+                          </p>
+                          <p className="text-xs text-[#211000]/45 font-medium mt-1">
+                            Net {formatNaira(Number(payout.netAmount))} (gross {formatNaira(Number(payout.grossAmount))}, {payout.feePercent}% fee)
+                          </p>
+                          {hasBank ? (
+                            <p className="text-[11px] text-[#5F7161] font-bold mt-1">
+                              {payout.seller.bankName} · {payout.seller.accountNumber}
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-red-500 font-bold mt-1">No bank details on file</p>
+                          )}
+                          {payout.issueReported && (
+                            <p className="text-[11px] text-red-600 font-medium mt-1">
+                              Issue reported: {payout.issueDescription}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusBadge status={payout.status} />
+                          {payout.status !== "paid" && !hasBank && (
+                            <ActionButton
+                              label="Request bank details"
+                              onClick={() => requestBankDetails(payout.id)}
+                            />
+                          )}
+                          {payout.status !== "paid" && hasBank && (
+                            <ActionButton
+                              label="Mark as paid"
+                              tone="success"
+                              onClick={() => {
+                                setSelectedPayout(payout);
+                                setPayoutReceiptUrl("");
+                              }}
+                            />
+                          )}
+                          {payout.status === "paid" && payout.receiptUrl && (
+                            
+                              <a href={payout.receiptUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                            >
+                              View receipt
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </AdminCard>
+          </AdminSection>
+          )}
+
+          {activeTab === "support" && (
+          <AdminSection key="support">
+            <AdminCard title="Support tickets">
+              <div className="flex gap-1.5 mb-6">
+                {(["waiting_for_agent", "open", "resolved"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setSupportTab(t)}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
+                      supportTab === t
+                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
+                    }`}
+                  >
+                    {t.replaceAll("_", " ")}
+                    <span
+                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                        supportTab === t ? "bg-[#E8CEB0] text-[#211000]" : "bg-[#211000]/8 text-[#211000]/60"
+                      }`}
+                    >
+                      {supportTabCounts[t]}
+                    </span>
+                  </button>
+                ))}
+
+                <button
+                  onClick={fetchSupportTickets}
+                  className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border border-[#211000]/10 bg-white hover:border-[#B66B44]/30 transition-colors"
+                >
+                  <RefreshCcw className="size-3.5" />
+                  Refresh
+                </button>
+              </div>
+
+              {supportLoading ? (
+                <div className="py-14 flex justify-center">
+                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                </div>
+              ) : supportError ? (
+                <div className="py-14 text-center">
+                  <p className="text-sm text-red-600 font-medium mb-3">{supportError}</p>
+                  <button onClick={fetchSupportTickets} className="text-xs font-bold text-[#B66B44] hover:underline">
+                    Try again
+                  </button>
+                </div>
+              ) : filteredSupportTickets.length === 0 ? (
+                <EmptyState
+                  text={
+                    supportTab === "waiting_for_agent"
+                      ? "No tickets waiting for a reply."
+                      : supportTab === "open"
+                      ? "No open tickets."
+                      : "No resolved tickets yet."
+                  }
+                />
+              ) : (
+                <div className="divide-y divide-[#211000]/6">
+                  {filteredSupportTickets.map((ticket) => {
+                    const lastMessage = ticket.messages?.[0];
+                    return (
+                      <div
+                        key={ticket.id}
+                        className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="size-10 rounded-full bg-[#B66B44]/10 flex items-center justify-center shrink-0 font-bold text-[#B66B44] text-sm">
+                            {ticket.user?.name?.[0]?.toUpperCase() || "U"}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-bold text-sm">{ticket.user?.name}</p>
+                              <span className="font-mono text-[10px] text-[#211000]/40">
+                                {ticket.reference}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#211000]/55 font-medium mt-0.5">
+                              {ticket.user?.email}
+                            </p>
+                            <p className="text-xs text-[#211000]/45 font-medium mt-1 truncate max-w-md">
+                              {lastMessage
+                                ? `${lastMessage.role === "agent" ? "You: " : ""}${lastMessage.text}`
+                                : "No messages yet"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span className="text-[10px] font-bold bg-[#E8CEB0]/30 px-2 py-0.5 rounded-full capitalize">
+                                {ticket.topic}
+                              </span>
+                              {ticket.order && (
+                                <span className="text-[10px] font-bold bg-[#5F7161]/10 text-[#5F7161] px-2 py-0.5 rounded-full font-mono">
+                                  {ticket.order.reference}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-[#211000]/35 font-medium">
+                                Updated {new Date(ticket.updatedAt).toLocaleString([], {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <StatusBadge status={ticket.status} />
+                          <ActionButton
+                            label={ticket.status === "resolved" ? "View" : "Reply"}
+                            onClick={() => openTicketModal(ticket)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </AdminCard>
+          </AdminSection>
+          )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {selectedPayout && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
+          >
+            <div
+              className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+              onClick={() => setSelectedPayout(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#211000]/10 p-6"
+            >
+              <button
+                onClick={() => setSelectedPayout(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white hover:bg-[#211000]/5 transition-colors shadow-sm"
+              >
+                <X className="size-4 text-[#211000]/60" />
+              </button>
+
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">Mark payout as paid</p>
+              <h2 className="font-serif text-2xl font-medium mt-1">{selectedPayout.itemTitle}</h2>
+              <p className="text-sm text-[#211000]/55 font-medium mt-1">
+                Paying {selectedPayout.seller?.name} — {formatNaira(Number(selectedPayout.netAmount))} to{" "}
+                {selectedPayout.seller?.bankName} ({selectedPayout.seller?.accountNumber})
+              </p>
+
+              <div className="mt-5">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
+                  Upload proof of payment
+                </label>
+                {payoutReceiptUrl ? (
+                  <div className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-3 flex items-center justify-between">
+                    <img src={payoutReceiptUrl} alt="Receipt" className="max-h-32 rounded-lg" />
+                    <button
+                      onClick={() => setPayoutReceiptUrl("")}
+                      className="text-xs font-bold text-red-500 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="block border-2 border-dashed border-[#211000]/15 rounded-xl p-6 text-center cursor-pointer hover:border-[#B66B44]/40 transition-all">
+                    {uploadingReceipt ? "Uploading…" : "Click to upload receipt"}
+                    <input type="file" accept="image/*,application/pdf" onChange={handleReceiptUpload} className="hidden" />
+                  </label>
+                )}
+              </div>
+
+              <button
+                onClick={markPayoutPaidFromModal}
+                disabled={!payoutReceiptUrl || payoutActionBusy}
+                className="mt-6 w-full inline-flex items-center justify-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] disabled:opacity-50 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+              >
+                {payoutActionBusy ? "Sending…" : "Confirm payout"}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {selectedListing && (
@@ -1175,6 +1858,319 @@ export default function AdminPage() {
           </motion.div>
         )}
 
+        {selectedVerification && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
+          >
+            <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={closeVerificationModal} />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#211000]/10"
+            >
+              <button
+                onClick={closeVerificationModal}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white hover:bg-[#211000]/5 transition-colors z-10 shadow-sm"
+              >
+                <X className="size-4 text-[#211000]/60" />
+              </button>
+
+              <div className="p-6 space-y-5">
+                <div className="flex items-center gap-3">
+                  <div className="size-14 rounded-full overflow-hidden bg-[#E8CEB0]/40 shrink-0">
+                    {selectedVerification.profileImage ? (
+                      <img src={selectedVerification.profileImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center font-bold text-lg text-[#B66B44]">
+                        {selectedVerification.name?.[0]?.toUpperCase() || "U"}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">
+                      Identity verification
+                    </p>
+                    <h2 className="font-serif text-2xl font-medium mt-0.5">{selectedVerification.name}</h2>
+                    <p className="text-xs text-[#211000]/55 font-medium">{selectedVerification.email}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <InfoBlock label="ID type" value={selectedVerification.idType || "—"} />
+                  <InfoBlock label="ID number" value={selectedVerification.idNumber || "—"} />
+                  <InfoBlock label="Phone" value={selectedVerification.phone || "—"} />
+                  <InfoBlock
+                    label="Address"
+                    value={
+                      selectedVerification.address
+                        ? `${selectedVerification.address}, ${selectedVerification.state || ""}`
+                        : "—"
+                    }
+                  />
+                </div>
+
+                {selectedVerification.idImage && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">
+                      ID document
+                    </p>
+                    <a href={selectedVerification.idImage} target="_blank" rel="noreferrer">
+                      <img
+                        src={selectedVerification.idImage}
+                        alt="ID document"
+                        className="max-h-80 rounded-xl border border-[#211000]/10"
+                      />
+                    </a>
+                  </div>
+                )}
+
+                <div className="border-t border-[#211000]/8 pt-5">
+                  {!showVerificationRejectBox ? (
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={approveVerificationFromModal}
+                        className="flex-1 inline-flex items-center justify-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                      >
+                        <CheckCircle2 className="size-4" />
+                        Verify
+                      </button>
+                      <button
+                        onClick={() => setShowVerificationRejectBox(true)}
+                        className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                      >
+                        <X className="size-4" />
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block">
+                        Reason for rejection (shown to the user)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={verificationRejectReason}
+                        onChange={(e) => setVerificationRejectReason(e.target.value)}
+                        placeholder="e.g. Document is blurry — please upload a clearer photo."
+                        className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={confirmVerificationRejectFromModal}
+                          disabled={!verificationRejectReason.trim()}
+                          className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                        >
+                          Confirm rejection
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowVerificationRejectBox(false);
+                            setVerificationRejectReason("");
+                          }}
+                          className="rounded-full border border-[#211000]/10 hover:border-[#211000]/25 bg-white px-5 py-3 text-sm font-bold transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {selectedTicket && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
+          >
+            <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={closeTicketModal} />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-[#211000]/10 flex flex-col overflow-hidden"
+            >
+              <button
+                onClick={closeTicketModal}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white hover:bg-[#211000]/5 transition-colors z-10 shadow-sm"
+              >
+                <X className="size-4 text-[#211000]/60" />
+              </button>
+
+              {/* Ticket header */}
+              <div className="p-6 pb-4 border-b border-[#211000]/8 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="size-12 rounded-full bg-[#B66B44]/10 flex items-center justify-center font-bold text-[#B66B44]">
+                    {selectedTicket.user?.name?.[0]?.toUpperCase() || "U"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-serif text-xl font-medium truncate">
+                      {selectedTicket.user?.name}
+                    </p>
+                    <p className="text-xs text-[#211000]/55 font-medium flex items-center gap-1.5">
+                      <Mail className="size-3" />
+                      {selectedTicket.user?.email}
+                    </p>
+                  </div>
+                  <div className="ml-auto text-right shrink-0">
+                    <StatusBadge status={selectedTicket.status} />
+                    <p className="font-mono text-[10px] text-[#211000]/40 mt-1">
+                      {selectedTicket.reference}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="text-[10px] font-bold bg-[#E8CEB0]/30 px-2 py-1 rounded-full capitalize">
+                    {selectedTicket.topic}
+                  </span>
+                  {selectedTicket.order && (
+                    <span className="text-[10px] font-bold bg-[#5F7161]/10 text-[#5F7161] px-2 py-1 rounded-full font-mono">
+                      Order {selectedTicket.order.reference} ·{" "}
+                      {formatNaira(Number(selectedTicket.order.total || 0))}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto bg-[#FAF4EC] p-5 space-y-4">
+                {ticketMessagesLoading ? (
+                  <div className="py-10 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : ticketMessages.length === 0 ? (
+                  <p className="text-center text-xs text-[#211000]/45 font-medium py-10">
+                    No messages yet.
+                  </p>
+                ) : (
+                  ticketMessages.map((msg) => {
+                    const isAgent = msg.role === "agent";
+                    let attachments: any[] = [];
+                    try {
+                      attachments = msg.attachments
+                        ? typeof msg.attachments === "string"
+                          ? JSON.parse(msg.attachments)
+                          : msg.attachments
+                        : [];
+                    } catch {
+                      attachments = [];
+                    }
+
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex ${isAgent ? "justify-end" : "justify-start"}`}
+                      >
+                        <div className="max-w-[80%]">
+                          <div
+                            className={`rounded-2xl px-4 py-3 shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${
+                              isAgent
+                                ? "rounded-tr-sm bg-[#211000] text-[#E8CEB0]"
+                                : "rounded-tl-sm bg-white border border-[#211000]/8"
+                            }`}
+                          >
+                            {msg.text}
+                            {attachments.length > 0 && (
+                              <div className="mt-2 grid gap-1.5">
+                                {attachments.map((file: any) => (
+                                  <a
+                                    key={file.id}
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-bold ${
+                                      isAgent ? "bg-[#FAF4EC]/10" : "bg-[#FAF4EC]"
+                                    }`}
+                                  >
+                                    <FileText className="size-3.5" />
+                                    {file.name}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-[#211000]/35 font-medium mt-1 px-1">
+                            {isAgent ? "You" : selectedTicket.user?.name} ·{" "}
+                            {new Date(msg.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Composer */}
+              <div className="border-t border-[#211000]/8 bg-white p-4 shrink-0">
+                {selectedTicket.status === "resolved" ? (
+                  <p className="text-center text-xs text-[#211000]/45 font-medium py-2">
+                    This ticket has been resolved.
+                  </p>
+                ) : (
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      rows={1}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          sendTicketReply();
+                        }
+                      }}
+                      placeholder="Type your reply..."
+                      className="min-h-11 max-h-32 flex-1 resize-none rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all"
+                    />
+                    <button
+                      onClick={sendTicketReply}
+                      disabled={!replyText.trim() || sendingReply}
+                      className="size-11 rounded-full bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors grid place-items-center shrink-0"
+                    >
+                      {sendingReply ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Send className="size-4" />
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-[10px] text-[#211000]/35 font-medium">
+                    Replying sends an email notification to the user.
+                  </p>
+                  {selectedTicket.status !== "resolved" && (
+                    <button
+                      onClick={resolveTicketFromModal}
+                      disabled={resolvingTicket}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#5F7161]/30 text-[#5F7161] hover:bg-[#5F7161]/10 px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      {resolvingTicket ? "Resolving…" : "Resolve ticket"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: 20, x: "-50%" }}
@@ -1288,10 +2284,12 @@ function StatusBadge({ status }: { status: string }) {
       normalized
     )
       ? "bg-[#5F7161]/10 text-[#5F7161]"
-      : ["pending", "processing", "reviewing"].includes(normalized)
+      : ["pending", "processing", "reviewing", "waiting_for_agent"].includes(normalized)
       ? "bg-yellow-50 text-yellow-700"
       : ["rejected", "refunded", "disputed", "unverified"].includes(normalized)
       ? "bg-red-50 text-red-600"
+      : ["open"].includes(normalized)
+      ? "bg-[#B66B44]/10 text-[#B66B44]"
       : "bg-[#211000]/8 text-[#211000]/60";
 
   return (

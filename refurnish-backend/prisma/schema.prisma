@@ -30,13 +30,79 @@ model User {
   googleId    String?  @unique
   facebookId  String?  @unique
 
+  profileImage String?
+  whatsapp     String?
+
+  address String?
+  state   String?
+  lga     String?
+  city    String?
+
+  idType             String?
+  idNumber           String?
+  idImage            String?
+  idVerified         Boolean   @default(false)
+  idVerifiedAt       DateTime?
+  idRejectionReason  String?
+  idReviewedAt       DateTime?
+
+  emailNotifications Json?
+  pushNotifications  Json?
+  smsNotifications   Json?
+
+  passwordChangedAt DateTime?
+
+  bankName             String?
+  accountNumber        String?
+  accountName          String?
+  bankDetailsUpdatedAt DateTime?
+
+  preferences   Json?
+  deactivatedAt DateTime?
+  deletedAt     DateTime?
+  tokenVersion  Int       @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   listings Listing[]
   orders   Order[]
+  payouts  Payout[]
+
+  buyerConversations  Conversation[] @relation("BuyerConversations")
+  sellerConversations Conversation[] @relation("SellerConversations")
+  supportTickets      SupportTicket[]
 
   @@map("users")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id])
+  buyerId    String
+  rating     Int
+  comment    String?
+  recommend  Boolean?
+  createdAt  DateTime @default(now())
+
+  @@map("reviews")
+}
+
+model Dispute {
+  id          String    @id @default(uuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id])
+  buyerId     String
+  reason      String
+  description String
+  status      String    @default("open") // open | reviewing | resolved
+  resolution  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("disputes")
 }
 
 model SellerConfirmation {
@@ -90,6 +156,13 @@ model Order {
   reviewedAt  DateTime?
 
   sellerConfirmations SellerConfirmation[]
+  reviews             Review[]
+  disputes            Dispute[]
+  conversations       Conversation[]
+  payouts             Payout[]
+  supportTickets      SupportTicket[]
+
+  deliveryConfirmedAt DateTime?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -147,8 +220,126 @@ model Listing {
   rejectionReason String?
   reviewedAt      DateTime?
 
+  conversations Conversation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("listings")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+
+  buyerId String
+  buyer   User   @relation("BuyerConversations", fields: [buyerId], references: [id])
+
+  sellerId String
+  seller   User   @relation("SellerConversations", fields: [sellerId], references: [id])
+
+  offerAmount String? // current/last offer amount from buyer
+  offerStatus String? // "pending" | "accepted" | "rejected" | "completed"
+  agreedPrice String? // set once offerStatus = "accepted"
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  buyerLastReadAt  DateTime?
+  sellerLastReadAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages Message[]
+
+  @@unique([listingId, buyerId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  senderId String? // null for system messages
+  role     String  // "buyer" | "seller" | "system"
+  type     String  @default("text") // "text" | "offer" | "offer_accepted" | "offer_rejected"
+
+  text        String
+  offerAmount String?
+
+  createdAt DateTime @default(now())
+
+  @@map("messages")
+}
+
+model Payout {
+  id String @id @default(uuid())
+
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id])
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  listingId String?
+  itemTitle String
+
+  grossAmount String
+  feePercent  Int    @default(24)
+  feeAmount   String
+  netAmount   String
+
+  status     String    @default("pending") // "pending" | "paid"
+  receiptUrl String?
+  paidAt     DateTime?
+
+  issueReported    Boolean @default(false)
+  issueDescription String?
+  issueStatus      String? // "open" | "resolved"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payouts")
+}
+
+model SupportTicket {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  topic  String  @default("general")
+  status String  @default("open") // "open" | "waiting_for_agent" | "resolved"
+
+  userLastReadAt  DateTime?
+  adminLastReadAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages SupportMessage[]
+
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id String @id @default(uuid())
+
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id])
+
+  role        String // "user" | "agent" | "system"
+  text        String
+  attachments Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("support_messages")
 }

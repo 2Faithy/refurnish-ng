@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 type SidebarProps = { children?: React.ReactNode };
-type UserData = { name?: string; email?: string; profileImage?: string };
+type UserData = { name?: string; email?: string; profileImage?: string; token?: string };
 
 const primaryLinks = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
@@ -56,15 +56,28 @@ export default function Sidebar({ children }: SidebarProps) {
   const [showSignOut, setShowSignOut] = useState(false);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
-      credentials: "include",
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Not authenticated");
-        return res.json();
+    let storedUser: UserData | null = null;
+    try {
+      storedUser = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+      setUser(storedUser);
+    } catch {
+      setUser(null);
+    }
+
+    // localStorage only has whatever was true at login — fetch the live profile
+    // so a photo uploaded later (or on another device) shows up here too.
+    if (storedUser?.token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${storedUser.token}` },
       })
-      .then((data) => setUser(data.user))
-      .catch(() => setUser(null));
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.user) {
+            setUser((prev) => ({ ...prev, ...data.user }));
+          }
+        })
+        .catch((err) => console.error(err));
+    }
   }, []);
 
   useEffect(() => {
@@ -81,14 +94,8 @@ export default function Sidebar({ children }: SidebarProps) {
       .slice(0, 2);
   }, [user]);
 
-  const confirmLogout = async () => {
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      localStorage.removeItem("refurnish_user");
-    } catch {}
+  const confirmLogout = () => {
+    localStorage.removeItem("refurnish_user");
     setShowSignOut(false);
     router.push("/login");
   };

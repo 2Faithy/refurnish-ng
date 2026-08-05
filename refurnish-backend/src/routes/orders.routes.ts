@@ -5,10 +5,16 @@ import {
   createOrder,
   verifyPaystackOrder,
   getMyOrders,
+  getMyOrderById,
+  confirmOrderReceived,
+  submitReview,
+  fileDispute,
   getAllOrders,
   reviewOrder,
   getSellerConfirmation,
   respondSellerConfirmation,
+  getAllDisputes,
+  resolveDispute,
 } from "../controllers/orders.controller";
 
 const router = Router();
@@ -22,5 +28,13 @@ router.post("/seller/:token/respond", respondSellerConfirmation);
 
 router.get("/admin/all", requireAdmin, getAllOrders);
 router.post("/:id/review", requireAdmin, reviewOrder);
+
+router.get("/disputes/admin/all", requireAdmin, getAllDisputes);
+router.post("/disputes/:id/resolve", requireAdmin, resolveDispute);
+
+router.get("/:id", requireAuth, getMyOrderById);
+router.post("/:id/confirm-received", requireAuth, confirmOrderReceived);
+router.post("/:id/submit-review", requireAuth, submitReview);
+router.post("/:id/dispute", requireAuth, fileDispute);
 
 export default router;

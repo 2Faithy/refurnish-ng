@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import {
   FaWhatsapp,
@@ -102,6 +103,7 @@ export default function ProductPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [productUrl, setProductUrl] = useState("");
+  const [negotiating, setNegotiating] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -213,6 +215,37 @@ export default function ProductPage() {
       router.push("/checkout");
     } catch {
       setToast("Could not start checkout. Please try again.");
+    }
+  };
+
+  const handleNegotiate = async () => {
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+    if (!user?.token) {
+      router.push(`/login?next=/product/${slug}`);
+      return;
+    }
+
+    setNegotiating(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({ listingId: product.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.message || "Couldn't start a chat with the seller.");
+        return;
+      }
+      router.push(`/dashboard/messages?conversationId=${data.conversation.id}`);
+    } catch (err) {
+      console.error(err);
+      setToast("Couldn't reach the server. Please try again.");
+    } finally {
+      setNegotiating(false);
     }
   };
 
@@ -361,9 +394,22 @@ export default function ProductPage() {
                 Buy with protection
               </button>
 
+              {product.negotiable && (
+                <button
+                  onClick={handleNegotiate}
+                  disabled={negotiating}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-[#211000]/15 bg-white hover:bg-[#E8CEB0]/25 px-5 py-3.5 text-sm font-bold transition-colors disabled:opacity-60"
+                >
+                  <MessageCircle className="size-4" />
+                  {negotiating ? "Starting chat…" : "Negotiate price"}
+                </button>
+              )}
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="mt-3">
               <Link
                 href="/preview"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#211000]/15 bg-white hover:bg-[#E8CEB0]/25 px-5 py-3.5 text-sm font-bold transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-[#211000]/15 bg-white hover:bg-[#E8CEB0]/25 px-5 py-3 text-sm font-bold transition-colors"
               >
                 <Frame className="size-4" />
                 Preview in my space

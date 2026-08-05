@@ -176,6 +176,60 @@ export async function resubmitListing(req: AuthRequest, res: Response) {
   }
 }
 
+export async function markListingSold(req: AuthRequest, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const listing = await prisma.listing.findUnique({ where: { id } });
+
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found." });
+    }
+
+    if (listing.sellerId !== req.userId) {
+      return res.status(403).json({ message: "You don't have access to this listing." });
+    }
+
+    if (listing.status !== "active") {
+      return res.status(400).json({ message: "Only active listings can be marked as sold." });
+    }
+
+    const updated = await prisma.listing.update({
+      where: { id },
+      data: { status: "sold" },
+    });
+
+    return res.status(200).json({ message: "Listing marked as sold.", listing: updated });
+  } catch (err) {
+    console.error("Mark listing sold error:", err);
+    return res.status(500).json({ message: "Something went wrong." });
+  }
+}
+
+export async function deleteMyListing(req: AuthRequest, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const listing = await prisma.listing.findUnique({ where: { id } });
+
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found." });
+    }
+
+    if (listing.sellerId !== req.userId) {
+      return res.status(403).json({ message: "You don't have access to this listing." });
+    }
+
+    if (listing.status === "sold") {
+      return res.status(400).json({ message: "Sold listings can't be deleted." });
+    }
+
+    await prisma.listing.delete({ where: { id } });
+    return res.status(200).json({ message: "Listing deleted." });
+  } catch (err) {
+    console.error("Delete my listing error:", err);
+    return res.status(500).json({ message: "Something went wrong." });
+  }
+}
+
 function toPublicListing(listing: any) {
   const { phone, email, whatsapp, address, lga, sellerId, ...publicFields } = listing;
   return publicFields;

@@ -3,6 +3,7 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM_EMAIL = "Refurnish <noreply@refurnishng.com>";
+const ADMIN_EMAIL = "operations@refurnishng.com";
 
 function emailShell(title: string, bodyHtml: string) {
   return `
@@ -233,14 +234,15 @@ export async function sendPickupReadyEmail(
   to: string,
   name: string,
   reference: string,
-  items: any[]
+  items: any[],
+  ordersUrl: string
 ) {
   const itemsHtml = (items || [])
     .map(
       (item: any) => `
       <div style="border-top:1px solid #21100014; padding:12px 0;">
         <p style="color:#211000; font-size:13px; font-weight:700; margin:0 0 4px 0;">${item.itemTitle}</p>
-        <p style="color:#211000; opacity:0.7; font-size:12px; margin:0;">Seller: ${item.sellerName || "N/A"} · ${item.sellerPhone || ""}</p>
+        <p style="color:#211000; opacity:0.7; font-size:12px; margin:0;">Seller: ${item.sellerName || "N/A"}</p>
         <p style="color:#211000; opacity:0.7; font-size:12px; margin:0;">Location: ${item.sellerAddress || ""}, ${item.sellerState || ""}</p>
       </div>`
     )
@@ -250,10 +252,21 @@ export async function sendPickupReadyEmail(
     "Your item is ready for pickup!",
     `
     <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 12px 0;">
-      Hi ${name}, good news — the seller has confirmed your item for order <strong>${reference}</strong> is available. Here are the details so you can arrange pickup:
+      Hi ${name}, good news — the seller has confirmed your item for order <strong>${reference}</strong> is available.
     </p>
 
     ${itemsHtml}
+
+    <p style="color:#211000; opacity:0.7; font-size:13px; line-height:1.6; margin:16px 0;">
+      For your safety, seller phone numbers aren't shared by email. Message the seller directly
+      in-app to arrange exact pickup timing and directions.
+    </p>
+
+    <div style="text-align:center; margin:20px 0;">
+      <a href="${ordersUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        View order & message seller
+      </a>
+    </div>
 
     <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
       <p style="color:#211000; font-size:13px; font-weight:700; margin:0 0 8px 0;">Safety tips</p>
@@ -384,4 +397,302 @@ export async function sendListingRejectedEmail(
     subject: "An update on your listing",
     html,
   });
+}
+
+export async function sendDisputeFiledEmail(to: string, name: string, reference: string) {
+  const html = emailShell(
+    "We've received your report",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, we've received your report for order <strong>${reference}</strong> and our team is reviewing it.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0;">
+      We'll get back to you with an update as soon as possible. If you have photos or extra details, reply to this email.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `We've received your report — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (dispute filed):", result.error);
+  return result;
+}
+
+export async function sendDisputeResolvedEmail(
+  to: string,
+  name: string,
+  reference: string,
+  resolution: string
+) {
+  const html = emailShell(
+    "An update on your report",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, here's an update on the report you filed for order <strong>${reference}</strong>.
+    </p>
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; opacity:0.5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin:0 0 6px 0;">Resolution</p>
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0;">${resolution}</p>
+    </div>
+    <p style="color:#211000; opacity:0.7; font-size:13px; line-height:1.6; margin:0;">
+      If you have further questions, reply to this email and our team will follow up.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `An update on your report — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (dispute resolved):", result.error);
+  return result;
+}
+
+export async function sendNewSupportTicketEmail(
+  reference: string,
+  userName: string,
+  userEmail: string,
+  topic: string,
+  message: string,
+  ticketUrl: string
+) {
+  const html = emailShell(
+    "New support message",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      <strong>${userName}</strong> (${userEmail}) sent a message on ticket <strong>${reference}</strong>
+      — topic: <strong>${topic}</strong>.
+    </p>
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0;">${message}</p>
+    </div>
+    <div style="text-align:center;">
+      <a href="${ticketUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        Open ticket
+      </a>
+    </div>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: `New support message — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (new support ticket):", result.error);
+  return result;
+}
+
+export async function sendSupportReplyEmail(
+  to: string,
+  name: string,
+  reference: string,
+  message: string,
+  ticketUrl: string
+) {
+  const html = emailShell(
+    "New reply from Refurnish Support",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, you have a new reply on your support ticket <strong>${reference}</strong>.
+    </p>
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0;">${message}</p>
+    </div>
+    <div style="text-align:center;">
+      <a href="${ticketUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        View reply
+      </a>
+    </div>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `New reply on your support ticket — ${reference}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (support reply):", result.error);
+  return result;
+}
+
+
+
+export async function sendIdVerifiedEmail(to: string, name: string) {
+  const html = emailShell(
+    "You're verified! ✅",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, your identity has been verified. You now have a verified badge on your profile
+      and listings, which helps build trust with buyers and sellers.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "You're verified on Refurnish! ✅",
+    html,
+  });
+
+  if (result.error) console.error("Resend error (ID verified):", result.error);
+  return result;
+}
+
+export async function sendIdRejectedEmail(to: string, name: string, reason: string, profileUrl: string) {
+  const html = emailShell(
+    "An update on your verification",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, we weren't able to verify your identity document this time.
+    </p>
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; opacity:0.5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin:0 0 6px 0;">Reason</p>
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0;">${reason}</p>
+    </div>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 16px 0;">
+      You can fix the issue above and resubmit at any time.
+    </p>
+    <div style="text-align:center;">
+      <a href="${profileUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        Resubmit ID
+      </a>
+    </div>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "An update on your verification",
+    html,
+  });
+
+  if (result.error) console.error("Resend error (ID rejected):", result.error);
+  return result;
+}
+
+export async function sendBankDetailsRequestEmail(
+  to: string,
+  name: string,
+  amount: string,
+  itemTitle: string,
+  paymentsUrl: string
+) {
+  const html = emailShell(
+    "You have a payout waiting",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, your item <strong>"${itemTitle}"</strong> has completed, and you have
+      <strong>₦${Number(amount).toLocaleString("en-NG")}</strong> ready to be paid out.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 16px 0;">
+      We just need your bank details to send it. Add them to your Refurnish account and we'll
+      process your payout right away.
+    </p>
+    <div style="text-align:center;">
+      <a href="${paymentsUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        Add bank details
+      </a>
+    </div>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "You have a payout waiting — add your bank details",
+    html,
+  });
+
+  if (result.error) console.error("Resend error (bank details request):", result.error);
+  return result;
+}
+
+export async function sendPayoutSentEmail(
+  to: string,
+  name: string,
+  amount: string,
+  itemTitle: string,
+  receiptUrl: string,
+  paymentsUrl: string
+) {
+  const html = emailShell(
+    "Your payout has been sent! 💸",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      Hi ${name}, we've sent <strong>₦${Number(amount).toLocaleString("en-NG")}</strong> to your
+      bank account for <strong>"${itemTitle}"</strong>.
+    </p>
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 16px 0;">
+      This already reflects Refurnish's platform fee. You can view the payment receipt any time
+      from your dashboard.
+    </p>
+    <div style="text-align:center; margin-bottom:12px;">
+      <a href="${receiptUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        View receipt
+      </a>
+    </div>
+    <p style="color:#211000; opacity:0.5; font-size:12px; text-align:center; margin:0;">
+      Or check your <a href="${paymentsUrl}" style="color:#B66B44;">payments dashboard</a> any time.
+    </p>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Your payout has been sent 💸",
+    html,
+  });
+
+  if (result.error) console.error("Resend error (payout sent):", result.error);
+  return result;
+}
+
+export async function sendReportEmail(
+  reporterName: string,
+  reporterEmail: string,
+  reportedName: string,
+  reason: string,
+  details: string,
+  conversationUrl: string
+) {
+  const html = emailShell(
+    "New user report",
+    `
+    <p style="color:#211000; opacity:0.7; font-size:14px; line-height:1.6; margin:0 0 8px 0;">
+      <strong>${reporterName}</strong> (${reporterEmail}) reported <strong>${reportedName}</strong>.
+    </p>
+    <div style="background:#FAF4EC; border:1px solid #E8CEB0; border-radius:12px; padding:16px; margin:16px 0;">
+      <p style="color:#211000; opacity:0.5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin:0 0 6px 0;">Reason</p>
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0 0 12px 0;">${reason}</p>
+      ${
+        details
+          ? `<p style="color:#211000; opacity:0.5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin:0 0 6px 0;">Details</p>
+      <p style="color:#211000; opacity:0.75; font-size:14px; margin:0;">${details}</p>`
+          : ""
+      }
+    </div>
+    <div style="text-align:center;">
+      <a href="${conversationUrl}" style="display:inline-block; background:#B66B44; color:#ffffff; font-weight:700; font-size:14px; text-decoration:none; padding:12px 28px; border-radius:999px;">
+        View conversation
+      </a>
+    </div>`
+  );
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: `New report: ${reporterName} → ${reportedName}`,
+    html,
+  });
+
+  if (result.error) console.error("Resend error (report):", result.error);
+  return result;
 }

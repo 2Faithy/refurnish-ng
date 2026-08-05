@@ -1,138 +1,85 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
-  Settings,
-  Globe,
-  Moon,
-  Sun,
-  Monitor,
-  Eye,
-  EyeOff,
-  MapPin,
-  CreditCard,
   Truck,
-  Smartphone,
-  Shield,
-  ShieldCheck,
-  Lock,
+  Banknote,
   Bell,
-  BellOff,
   Trash2,
-  Download,
   LogOut,
+  BellOff,
   CheckCircle2,
   AlertTriangle,
   ChevronRight,
   Loader2,
   X,
   Info,
-  ToggleLeft,
-  ToggleRight,
-  Wallet,
-  Users,
-  Package,
-  Scale,
   FileText,
-  Banknote,
-  Heart,
-  Clock,
 } from "lucide-react";
 
-const SETTINGS_KEY = "refurnish_settings";
-const USER_KEY = "refurnish_user";
+type TabId = "general" | "buying" | "selling" | "danger";
 
-const CURRENCIES = [
-  { code: "NGN", label: "Nigerian Naira (₦)", symbol: "₦" },
-  { code: "USD", label: "US Dollar ($)", symbol: "$" },
-  { code: "GBP", label: "British Pound (£)", symbol: "£" },
-];
+const DEFAULT_PREFERENCES = {
+  emailDigestFrequency: "daily",
+  marketingEmails: false,
+  partnerEmails: false,
+  orderUpdatesSMS: true,
+  escrowAlertsSMS: true,
+  defaultDelivery: "delivery",
+  defaultState: "Lagos",
+  allowOffers: true,
+  minOfferPercentage: 80,
+  instantBuyEnabled: true,
+};
 
-const LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "yo", label: "Yoruba" },
-  { code: "ig", label: "Igbo" },
-  { code: "ha", label: "Hausa" },
-  { code: "pcm", label: "Pidgin English" },
-];
-
-type TabId =
-  | "general"
-  | "privacy"
-  | "buying"
-  | "selling"
-  | "data"
-  | "danger";
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("refurnish_user") || "null")?.token || "";
+  } catch {
+    return "";
+  }
+}
 
 export default function SettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("general");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
 
-  const [settings, setSettings] = useState({
-    // General
-    language: "en",
-    currency: "NGN",
-    theme: "light",
-
-    // Privacy
-    showProfile: true,
-    showLocation: true,
-    showOnlineStatus: true,
-    showListingsCount: true,
-    showReviews: true,
-    allowMessages: "everyone",
-    showPhoneToSellers: false,
-    showEmailToSellers: false,
-
-    // Buying preferences
-    defaultDelivery: "delivery",
-    defaultState: "Lagos",
-    autoSaveSearch: true,
-    priceAlerts: true,
-    priceAlertThreshold: 15,
-    savedSearchNotify: true,
-    showSoldItems: false,
-
-    // Selling preferences
-    autoRenewListings: true,
-    allowOffers: true,
-    minOfferPercentage: 80,
-    instantBuyEnabled: true,
-    showViewCount: true,
-    autoReplyEnabled: false,
-    autoReplyMessage: "Thanks for your interest! I'll get back to you shortly.",
-
-    // Communication
-    emailDigestFrequency: "daily",
-    marketingEmails: false,
-    partnerEmails: false,
-    orderUpdatesSMS: true,
-    escrowAlertsSMS: true,
-
-    // Data
-    downloadDataRequested: false,
-    lastDataExport: null as string | null,
-  });
-  
+  const authedFetch = (path: string, options: RequestInit = {}) =>
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(SETTINGS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSettings((prev) => ({ ...prev, ...parsed }));
-        applyTheme(parsed.theme || "light");
+    const fetchPreferences = async () => {
+      try {
+        const res = await authedFetch("/api/users/me");
+        const data = await res.json();
+        if (res.ok && data.user?.preferences) {
+          setPreferences({ ...DEFAULT_PREFERENCES, ...data.user.preferences });
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-    } catch {}
+    };
+    fetchPreferences();
   }, []);
 
   useEffect(() => {
@@ -141,62 +88,94 @@ export default function SettingsPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const saveSettings = async (updates: Partial<typeof settings>) => {
+  const savePreferences = async (updates: Partial<typeof preferences>) => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-  
-    const updated = { ...settings, ...updates };
-    setSettings(updated);
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
-  
-    if (updates.theme) applyTheme(updates.theme); // 👈 add this line
-  
-    setSaving(false);
-    setToast("Settings saved");
+    const updated = { ...preferences, ...updates };
+    setPreferences(updated);
+    try {
+      const res = await authedFetch("/api/users/me/preferences", {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.message || "Couldn't save changes.");
+        return;
+      }
+      setToast("Settings saved");
+    } catch (err) {
+      console.error(err);
+      setToast("Couldn't reach the server. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSignOutEverywhere = async () => {
+    localStorage.removeItem("refurnish_user");
+    router.push("/login");
   };
 
   const handleDeactivate = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSaving(false);
-    setShowDeactivateModal(false);
-    setToast("Account deactivated. You can reactivate by signing in again.");
-    setTimeout(() => {
-      localStorage.removeItem(USER_KEY);
-      router.push("/login");
-    }, 2000);
+    try {
+      const res = await authedFetch("/api/users/me/deactivate", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.message || "Couldn't deactivate account.");
+        setSaving(false);
+        return;
+      }
+      setShowDeactivateModal(false);
+      setToast("Account deactivated. You can reactivate by signing in again.");
+      setTimeout(() => {
+        localStorage.removeItem("refurnish_user");
+        router.push("/login");
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      setToast("Couldn't reach the server. Please try again.");
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
     if (deleteConfirmText !== "DELETE MY ACCOUNT") return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    localStorage.clear();
-    router.push("/login");
-  };
-
-  const handleExportData = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    await saveSettings({
-      downloadDataRequested: true,
-      lastDataExport: new Date().toISOString(),
-    });
-    setToast("Data export requested. You'll receive an email within 24 hours.");
+    try {
+      const res = await authedFetch("/api/users/me", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.message || "Couldn't delete account.");
+        setSaving(false);
+        return;
+      }
+      localStorage.removeItem("refurnish_user");
+      router.push("/login");
+    } catch (err) {
+      console.error(err);
+      setToast("Couldn't reach the server. Please try again.");
+      setSaving(false);
+    }
   };
 
   const tabs: { id: TabId; label: string; icon: any }[] = [
-    { id: "general", label: "General", icon: Settings },
-    { id: "privacy", label: "Privacy", icon: Eye },
-    { id: "buying", label: "Buying", icon: Package },
-    { id: "selling", label: "Selling", icon: Wallet },
-    { id: "data", label: "Data", icon: Download },
+    { id: "general", label: "General", icon: Bell },
+    { id: "buying", label: "Buying", icon: Truck },
+    { id: "selling", label: "Selling", icon: Banknote },
     { id: "danger", label: "Account", icon: AlertTriangle },
   ];
 
+  if (loading) {
+    return (
+      <div className="px-4 py-24 text-center">
+        <Loader2 className="size-8 animate-spin text-[#B66B44] mx-auto" />
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 xl:px-10 py-6 lg:py-10 max-w-5xl mx-auto">
-      {/* Header */}
       <div className="mb-8">
         <Link
           href="/dashboard"
@@ -206,18 +185,11 @@ export default function SettingsPage() {
           Dashboard
         </Link>
 
-        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
-          Settings
-        </p>
-        <h1 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-1">
-          Preferences
-        </h1>
-        <p className="text-sm text-[#211000]/55 font-medium mt-1">
-          Customise your Refurnish experience.
-        </p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">Settings</p>
+        <h1 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-1">Preferences</h1>
+        <p className="text-sm text-[#211000]/55 font-medium mt-1">Customise your Refurnish experience.</p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 mb-6">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -245,167 +217,43 @@ export default function SettingsPage() {
         {/* ─── GENERAL ─── */}
         {activeTab === "general" && (
           <TabContent key="general">
-            <SettingsCard title="Language & region" icon={Globe}>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <SelectField
-                  label="Language"
-                  value={settings.language}
-                  options={LANGUAGES.map((l) => ({ value: l.code, label: l.label }))}
-                  onChange={(v) => saveSettings({ language: v })}
-                />
-                <SelectField
-                  label="Currency"
-                  value={settings.currency}
-                  options={CURRENCIES.map((c) => ({ value: c.code, label: c.label }))}
-                  onChange={(v) => saveSettings({ currency: v })}
-                />
-              </div>
-            </SettingsCard>
-
-            <SettingsCard title="Appearance" icon={Sun}>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-3">
-                  Theme
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { id: "light", label: "Light", icon: Sun },
-                    { id: "dark", label: "Dark", icon: Moon },
-                    { id: "system", label: "System", icon: Monitor },
-                  ].map((t) => {
-                    const Icon = t.icon;
-                    const active = settings.theme === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => saveSettings({ theme: t.id })}
-                        className={`p-4 rounded-xl border text-center transition-all ${
-                          active
-                            ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
-                            : "bg-[#FAF4EC] border-[#211000]/8 hover:border-[#211000]/20"
-                        }`}
-                      >
-                        <Icon className="size-5 mx-auto mb-2" />
-                        <p className="text-xs font-bold">{t.label}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </SettingsCard>
-
             <SettingsCard title="Communication preferences" icon={Bell}>
               <div className="space-y-3">
                 <SelectField
                   label="Email digest frequency"
-                  value={settings.emailDigestFrequency}
+                  value={preferences.emailDigestFrequency}
                   options={[
                     { value: "realtime", label: "Real-time (every email)" },
                     { value: "daily", label: "Daily digest" },
                     { value: "weekly", label: "Weekly digest" },
                     { value: "never", label: "Never" },
                   ]}
-                  onChange={(v) => saveSettings({ emailDigestFrequency: v })}
+                  onChange={(v) => savePreferences({ emailDigestFrequency: v })}
                 />
                 <ToggleRow
                   label="Marketing emails"
                   description="Receive promotions, tips, and offers from Refurnish"
-                  checked={settings.marketingEmails}
-                  onChange={(v) => saveSettings({ marketingEmails: v })}
+                  checked={preferences.marketingEmails}
+                  onChange={(v) => savePreferences({ marketingEmails: v })}
                 />
                 <ToggleRow
                   label="Partner emails"
                   description="Receive relevant offers from Refurnish partners"
-                  checked={settings.partnerEmails}
-                  onChange={(v) => saveSettings({ partnerEmails: v })}
+                  checked={preferences.partnerEmails}
+                  onChange={(v) => savePreferences({ partnerEmails: v })}
                 />
                 <ToggleRow
                   label="Order updates via SMS"
                   description="Get text messages when your order status changes"
-                  checked={settings.orderUpdatesSMS}
-                  onChange={(v) => saveSettings({ orderUpdatesSMS: v })}
+                  checked={preferences.orderUpdatesSMS}
+                  onChange={(v) => savePreferences({ orderUpdatesSMS: v })}
                 />
                 <ToggleRow
                   label="Escrow alerts via SMS"
                   description="Critical alerts when escrow funds are held or released"
-                  checked={settings.escrowAlertsSMS}
-                  onChange={(v) => saveSettings({ escrowAlertsSMS: v })}
+                  checked={preferences.escrowAlertsSMS}
+                  onChange={(v) => savePreferences({ escrowAlertsSMS: v })}
                 />
-              </div>
-            </SettingsCard>
-          </TabContent>
-        )}
-
-        {/* ─── PRIVACY ─── */}
-        {activeTab === "privacy" && (
-          <TabContent key="privacy">
-            <SettingsCard title="Profile visibility" icon={Eye}>
-              <div className="space-y-3">
-                <ToggleRow
-                  label="Show profile publicly"
-                  description="Other users can view your profile page"
-                  checked={settings.showProfile}
-                  onChange={(v) => saveSettings({ showProfile: v })}
-                />
-                <ToggleRow
-                  label="Show location"
-                  description="Display your city/state on your profile"
-                  checked={settings.showLocation}
-                  onChange={(v) => saveSettings({ showLocation: v })}
-                />
-                <ToggleRow
-                  label="Show online status"
-                  description="Let others see when you're currently active"
-                  checked={settings.showOnlineStatus}
-                  onChange={(v) => saveSettings({ showOnlineStatus: v })}
-                />
-                <ToggleRow
-                  label="Show listings count"
-                  description="Display how many active listings you have"
-                  checked={settings.showListingsCount}
-                  onChange={(v) => saveSettings({ showListingsCount: v })}
-                />
-                <ToggleRow
-                  label="Show reviews"
-                  description="Display reviews from previous transactions"
-                  checked={settings.showReviews}
-                  onChange={(v) => saveSettings({ showReviews: v })}
-                />
-              </div>
-            </SettingsCard>
-
-            <SettingsCard title="Contact information" icon={Shield}>
-              <div className="space-y-3">
-                <ToggleRow
-                  label="Share phone with sellers"
-                  description="Sellers can see your phone number after you place an order"
-                  checked={settings.showPhoneToSellers}
-                  onChange={(v) => saveSettings({ showPhoneToSellers: v })}
-                />
-                <ToggleRow
-                  label="Share email with sellers"
-                  description="Sellers can see your email after you place an order"
-                  checked={settings.showEmailToSellers}
-                  onChange={(v) => saveSettings({ showEmailToSellers: v })}
-                />
-                <SelectField
-                  label="Who can message me"
-                  value={settings.allowMessages}
-                  options={[
-                    { value: "everyone", label: "Everyone" },
-                    { value: "verified", label: "Verified users only" },
-                    { value: "orders", label: "Users I have orders with" },
-                    { value: "nobody", label: "Nobody" },
-                  ]}
-                  onChange={(v) => saveSettings({ allowMessages: v })}
-                />
-              </div>
-
-              <div className="mt-4 rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-3 flex items-start gap-2.5">
-                <Info className="size-4 text-[#B66B44] shrink-0 mt-0.5" />
-                <p className="text-xs text-[#211000]/60 font-medium leading-relaxed">
-                  All in-app messages are monitored. Sharing personal contact information outside the platform is blocked for your safety.
-                </p>
               </div>
             </SettingsCard>
           </TabContent>
@@ -418,72 +266,21 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <SelectField
                   label="Default delivery method"
-                  value={settings.defaultDelivery}
+                  value={preferences.defaultDelivery}
                   options={[
                     { value: "delivery", label: "Home delivery" },
                     { value: "pickup", label: "Self pickup" },
                   ]}
-                  onChange={(v) => saveSettings({ defaultDelivery: v })}
+                  onChange={(v) => savePreferences({ defaultDelivery: v })}
                 />
                 <SelectField
                   label="Default state"
-                  value={settings.defaultState}
-                  options={[
-                    "Lagos", "Abuja", "Rivers", "Ogun", "Oyo", "Kano", "Kaduna",
-                  ].map((s) => ({ value: s, label: s }))}
-                  onChange={(v) => saveSettings({ defaultState: v })}
-                />
-              </div>
-            </SettingsCard>
-
-            <SettingsCard title="Search & discovery" icon={Heart}>
-              <div className="space-y-3">
-                <ToggleRow
-                  label="Save search history"
-                  description="Remember your recent searches for quicker access"
-                  checked={settings.autoSaveSearch}
-                  onChange={(v) => saveSettings({ autoSaveSearch: v })}
-                />
-                <ToggleRow
-                  label="Price drop alerts"
-                  description="Get notified when items you saved drop in price"
-                  checked={settings.priceAlerts}
-                  onChange={(v) => saveSettings({ priceAlerts: v })}
-                />
-                {settings.priceAlerts && (
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                      Alert when price drops by at least
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={5}
-                        max={50}
-                        step={5}
-                        value={settings.priceAlertThreshold}
-                        onChange={(e) =>
-                          saveSettings({ priceAlertThreshold: Number(e.target.value) })
-                        }
-                        className="flex-1 accent-[#B66B44]"
-                      />
-                      <span className="text-sm font-bold w-12 text-right">
-                        {settings.priceAlertThreshold}%
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <ToggleRow
-                  label="Saved search notifications"
-                  description="Get notified when new items match your saved searches"
-                  checked={settings.savedSearchNotify}
-                  onChange={(v) => saveSettings({ savedSearchNotify: v })}
-                />
-                <ToggleRow
-                  label="Show sold items"
-                  description="Show previously sold items in search results"
-                  checked={settings.showSoldItems}
-                  onChange={(v) => saveSettings({ showSoldItems: v })}
+                  value={preferences.defaultState}
+                  options={["Lagos", "Abuja", "Rivers", "Ogun", "Oyo", "Kano", "Kaduna"].map((s) => ({
+                    value: s,
+                    label: s,
+                  }))}
+                  onChange={(v) => savePreferences({ defaultState: v })}
                 />
               </div>
             </SettingsCard>
@@ -493,32 +290,15 @@ export default function SettingsPage() {
         {/* ─── SELLING ─── */}
         {activeTab === "selling" && (
           <TabContent key="selling">
-            <SettingsCard title="Listing defaults" icon={Package}>
-              <div className="space-y-4">
-                <ToggleRow
-                  label="Auto-renew listings"
-                  description="Automatically relist expired listings"
-                  checked={settings.autoRenewListings}
-                  onChange={(v) => saveSettings({ autoRenewListings: v })}
-                />
-                <ToggleRow
-                  label="Show view count"
-                  description="Display how many people have viewed your listing"
-                  checked={settings.showViewCount}
-                  onChange={(v) => saveSettings({ showViewCount: v })}
-                />
-              </div>
-            </SettingsCard>
-
             <SettingsCard title="Offers & pricing" icon={Banknote}>
               <div className="space-y-3">
                 <ToggleRow
                   label="Allow offers"
                   description="Let buyers send you price offers"
-                  checked={settings.allowOffers}
-                  onChange={(v) => saveSettings({ allowOffers: v })}
+                  checked={preferences.allowOffers}
+                  onChange={(v) => savePreferences({ allowOffers: v })}
                 />
-                {settings.allowOffers && (
+                {preferences.allowOffers && (
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
                       Minimum offer
@@ -529,14 +309,16 @@ export default function SettingsPage() {
                         min={50}
                         max={100}
                         step={5}
-                        value={settings.minOfferPercentage}
+                        value={preferences.minOfferPercentage}
                         onChange={(e) =>
-                          saveSettings({ minOfferPercentage: Number(e.target.value) })
+                          setPreferences({ ...preferences, minOfferPercentage: Number(e.target.value) })
                         }
+                        onMouseUp={() => savePreferences({ minOfferPercentage: preferences.minOfferPercentage })}
+                        onTouchEnd={() => savePreferences({ minOfferPercentage: preferences.minOfferPercentage })}
                         className="flex-1 accent-[#B66B44]"
                       />
                       <span className="text-sm font-bold w-16 text-right">
-                        {settings.minOfferPercentage}% min
+                        {preferences.minOfferPercentage}% min
                       </span>
                     </div>
                     <p className="text-[11px] text-[#211000]/45 font-medium mt-1.5">
@@ -547,118 +329,53 @@ export default function SettingsPage() {
                 <ToggleRow
                   label="Instant buy"
                   description="Allow buyers to purchase immediately without messaging"
-                  checked={settings.instantBuyEnabled}
-                  onChange={(v) => saveSettings({ instantBuyEnabled: v })}
+                  checked={preferences.instantBuyEnabled}
+                  onChange={(v) => savePreferences({ instantBuyEnabled: v })}
                 />
-              </div>
-            </SettingsCard>
-
-            <SettingsCard title="Auto-reply" icon={Clock}>
-              <div className="space-y-3">
-                <ToggleRow
-                  label="Auto-reply to messages"
-                  description="Automatically respond when someone messages you about a listing"
-                  checked={settings.autoReplyEnabled}
-                  onChange={(v) => saveSettings({ autoReplyEnabled: v })}
-                />
-                {settings.autoReplyEnabled && (
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-                      Auto-reply message
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={settings.autoReplyMessage}
-                      onChange={(e) =>
-                        setSettings({ ...settings, autoReplyMessage: e.target.value })
-                      }
-                      onBlur={() =>
-                        saveSettings({ autoReplyMessage: settings.autoReplyMessage })
-                      }
-                      className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/10 px-4 py-3.5 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all resize-none"
-                    />
-                    <p className="text-[11px] text-[#211000]/40 font-medium mt-1.5">
-                      This message is sent through the platform. Personal contacts are blocked.
-                    </p>
-                  </div>
-                )}
               </div>
             </SettingsCard>
           </TabContent>
         )}
 
-        {/* ─── DATA ─── */}
-        {activeTab === "data" && (
-          <TabContent key="data">
-            <SettingsCard title="Export your data" icon={Download}>
-              <p className="text-sm text-[#211000]/55 font-medium leading-relaxed mb-5">
-                Request a copy of all data associated with your account including orders, messages, listings, and profile information.
-              </p>
-
-              {settings.lastDataExport && (
-                <div className="rounded-xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-3 flex items-center gap-2.5 mb-5">
-                  <CheckCircle2 className="size-4 text-[#5F7161] shrink-0" />
-                  <p className="text-xs font-bold text-[#5F7161]">
-                    Last export requested:{" "}
-                    {new Date(settings.lastDataExport).toLocaleDateString()}
-                  </p>
-                </div>
-              )}
-
-              <button
-                onClick={handleExportData}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-full bg-[#211000] hover:bg-[#211000]/90 text-[#FAF4EC] px-5 py-3 text-xs font-bold uppercase tracking-wider transition-colors"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Preparing...
-                  </>
-                ) : (
-                  <>
-                    <Download className="size-4" />
-                    Request data export
-                  </>
-                )}
-              </button>
-            </SettingsCard>
-
-            <SettingsCard title="Connected services" icon={Globe}>
-              <p className="text-sm text-[#211000]/55 font-medium leading-relaxed mb-5">
-                Third-party services connected to your Refurnish account.
-              </p>
-
-              <div className="space-y-3">
-                {[
-                  { name: "Google", connected: true, email: "user@gmail.com" },
-                  { name: "Apple", connected: false },
-                ].map((service) => (
-                  <div
-                    key={service.name}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[#FAF4EC] border border-[#211000]/5"
-                  >
-                    <div>
-                      <p className="text-sm font-bold">{service.name}</p>
-                      {service.connected && (
-                        <p className="text-[11px] text-[#211000]/45 font-medium">
-                          {service.email}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
-                        service.connected
-                          ? "border-red-200 text-red-500 hover:bg-red-50"
-                          : "border-[#211000]/10 text-[#211000]/60 hover:border-[#B66B44]/30"
-                      }`}
-                    >
-                      {service.connected ? "Disconnect" : "Connect"}
-                    </button>
-                  </div>
-                ))}
+        {/* ─── DANGER ZONE ─── */}
+        {activeTab === "danger" && (
+          <TabContent key="danger">
+            <div className="rounded-2xl bg-red-50 border border-red-200 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="size-5 text-red-500" />
+                <h2 className="font-serif text-xl font-medium text-red-700">Danger zone</h2>
               </div>
-            </SettingsCard>
+              <p className="text-xs text-red-600/70 font-medium leading-relaxed mb-6">
+                These actions are irreversible. Please be certain before proceeding.
+              </p>
+
+              <div className="space-y-4">
+                <DangerAction
+                  title="Sign out of this device"
+                  description="End your session here. You'll need to sign in again."
+                  buttonLabel="Sign out"
+                  icon={LogOut}
+                  onClick={handleSignOutEverywhere}
+                />
+
+                <DangerAction
+                  title="Deactivate account"
+                  description="Temporarily disable your account. Your data is preserved and you can reactivate by signing in."
+                  buttonLabel="Deactivate"
+                  icon={BellOff}
+                  onClick={() => setShowDeactivateModal(true)}
+                />
+
+                <DangerAction
+                  title="Delete account permanently"
+                  description="Your account will be deactivated and your personal details removed. Order and listing history is kept for other users' records but no longer tied to your identity."
+                  buttonLabel="Delete account"
+                  icon={Trash2}
+                  destructive
+                  onClick={() => setShowDeleteModal(true)}
+                />
+              </div>
+            </div>
 
             <SettingsCard title="Legal" icon={FileText}>
               <div className="space-y-2">
@@ -679,56 +396,6 @@ export default function SettingsPage() {
                 ))}
               </div>
             </SettingsCard>
-          </TabContent>
-        )}
-
-        {/* ─── DANGER ZONE ─── */}
-        {activeTab === "danger" && (
-          <TabContent key="danger">
-            <div className="rounded-2xl bg-red-50 border border-red-200 p-5 sm:p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="size-5 text-red-500" />
-                <h2 className="font-serif text-xl font-medium text-red-700">
-                  Danger zone
-                </h2>
-              </div>
-              <p className="text-xs text-red-600/70 font-medium leading-relaxed mb-6">
-                These actions are irreversible. Please be certain before proceeding.
-              </p>
-
-              <div className="space-y-4">
-                {/* Sign out everywhere */}
-                <DangerAction
-                  title="Sign out of all devices"
-                  description="Revoke all active sessions. You will need to sign in again on every device."
-                  buttonLabel="Sign out everywhere"
-                  icon={LogOut}
-                  onClick={() => {
-                    localStorage.removeItem(USER_KEY);
-                    router.push("/login");
-                  }}
-                />
-
-                {/* Deactivate */}
-                <DangerAction
-                  title="Deactivate account"
-                  description="Temporarily disable your account. Your data is preserved and you can reactivate by signing in."
-                  buttonLabel="Deactivate"
-                  icon={BellOff}
-                  onClick={() => setShowDeactivateModal(true)}
-                />
-
-                {/* Delete */}
-                <DangerAction
-                  title="Delete account permanently"
-                  description="Permanently delete your account, all orders, listings, messages, and reviews. This cannot be undone."
-                  buttonLabel="Delete account"
-                  icon={Trash2}
-                  destructive
-                  onClick={() => setShowDeleteModal(true)}
-                />
-              </div>
-            </div>
 
             <SettingsCard title="About Refurnish" icon={Info}>
               <div className="text-sm text-[#211000]/55 font-medium space-y-1">
@@ -754,9 +421,7 @@ export default function SettingsPage() {
               <div className="w-14 h-14 rounded-full bg-yellow-50 flex items-center justify-center mx-auto mb-4">
                 <BellOff className="size-7 text-yellow-600" />
               </div>
-              <h3 className="font-serif text-2xl font-medium tracking-tight mb-3">
-                Deactivate your account?
-              </h3>
+              <h3 className="font-serif text-2xl font-medium tracking-tight mb-3">Deactivate your account?</h3>
               <p className="text-sm text-[#211000]/60 font-medium leading-relaxed mb-6 max-w-sm mx-auto">
                 Your profile, listings, and messages will be hidden. You can reactivate anytime by signing in again.
               </p>
@@ -770,7 +435,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleDeactivate}
                   disabled={saving}
-                  className="rounded-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 text-xs font-bold uppercase tracking-wider transition-colors"
+                  className="rounded-full bg-yellow-500 hover:bg-yellow-600 disabled:opacity-60 text-white py-3 text-xs font-bold uppercase tracking-wider transition-colors"
                 >
                   {saving ? "Processing..." : "Deactivate"}
                 </button>
@@ -792,11 +457,10 @@ export default function SettingsPage() {
                 Delete your account?
               </h3>
               <p className="text-sm text-[#211000]/60 font-medium leading-relaxed mb-2 max-w-sm mx-auto">
-                This is permanent. All your data will be erased including orders, reviews, listings, and messages.
+                Your personal details (email, phone, ID, bank info) will be permanently removed and you won't be
+                able to sign in again.
               </p>
-              <p className="text-xs font-bold text-red-500 mb-6">
-                Type "DELETE MY ACCOUNT" to confirm
-              </p>
+              <p className="text-xs font-bold text-red-500 mb-6">Type "DELETE MY ACCOUNT" to confirm</p>
               <input
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
@@ -844,19 +508,6 @@ export default function SettingsPage() {
   );
 }
 
-function applyTheme(theme: string) {
-    const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else if (theme === "light") {
-      root.classList.remove("dark");
-    } else {
-      // system
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      root.classList.toggle("dark", prefersDark);
-    }
-  }
-
 /* ─── HELPER COMPONENTS ─── */
 
 function TabContent({ children }: { children: React.ReactNode }) {
@@ -872,15 +523,7 @@ function TabContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SettingsCard({
-  title,
-  icon: Icon,
-  children,
-}: {
-  title: string;
-  icon: any;
-  children: React.ReactNode;
-}) {
+function SettingsCard({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-white border border-[#211000]/6 p-5 sm:p-6">
       <div className="flex items-center gap-3 mb-5">
@@ -907,9 +550,7 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-        {label}
-      </label>
+      <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -948,9 +589,7 @@ function ToggleRow({
     >
       <div>
         <p className="text-sm font-bold">{label}</p>
-        <p className="text-[11px] text-[#211000]/45 font-medium mt-0.5 leading-relaxed">
-          {description}
-        </p>
+        <p className="text-[11px] text-[#211000]/45 font-medium mt-0.5 leading-relaxed">{description}</p>
       </div>
       <div
         className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${
@@ -991,17 +630,13 @@ function DangerAction({
         </div>
         <div>
           <p className="text-sm font-bold">{title}</p>
-          <p className="text-xs text-[#211000]/50 font-medium mt-0.5 leading-relaxed">
-            {description}
-          </p>
+          <p className="text-xs text-[#211000]/50 font-medium mt-0.5 leading-relaxed">{description}</p>
         </div>
       </div>
       <button
         onClick={onClick}
         className={`shrink-0 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors ${
-          destructive
-            ? "bg-red-500 hover:bg-red-600 text-white"
-            : "border border-red-300 text-red-500 hover:bg-red-50"
+          destructive ? "bg-red-500 hover:bg-red-600 text-white" : "border border-red-300 text-red-500 hover:bg-red-50"
         }`}
       >
         {buttonLabel}
@@ -1010,13 +645,7 @@ function DangerAction({
   );
 }
 
-function Modal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
+function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}

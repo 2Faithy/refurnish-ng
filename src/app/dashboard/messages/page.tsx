@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -8,175 +9,27 @@ import {
   Search,
   Send,
   ShieldCheck,
-  AlertTriangle,
   CheckCircle2,
-  Clock,
-  MoreVertical,
-  Flag,
-  Phone,
-  Mail,
-  Ban,
   ChevronRight,
-  ImageIcon,
-  Package,
-  Lock,
+  Ban,
+  Flag,
   X,
   MessageCircle,
+  HandCoins,
+  Loader2,
+  ThumbsUp,
+  ThumbsDown,
+  ArrowRight,
 } from "lucide-react";
 import { formatNaira } from "@/lib/data";
 
-const CONVERSATIONS_KEY = "refurnish_conversations";
-const MESSAGES_KEY = "refurnish_chat_messages";
+const NEGOTIATED_PRICES_KEY = "refurnish_negotiated_prices";
+const CART_KEY = "refurnish_cart";
+const QTY_KEY = "refurnish_cart_quantities";
 
-// ─── MOCK DATA ───
-const MOCK_CONVERSATIONS = [
-  {
-    id: "conv-1",
-    participantName: "Adaeze",
-    participantRole: "seller",
-    avatar: "",
-    itemTitle: "Beni Linen Three-Seater Sofa",
-    itemImage:
-      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=200&q=80",
-    itemPrice: 285000,
-    orderId: "RF-ORD-ABC123",
-    escrowStatus: "funds_held",
-    lastMessage: "The sofa is ready for pickup whenever you are.",
-    lastMessageTime: "10 min ago",
-    unreadCount: 2,
-  },
-  {
-    id: "conv-2",
-    participantName: "Tunde",
-    participantRole: "buyer",
-    avatar: "",
-    itemTitle: "Oak Round Dining Set",
-    itemImage:
-      "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=200&q=80",
-    itemPrice: 195000,
-    orderId: "RF-ORD-XYZ789",
-    escrowStatus: "released",
-    lastMessage: "Thanks for the smooth transaction!",
-    lastMessageTime: "2 hours ago",
-    unreadCount: 0,
-  },
-  {
-    id: "conv-3",
-    participantName: "Chiamaka",
-    participantRole: "seller",
-    avatar: "",
-    itemTitle: "Curved Rattan Accent Chair",
-    itemImage:
-      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=200&q=80",
-    itemPrice: 78000,
-    orderId: null,
-    escrowStatus: null,
-    lastMessage: "Is this still available?",
-    lastMessageTime: "Yesterday",
-    unreadCount: 1,
-  },
-];
-
-const MOCK_MESSAGES: Record<string, any[]> = {
-  "conv-1": [
-    {
-      id: "m1",
-      role: "them",
-      text: "Hi! Thanks for your interest in the Beni Linen Sofa. It's in excellent condition.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-      id: "m2",
-      role: "me",
-      text: "Great! Is the price negotiable?",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    },
-    {
-      id: "m3",
-      role: "them",
-      text: "I can do ₦270,000 if we complete through Refurnish escrow today.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    },
-    {
-      id: "m4",
-      role: "me",
-      text: "Deal. Let's do it through the platform.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    },
-    {
-      id: "m5",
-      role: "system",
-      text: "Order RF-ORD-ABC123 created. Payment is now held in escrow.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-    },
-    {
-      id: "m6",
-      role: "them",
-      text: "The sofa is ready for pickup whenever you are.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-    },
-  ],
-  "conv-2": [
-    {
-      id: "m1",
-      role: "me",
-      text: "Hello, is the dining set still available?",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    },
-    {
-      id: "m2",
-      role: "them",
-      text: "Yes it is! I can deliver to Yaba this weekend.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-    },
-    {
-      id: "m3",
-      role: "system",
-      text: "Order RF-ORD-XYZ789 completed. Escrow released to seller.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    },
-    {
-      id: "m4",
-      role: "them",
-      text: "Thanks for the smooth transaction!",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-  ],
-  "conv-3": [
-    {
-      id: "m1",
-      role: "them",
-      text: "Hi! I saw your Curved Rattan Chair. Is this still available?",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-  ],
-};
-
-// ─── QUICK REPLIES ───
-const BUYER_QUICK_REPLIES = [
-  "Is this still available?",
-  "Can you share more photos?",
-  "What's the exact condition?",
-  "I'm ready to buy through Refurnish escrow",
-  "Can you deliver to my location?",
-  "Is the price negotiable?",
-  "Does it come with all original parts?",
-  "When can I inspect it?",
-];
-
-const SELLER_QUICK_REPLIES = [
-  "Yes, it's still available!",
-  "I can share more details",
-  "Price is slightly negotiable",
-  "Let's complete this through Refurnish",
-  "I can arrange delivery",
-  "The item is exactly as described",
-  "When would you like to inspect it?",
-  "Thanks for your interest!",
-];
-
-// ─── CONTENT FILTER ───
-const BLOCKED_PATTERNS = [
+// Client-side heads-up only — the backend is the real enforcement point,
+// this just gives instant feedback before hitting send.
+const ALWAYS_BLOCKED_PATTERNS = [
   { regex: /\b0[7-9][01]\d{8}\b/, label: "phone number" },
   { regex: /\+234[7-9][01]\d{8,9}\b/, label: "phone number" },
   { regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, label: "email address" },
@@ -187,174 +40,367 @@ const BLOCKED_PATTERNS = [
   { regex: /\b(pay directly|pay offline|outside platform|skip escrow|avoid refurnish|cash payment|direct transfer)\b/i, label: "off-platform payment" },
 ];
 
-function scanMessage(text: string): { clean: boolean; violations: string[] } {
+// Only blocked before checkout — once a real order exists, coordinating pickup is legitimate.
+const PRE_CHECKOUT_ONLY_PATTERNS = [
+  { regex: /\b(meet( me)? at|can we meet|let'?s meet|meet up)\b/i, label: "meetup arrangement" },
+  { regex: /\bi'?m at\b|\bi am at\b/i, label: "location sharing" },
+  { regex: /\bmy location is\b|\bcome to\b/i, label: "location sharing" },
+];
+
+function scanMessage(text: string, checkedOut: boolean) {
+  const patterns = checkedOut ? ALWAYS_BLOCKED_PATTERNS : [...ALWAYS_BLOCKED_PATTERNS, ...PRE_CHECKOUT_ONLY_PATTERNS];
   const violations: string[] = [];
-  for (const pattern of BLOCKED_PATTERNS) {
-    if (pattern.regex.test(text)) {
-      violations.push(pattern.label);
-    }
-  }
+  for (const p of patterns) if (p.regex.test(text)) violations.push(p.label);
   return { clean: violations.length === 0, violations: [...new Set(violations)] };
+}
+
+function getAuthedUser() {
+  try {
+    return JSON.parse(localStorage.getItem("refurnish_user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function timeAgo(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days} day${days > 1 ? "s" : ""} ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+const BUYER_QUICK_REPLIES = [
+  "Is this still available?",
+  "Can you share more photos?",
+];
+
+const SELLER_QUICK_REPLIES = [
+  "Yes, it's still available!",
+  "I can share more details",
+];
+
 export default function MessagesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const conversationIdFromUrl = searchParams.get("conversationId");
+
+  const [user, setUser] = useState<any>(null);
   const [conversations, setConversations] = useState<any[]>([]);
-  const [messages, setMessages] = useState<Record<string, any[]>>({});
+  const [loadingList, setLoadingList] = useState(true);
+  const [listError, setListError] = useState("");
+
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeConv, setActiveConv] = useState<any>(null);
+  const [activeMessages, setActiveMessages] = useState<any[]>([]);
+  const [loadingChat, setLoadingChat] = useState(false);
+
   const [search, setSearch] = useState("");
-  const [input, setInput] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "buying" | "selling">("all");
+
+  const [input, setInput] = useState("");
   const [blockedWarning, setBlockedWarning] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [offerBusy, setOfferBusy] = useState(false);
+
   const [showReportModal, setShowReportModal] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load data
-  useEffect(() => {
+  const authedFetch = (path: string, options: RequestInit = {}) => {
+    const u = getAuthedUser();
+    return fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        Authorization: `Bearer ${u?.token}`,
+      },
+    });
+  };
+
+  const fetchConversations = async () => {
     try {
-      const c = localStorage.getItem(CONVERSATIONS_KEY);
-      const m = localStorage.getItem(MESSAGES_KEY);
-      if (c) {
-        setConversations(JSON.parse(c));
-      } else {
-        setConversations(MOCK_CONVERSATIONS);
-        localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(MOCK_CONVERSATIONS));
+      const res = await authedFetch("/api/conversations/mine");
+      const data = await res.json();
+      if (!res.ok) {
+        setListError(data.message || "Couldn't load your conversations.");
+        return;
       }
-      if (m) {
-        setMessages(JSON.parse(m));
-      } else {
-        setMessages(MOCK_MESSAGES);
-        localStorage.setItem(MESSAGES_KEY, JSON.stringify(MOCK_MESSAGES));
-      }
-    } catch {
-      setConversations(MOCK_CONVERSATIONS);
-      setMessages(MOCK_MESSAGES);
+      setConversations(data.conversations || []);
+      setListError("");
+    } catch (err) {
+      console.error(err);
+      setListError("Couldn't reach the server. Please try again.");
+    } finally {
+      setLoadingList(false);
     }
+  };
+
+  useEffect(() => {
+    const u = getAuthedUser();
+    setUser(u);
+    if (!u?.token) {
+      setLoadingList(false);
+      setListError("You need to be logged in to view your messages.");
+      return;
+    }
+    fetchConversations();
   }, []);
 
-  // Scroll to bottom
+  useEffect(() => {
+    if (conversationIdFromUrl) setActiveId(conversationIdFromUrl);
+  }, [conversationIdFromUrl]);
+
+  const openConversation = async (id: string) => {
+    setActiveId(id);
+    setLoadingChat(true);
+    setOfferOpen(false);
+    try {
+      const res = await authedFetch(`/api/conversations/${id}/messages`);
+      const data = await res.json();
+      if (!res.ok) {
+        setListError(data.message || "Couldn't load this conversation.");
+        setActiveId(null);
+        return;
+      }
+      setActiveConv(data.conversation);
+      setActiveMessages(data.messages || []);
+      setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
+    } catch (err) {
+      console.error(err);
+      setListError("Couldn't reach the server. Please try again.");
+      setActiveId(null);
+    } finally {
+      setLoadingChat(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeId && user?.token) openConversation(activeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, user?.token]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeId]);
+  }, [activeMessages]);
 
-  const activeConv = useMemo(
-    () => conversations.find((c) => c.id === activeId),
-    [conversations, activeId]
-  );
+  useEffect(() => {
+    if (!toastMsg) return;
+    const t = setTimeout(() => setToastMsg(""), 2500);
+    return () => clearTimeout(t);
+  }, [toastMsg]);
 
-  const activeMessages = useMemo(
-    () => (activeId ? messages[activeId] || [] : []),
-    [messages, activeId]
-  );
+  const closeConversation = () => {
+    setActiveId(null);
+    setActiveConv(null);
+    setActiveMessages([]);
+    router.replace("/dashboard/messages");
+    fetchConversations();
+  };
 
   const filteredConversations = useMemo(() => {
     let list = [...conversations];
     if (filterStatus !== "all") {
-      list = list.filter((c) =>
-        filterStatus === "buying" ? c.participantRole === "seller" : c.participantRole === "buyer"
-      );
+      list = list.filter((c) => (filterStatus === "buying" ? c.myRole === "buyer" : c.myRole === "seller"));
     }
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(
-        (c) =>
-          c.participantName.toLowerCase().includes(q) ||
-          c.itemTitle.toLowerCase().includes(q)
-      );
+      list = list.filter((c) => {
+        const otherName = c.myRole === "buyer" ? c.seller?.name : c.buyer?.name;
+        return otherName?.toLowerCase().includes(q) || c.listing?.itemTitle?.toLowerCase().includes(q);
+      });
     }
     return list;
   }, [conversations, filterStatus, search]);
 
   const quickReplies = useMemo(() => {
     if (!activeConv) return [];
-    return activeConv.participantRole === "seller" ? BUYER_QUICK_REPLIES : SELLER_QUICK_REPLIES;
+    return activeConv.myRole === "buyer" ? BUYER_QUICK_REPLIES : SELLER_QUICK_REPLIES;
   }, [activeConv]);
 
   const handleInputChange = (text: string) => {
     setInput(text);
     if (text.length > 5) {
-      const scan = scanMessage(text);
-      if (!scan.clean) {
-        setBlockedWarning(
-          `For your safety, sharing ${scan.violations.join(", ")} is not allowed. Keep all transactions on Refurnish.`
-        );
-      } else {
-        setBlockedWarning("");
-      }
+      const scan = scanMessage(text, !!activeConv?.orderId);
+      setBlockedWarning(
+        scan.clean
+          ? ""
+          : `For your safety, sharing ${scan.violations.join(", ")} is not allowed. Keep all transactions on Refurnish.`
+      );
     } else {
       setBlockedWarning("");
     }
   };
 
-  const sendMessage = (text: string, isQuickReply = false) => {
-    if (!activeId || !text.trim()) return;
+  const sendText = async (text: string, isQuickReply = false) => {
+    if (!activeId || !text.trim() || sending) return;
 
-    const scan = scanMessage(text);
-    if (!scan.clean && !isQuickReply) {
-      setBlockedWarning(
-        `Message blocked: ${scan.violations.join(", ")} detected.`
-      );
-      return;
+    if (!isQuickReply) {
+      const scan = scanMessage(text, !!activeConv?.orderId);
+      if (!scan.clean) {
+        setBlockedWarning(`Message blocked: ${scan.violations.join(", ")} detected.`);
+        return;
+      }
     }
 
-    const newMsg = {
-      id: `m-${Date.now()}`,
-      role: "me",
-      text: text.trim(),
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = {
-      ...messages,
-      [activeId]: [...(messages[activeId] || []), newMsg],
-    };
-
-    setMessages(updated);
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(updated));
-    setInput("");
-    setBlockedWarning("");
-
-    // Update last message preview
-    const updatedConvs = conversations.map((c) =>
-      c.id === activeId
-        ? { ...c, lastMessage: newMsg.text, lastMessageTime: "Just now", unreadCount: 0 }
-        : c
-    );
-    setConversations(updatedConvs);
-    localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(updatedConvs));
+    setSending(true);
+    try {
+      const res = await authedFetch(`/api/conversations/${activeId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBlockedWarning(data.message || "Couldn't send message.");
+        return;
+      }
+      setActiveMessages((prev) => [...prev, data.message]);
+      setInput("");
+      setBlockedWarning("");
+    } catch (err) {
+      console.error(err);
+      setBlockedWarning("Couldn't reach the server. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
+  const sendOffer = async () => {
+    const amount = Number(offerAmount);
+    if (!activeId || !amount || amount <= 0) return;
+    setOfferBusy(true);
+    try {
+      const res = await authedFetch(`/api/conversations/${activeId}/offer`, {
+        method: "POST",
+        body: JSON.stringify({ amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBlockedWarning(data.message || "Couldn't send offer.");
+        return;
+      }
+      setActiveMessages((prev) => [...prev, data.message]);
+      setActiveConv((prev: any) => ({ ...prev, ...data.conversation }));
+      setOfferOpen(false);
+      setOfferAmount("");
+    } catch (err) {
+      console.error(err);
+      setBlockedWarning("Couldn't reach the server. Please try again.");
+    } finally {
+      setOfferBusy(false);
+    }
+  };
+
+  const respondToOffer = async (action: "accept" | "reject") => {
+    if (!activeId) return;
+    setOfferBusy(true);
+    try {
+      const res = await authedFetch(`/api/conversations/${activeId}/offer/respond`, {
+        method: "POST",
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBlockedWarning(data.message || "Couldn't respond to offer.");
+        return;
+      }
+      setActiveMessages((prev) => [...prev, data.message]);
+      setActiveConv((prev: any) => ({ ...prev, ...data.conversation }));
+    } catch (err) {
+      console.error(err);
+      setBlockedWarning("Couldn't reach the server. Please try again.");
+    } finally {
+      setOfferBusy(false);
+    }
+  };
+
+  const proceedToCheckout = () => {
+    if (!activeConv) return;
+    const listingId = activeConv.listingId;
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify([listingId]));
+      localStorage.setItem(QTY_KEY, JSON.stringify({ [listingId]: 1 }));
+      const negotiated = JSON.parse(localStorage.getItem(NEGOTIATED_PRICES_KEY) || "{}");
+      negotiated[listingId] = activeConv.agreedPrice;
+      localStorage.setItem(NEGOTIATED_PRICES_KEY, JSON.stringify(negotiated));
+      router.push("/checkout");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const submitReport = async (reason: string, details: string) => {
+    if (!activeId) return;
+    setReportBusy(true);
+    try {
+      const res = await authedFetch("/api/reports", {
+        method: "POST",
+        body: JSON.stringify({ conversationId: activeId, reason, details }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToastMsg(data.message || "Couldn't submit report.");
+        return;
+      }
+      setShowReportModal(false);
+      setToastMsg("Report submitted — our team will review it");
+    } catch (err) {
+      console.error(err);
+      setToastMsg("Couldn't reach the server. Please try again.");
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
+  // ─── NOT LOGGED IN / LOAD ERROR ───
+  if (listError && !activeId) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 xl:px-10 py-16 max-w-3xl mx-auto text-center">
+        <MessageCircle className="size-10 text-[#211000]/20 mx-auto mb-3" />
+        <p className="font-serif text-xl font-medium mb-1">{listError}</p>
+        {!user?.token && (
+          <Link href="/login" className="text-sm font-bold text-[#B66B44] hover:underline">
+            Log in
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  // ─── CONVERSATION LIST VIEW ───
   if (!activeId) {
-    // ─── CONVERSATION LIST VIEW ───
     return (
       <div className="px-4 sm:px-6 lg:px-8 xl:px-10 py-6 lg:py-10 max-w-3xl mx-auto">
         <div className="mb-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
-            Messages
-          </p>
-          <h1 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-1">
-            Conversations
-          </h1>
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">Messages</p>
+          <h1 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-1">Conversations</h1>
           <p className="text-sm text-[#211000]/55 font-medium mt-1">
             All communication is monitored for your safety.
           </p>
         </div>
 
-        {/* Escrow notice */}
         <div className="mb-6 rounded-2xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-4 flex items-start gap-3">
           <ShieldCheck className="size-5 text-[#5F7161] shrink-0 mt-0.5" />
           <div className="text-xs text-[#211000]/65 leading-relaxed">
-            <strong className="text-[#211000] font-bold">
-              Protected messaging.
-            </strong>{" "}
-            Sharing phone numbers, emails, bank details, or suggesting off-platform deals is automatically blocked. All payments must go through Refurnish escrow.
+            <strong className="text-[#211000] font-bold">Protected messaging.</strong> Sharing phone
+            numbers, emails, bank details, or suggesting off-platform deals is automatically blocked.
+            Negotiate price freely — but every payment must go through Refurnish escrow.
           </div>
         </div>
 
-        {/* Search */}
         <div className="relative mb-4">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#211000]/35" />
           <input
@@ -365,7 +411,6 @@ export default function MessagesPage() {
           />
         </div>
 
-        {/* Filters */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-5">
           {[
             { id: "all", label: "All" },
@@ -386,8 +431,11 @@ export default function MessagesPage() {
           ))}
         </div>
 
-        {/* List */}
-        {filteredConversations.length === 0 ? (
+        {loadingList ? (
+          <div className="rounded-2xl bg-white border border-[#211000]/6 py-16 text-center text-sm text-[#211000]/50 font-medium">
+            Loading conversations…
+          </div>
+        ) : filteredConversations.length === 0 ? (
           <div className="rounded-2xl bg-white border border-[#211000]/6 py-16 text-center">
             <MessageCircle className="size-10 text-[#211000]/20 mx-auto mb-3" />
             <p className="font-serif text-xl font-medium mb-1">No conversations</p>
@@ -397,51 +445,49 @@ export default function MessagesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => setActiveId(conv.id)}
-                className="w-full text-left rounded-2xl bg-white border border-[#211000]/6 hover:border-[#B66B44]/25 hover:shadow-sm transition-all p-4 flex items-center gap-4"
-              >
-                <div className="size-14 rounded-xl overflow-hidden bg-[#E8CEB0]/30 shrink-0">
-                  <img
-                    src={conv.itemImage}
-                    alt={conv.itemTitle}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold">{conv.participantName}</p>
-                      {conv.escrowStatus === "funds_held" && (
-                        <span className="size-2 rounded-full bg-[#B66B44]" />
-                      )}
-                    </div>
-                    <span className="text-[11px] text-[#211000]/40 font-medium whitespace-nowrap">
-                      {conv.lastMessageTime}
-                    </span>
+            {filteredConversations.map((conv) => {
+              const otherName = conv.myRole === "buyer" ? conv.seller?.name : conv.buyer?.name;
+              const lastMsg = conv.messages?.[0];
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => setActiveId(conv.id)}
+                  className="w-full text-left rounded-2xl bg-white border border-[#211000]/6 hover:border-[#B66B44]/25 hover:shadow-sm transition-all p-4 flex items-center gap-4"
+                >
+                  <div className="size-14 rounded-xl overflow-hidden bg-[#E8CEB0]/30 shrink-0">
+                    {conv.listing?.photos?.[0] && (
+                      <img src={conv.listing.photos[0]} alt={conv.listing.itemTitle} className="w-full h-full object-cover" />
+                    )}
                   </div>
 
-                  <p className="text-xs text-[#211000]/45 font-medium mt-0.5 truncate">
-                    {conv.itemTitle}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold">{otherName || "Refurnish user"}</p>
+                        {conv.offerStatus === "pending" && <span className="size-2 rounded-full bg-[#B66B44]" />}
+                        {conv.offerStatus === "accepted" && <span className="size-2 rounded-full bg-[#5F7161]" />}
+                      </div>
+                      <span className="text-[11px] text-[#211000]/40 font-medium whitespace-nowrap">
+                        {lastMsg ? timeAgo(lastMsg.createdAt) : timeAgo(conv.createdAt)}
+                      </span>
+                    </div>
 
-                  <p className="text-xs text-[#211000]/60 font-medium mt-1 truncate">
-                    {conv.lastMessage}
-                  </p>
-                </div>
+                    <p className="text-xs text-[#211000]/45 font-medium mt-0.5 truncate">{conv.listing?.itemTitle}</p>
+                    <p className="text-xs text-[#211000]/60 font-medium mt-1 truncate">
+                      {lastMsg?.text || "No messages yet"}
+                    </p>
+                  </div>
 
-                {conv.unreadCount > 0 && (
-                  <span className="size-5 rounded-full bg-[#B66B44] text-white text-[10px] font-bold grid place-items-center shrink-0">
-                    {conv.unreadCount}
-                  </span>
-                )}
+                  {conv.unreadCount > 0 && (
+                    <span className="size-5 rounded-full bg-[#B66B44] text-white text-[10px] font-bold grid place-items-center shrink-0">
+                      {conv.unreadCount}
+                    </span>
+                  )}
 
-                <ChevronRight className="size-4 text-[#211000]/20 shrink-0 hidden sm:block" />
-              </button>
-            ))}
+                  <ChevronRight className="size-4 text-[#211000]/20 shrink-0 hidden sm:block" />
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -449,122 +495,151 @@ export default function MessagesPage() {
   }
 
   // ─── ACTIVE CHAT VIEW ───
+  const otherName = activeConv?.myRole === "buyer" ? activeConv?.seller?.name : activeConv?.buyer?.name;
+  const isBuyer = activeConv?.myRole === "buyer";
+  const canMakeOffer = isBuyer && !["pending", "accepted", "completed"].includes(activeConv?.offerStatus);
+  const isSellerWithPendingOffer = !isBuyer && activeConv?.offerStatus === "pending";
+
   return (
     <div className="h-[calc(100vh-64px)] lg:h-screen flex flex-col bg-[#FAF4EC]">
-      {/* Chat Header */}
-<div className="shrink-0 bg-white border-b border-[#211000]/8 px-4 sm:px-6 py-3 flex items-center gap-3">
-  {/* Back button is now visible on all screen sizes */}
-  <button
-    onClick={() => setActiveId(null)}
-    className="size-9 rounded-full bg-[#FAF4EC] hover:bg-[#E8CEB0]/30 text-[#211000] flex items-center justify-center transition-colors shrink-0"
-    title="Back to conversations"
-  >
-    <ArrowLeft className="size-4" />
-  </button>
-
-  <div className="size-10 rounded-xl overflow-hidden bg-[#E8CEB0]/30 shrink-0">
-    <img
-      src={activeConv.itemImage}
-      alt=""
-      className="w-full h-full object-cover"
-    />
-  </div>
-
-  <div className="flex-1 min-w-0">
-    <div className="flex items-center gap-2">
-      <p className="text-sm font-bold truncate">{activeConv.participantName}</p>
-      {activeConv.orderId && (
-        <Link
-          href={`/dashboard/orders/${activeConv.orderId}`}
-          className="text-[10px] font-bold bg-[#E8CEB0]/40 px-1.5 py-0.5 rounded text-[#211000]/60 hover:text-[#B66B44]"
+      <div className="shrink-0 bg-white border-b border-[#211000]/8 px-4 sm:px-6 py-3 flex items-center gap-3">
+        <button
+          onClick={closeConversation}
+          className="size-9 rounded-full bg-[#FAF4EC] hover:bg-[#E8CEB0]/30 text-[#211000] flex items-center justify-center transition-colors shrink-0"
+          title="Back to conversations"
         >
-          {activeConv.orderId}
-        </Link>
-      )}
-    </div>
-    <p className="text-[11px] text-[#211000]/45 truncate">{activeConv.itemTitle}</p>
-  </div>
+          <ArrowLeft className="size-4" />
+        </button>
 
-  <button
-    onClick={() => setShowReportModal(true)}
-    className="size-9 rounded-full bg-[#FAF4EC] hover:bg-red-50 hover:text-red-500 grid place-items-center transition-colors"
-    title="Report user"
-  >
-    <Flag className="size-4" />
-  </button>
-</div>
+        <div className="size-10 rounded-xl overflow-hidden bg-[#E8CEB0]/30 shrink-0">
+          {activeConv?.listing?.photos?.[0] && (
+            <img src={activeConv.listing.photos[0]} alt="" className="w-full h-full object-cover" />
+          )}
+        </div>
 
-      {/* Escrow Banner */}
-      {activeConv.escrowStatus === "funds_held" && (
-        <div className="shrink-0 bg-[#B66B44]/8 border-b border-[#B66B44]/15 px-4 py-2.5 flex items-center justify-center gap-2">
-          <Lock className="size-3.5 text-[#B66B44]" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-bold truncate">{otherName || "Refurnish user"}</p>
+            {activeConv?.listing?.status === "active" && (
+              <Link
+                href={`/product/${activeConv.listingId}`}
+                className="text-[10px] font-bold bg-[#E8CEB0]/40 px-1.5 py-0.5 rounded text-[#211000]/60 hover:text-[#B66B44]"
+              >
+                View listing
+              </Link>
+            )}
+          </div>
+          <p className="text-[11px] text-[#211000]/45 truncate">{activeConv?.listing?.itemTitle}</p>
+        </div>
+
+        <button
+          onClick={() => setShowReportModal(true)}
+          className="size-9 rounded-full bg-[#FAF4EC] hover:bg-red-50 hover:text-red-500 grid place-items-center transition-colors"
+          title="Report user"
+        >
+          <Flag className="size-4" />
+        </button>
+      </div>
+
+      {/* Offer status banner */}
+      {activeConv?.offerStatus === "pending" && (
+        <div className="shrink-0 bg-[#B66B44]/8 border-b border-[#B66B44]/15 px-4 py-2.5 flex items-center justify-center gap-2 text-center">
+          <HandCoins className="size-3.5 text-[#B66B44]" />
           <p className="text-[11px] font-bold text-[#B66B44]">
-            Escrow active: Payment held until delivery confirmed
+            Offer pending: {formatNaira(Number(activeConv.offerAmount))}
+            {isBuyer ? " — waiting on seller" : " — respond below"}
           </p>
         </div>
       )}
-      {activeConv.escrowStatus === "released" && (
-        <div className="shrink-0 bg-[#5F7161]/8 border-b border-[#5F7161]/15 px-4 py-2.5 flex items-center justify-center gap-2">
+      {activeConv?.offerStatus === "accepted" && (
+        <div className="shrink-0 bg-[#5F7161]/8 border-b border-[#5F7161]/15 px-4 py-2.5 flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-3.5 text-[#5F7161]" />
+            <p className="text-[11px] font-bold text-[#5F7161]">
+              Offer accepted at {formatNaira(Number(activeConv.agreedPrice))}
+            </p>
+          </div>
+          {isBuyer && (
+            <button
+              onClick={proceedToCheckout}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#211000] text-[#FAF4EC] px-3 py-1.5 text-[10px] font-bold hover:bg-[#211000]/90 transition-colors"
+            >
+              Proceed to checkout
+              <ArrowRight className="size-3" />
+            </button>
+          )}
+        </div>
+      )}
+      {activeConv?.offerStatus === "completed" && (
+        <div className="shrink-0 bg-[#5F7161]/8 border-b border-[#5F7161]/15 px-4 py-2.5 flex items-center justify-center gap-2 text-center">
           <CheckCircle2 className="size-3.5 text-[#5F7161]" />
           <p className="text-[11px] font-bold text-[#5F7161]">
-            Transaction completed
+            Order placed at {formatNaira(Number(activeConv.agreedPrice))} — you can coordinate pickup here.
+          </p>
+        </div>
+      )}
+      {activeConv?.offerStatus === "rejected" && (
+        <div className="shrink-0 bg-red-50 border-b border-red-100 px-4 py-2.5 flex items-center justify-center gap-2">
+          <Ban className="size-3.5 text-red-500" />
+          <p className="text-[11px] font-bold text-red-600">
+            Offer of {formatNaira(Number(activeConv.offerAmount))} was declined.
           </p>
         </div>
       )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
-        {/* Safety reminder */}
         <div className="flex justify-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#211000]/5 border border-[#211000]/8 px-3 py-1.5">
             <ShieldCheck className="size-3 text-[#5F7161]" />
-            <span className="text-[10px] font-bold text-[#211000]/50">
-              Messages are filtered for your protection
-            </span>
+            <span className="text-[10px] font-bold text-[#211000]/50">Messages are filtered for your protection</span>
           </div>
         </div>
 
-        {activeMessages.map((msg) => {
-          if (msg.role === "system") {
+        {loadingChat ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+          </div>
+        ) : (
+          activeMessages.map((msg) => {
+            if (msg.role === "system") {
+              return (
+                <div key={msg.id} className="flex justify-center">
+                  <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] px-4 py-2.5 text-center max-w-sm">
+                    <p className="text-[11px] text-[#211000]/70 font-medium leading-relaxed">{msg.text}</p>
+                    <p className="text-[10px] text-[#211000]/40 font-medium mt-1">{formatTime(msg.createdAt)}</p>
+                  </div>
+                </div>
+              );
+            }
+
+            const isMe = msg.role === activeConv?.myRole;
+            const isOffer = msg.type === "offer";
+
             return (
-              <div key={msg.id} className="flex justify-center">
-                <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] px-4 py-2.5 text-center max-w-sm">
-                  <p className="text-[11px] text-[#211000]/70 font-medium leading-relaxed">
-                    {msg.text}
-                  </p>
-                  <p className="text-[10px] text-[#211000]/40 font-medium mt-1">
+              <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-3 ${
+                    isOffer
+                      ? "bg-[#B66B44]/10 border border-[#B66B44]/25 text-[#211000]"
+                      : isMe
+                      ? "rounded-tr-sm bg-[#211000] text-[#E8CEB0]"
+                      : "rounded-tl-sm bg-white border border-[#211000]/8 text-[#211000]"
+                  }`}
+                >
+                  {isOffer && (
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#B66B44] mb-1">Offer</p>
+                  )}
+                  <p className="text-sm leading-relaxed">{msg.text}</p>
+                  <p className={`text-[10px] mt-1.5 font-medium ${isMe && !isOffer ? "text-[#E8CEB0]/50" : "text-[#211000]/35"}`}>
                     {formatTime(msg.createdAt)}
                   </p>
                 </div>
               </div>
             );
-          }
+          })
+        )}
 
-          const isMe = msg.role === "me";
-
-          return (
-            <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-3 ${
-                  isMe
-                    ? "rounded-tr-sm bg-[#211000] text-[#E8CEB0]"
-                    : "rounded-tl-sm bg-white border border-[#211000]/8 text-[#211000]"
-                }`}
-              >
-                <p className="text-sm leading-relaxed">{msg.text}</p>
-                <p
-                  className={`text-[10px] mt-1.5 font-medium ${
-                    isMe ? "text-[#E8CEB0]/50" : "text-[#211000]/35"
-                  }`}
-                >
-                  {formatTime(msg.createdAt)}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Blocked warning */}
         <AnimatePresence>
           {blockedWarning && (
             <motion.div
@@ -589,16 +664,82 @@ export default function MessagesPage() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Seller: respond to pending offer */}
+      {isSellerWithPendingOffer && (
+        <div className="shrink-0 bg-white border-t border-[#211000]/8 px-4 py-3 flex items-center justify-center gap-3">
+          <button
+            onClick={() => respondToOffer("reject")}
+            disabled={offerBusy}
+            className="inline-flex items-center gap-1.5 rounded-full border border-red-200 text-red-500 px-4 py-2 text-xs font-bold hover:bg-red-50 transition-colors disabled:opacity-50"
+          >
+            <ThumbsDown className="size-3.5" />
+            Decline
+          </button>
+          <button
+            onClick={() => respondToOffer("accept")}
+            disabled={offerBusy}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#5F7161] text-white px-4 py-2 text-xs font-bold hover:bg-[#4d5c4f] transition-colors disabled:opacity-50"
+          >
+            <ThumbsUp className="size-3.5" />
+            Accept offer
+          </button>
+        </div>
+      )}
+
+      {/* Buyer: make an offer */}
+      {canMakeOffer && (
+        <div className="shrink-0 bg-white border-t border-[#211000]/8 px-4 pt-3">
+          <AnimatePresence>
+            {offerOpen ? (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex items-center gap-2 pb-3"
+              >
+                <span className="text-sm font-bold text-[#211000]/50">₦</span>
+                <input
+                  type="number"
+                  value={offerAmount}
+                  onChange={(e) => setOfferAmount(e.target.value)}
+                  placeholder="Your offer amount"
+                  className="flex-1 rounded-full bg-[#FAF4EC] border border-[#211000]/8 px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-[#B66B44]"
+                />
+                <button
+                  onClick={sendOffer}
+                  disabled={offerBusy || !offerAmount}
+                  className="rounded-full bg-[#B66B44] text-white px-4 py-2.5 text-xs font-bold hover:bg-[#a05934] transition-colors disabled:opacity-50"
+                >
+                  {offerBusy ? "Sending…" : "Send offer"}
+                </button>
+                <button
+                  onClick={() => setOfferOpen(false)}
+                  className="size-9 rounded-full hover:bg-[#211000]/5 grid place-items-center shrink-0"
+                >
+                  <X className="size-4 text-[#211000]/50" />
+                </button>
+              </motion.div>
+            ) : (
+              <button
+                onClick={() => setOfferOpen(true)}
+                className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#B66B44]/30 text-[#B66B44] px-4 py-2 text-xs font-bold hover:bg-[#B66B44]/5 transition-colors"
+              >
+                <HandCoins className="size-3.5" />
+                Make an offer
+              </button>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       {/* Quick Replies */}
       <div className="shrink-0 bg-white border-t border-[#211000]/8 px-4 pt-3 pb-1">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/40 mb-2 px-1">
-          Quick replies
-        </p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/40 mb-2 px-1">Quick replies</p>
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
           {quickReplies.map((reply) => (
             <button
               key={reply}
-              onClick={() => sendMessage(reply, true)}
+              onClick={() => sendText(reply, true)}
               className="shrink-0 rounded-full bg-[#FAF4EC] border border-[#211000]/8 hover:border-[#B66B44]/30 hover:bg-[#E8CEB0]/30 px-4 py-2 text-[11px] font-bold transition-colors"
             >
               {reply}
@@ -617,36 +758,48 @@ export default function MessagesPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage(input);
+                sendText(input);
               }
             }}
             placeholder="Type a message..."
             className="flex-1 resize-none rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all max-h-24"
           />
           <button
-            onClick={() => sendMessage(input)}
-            disabled={!input.trim() || !!blockedWarning}
+            onClick={() => sendText(input)}
+            disabled={!input.trim() || !!blockedWarning || sending}
             className="size-11 rounded-full bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-40 disabled:cursor-not-allowed text-white grid place-items-center transition-colors shadow-sm"
           >
-            <Send className="size-4" />
+            {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           </button>
         </div>
         <p className="mt-2 text-[10px] text-[#211000]/35 font-medium px-1">
-          Custom messages are scanned. Quick replies are always safe.
+          Messages are scanned before sending. Off-platform contact and payments are blocked.
         </p>
       </div>
 
-      {/* Report Modal */}
       <AnimatePresence>
         {showReportModal && (
           <ReportModal
-            userName={activeConv.participantName}
+            userName={otherName || "this user"}
+            busy={reportBusy}
             onClose={() => setShowReportModal(false)}
-            onSubmit={() => {
-              setShowReportModal(false);
-              // Would send to backend
-            }}
+            onSubmit={submitReport}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toastMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 20, x: "-50%" }}
+            className="fixed bottom-6 left-1/2 z-[90] inline-flex items-center gap-2 bg-[#211000] text-[#FAF4EC] px-5 py-3 rounded-full shadow-2xl"
+          >
+            <CheckCircle2 className="size-4 text-[#5F7161]" />
+            <span className="text-xs font-bold">{toastMsg}</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -655,12 +808,14 @@ export default function MessagesPage() {
 
 function ReportModal({
   userName,
+  busy,
   onClose,
   onSubmit,
 }: {
   userName: string;
+  busy: boolean;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (reason: string, details: string) => void;
 }) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
@@ -687,10 +842,7 @@ function ReportModal({
         transition={{ type: "spring", stiffness: 280, damping: 28 }}
         className="relative w-full sm:max-w-md bg-[#FAF4EC] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#211000]/10 p-6 sm:p-8"
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 size-9 rounded-full hover:bg-[#211000]/5 grid place-items-center"
-        >
+        <button onClick={onClose} className="absolute top-4 right-4 size-9 rounded-full hover:bg-[#211000]/5 grid place-items-center">
           <X className="size-4 text-[#211000]/60" />
         </button>
 
@@ -698,28 +850,20 @@ function ReportModal({
           <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
             <Flag className="size-7 text-red-500" />
           </div>
-          <h3 className="font-serif text-2xl font-medium tracking-tight">
-            Report {userName}
-          </h3>
-          <p className="text-sm text-[#211000]/55 font-medium mt-1">
-            Help us keep Refurnish safe for everyone.
-          </p>
+          <h3 className="font-serif text-2xl font-medium tracking-tight">Report {userName}</h3>
+          <p className="text-sm text-[#211000]/55 font-medium mt-1">Help us keep Refurnish safe for everyone.</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-              Reason *
-            </label>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">Reason *</label>
             <div className="grid gap-2">
               {reasons.map((r) => (
                 <button
                   key={r}
                   onClick={() => setReason(r)}
                   className={`text-left text-xs font-bold px-3 py-2.5 rounded-xl border transition-all ${
-                    reason === r
-                      ? "bg-[#c0392b]/8 border-[#c0392b]/25 text-[#c0392b]"
-                      : "bg-white border-[#211000]/8 hover:border-[#211000]/20"
+                    reason === r ? "bg-[#c0392b]/8 border-[#c0392b]/25 text-[#c0392b]" : "bg-white border-[#211000]/8 hover:border-[#211000]/20"
                   }`}
                 >
                   {r}
@@ -729,9 +873,7 @@ function ReportModal({
           </div>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
-              Details (optional)
-            </label>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">Details (optional)</label>
             <textarea
               rows={3}
               value={details}
@@ -743,18 +885,15 @@ function ReportModal({
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-full border border-[#211000]/10 py-3 text-xs font-bold uppercase tracking-wider hover:bg-[#E8CEB0]/20 transition-colors"
-          >
+          <button onClick={onClose} className="flex-1 rounded-full border border-[#211000]/10 py-3 text-xs font-bold uppercase tracking-wider hover:bg-[#E8CEB0]/20 transition-colors">
             Cancel
           </button>
           <button
-            onClick={onSubmit}
-            disabled={!reason}
+            onClick={() => onSubmit(reason, details)}
+            disabled={!reason || busy}
             className="flex-1 rounded-full bg-[#c0392b] hover:bg-[#a93226] disabled:opacity-50 text-white py-3 text-xs font-bold uppercase tracking-wider transition-colors"
           >
-            Submit report
+            {busy ? "Submitting…" : "Submit report"}
           </button>
         </div>
       </motion.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,54 +19,123 @@ import {
   Copy,
   CreditCard,
   Banknote,
-  Smartphone,
   MessageCircle,
   Star,
   AlertTriangle,
   X,
   Loader2,
-  Send,
   ThumbsUp,
   ThumbsDown,
   ArrowRight,
-  Timer,
-  Lock,
-  FileText,
-  ChevronRight,
   Sparkles,
 } from "lucide-react";
 import { formatNaira } from "@/lib/data";
 
-const ORDERS_KEY = "refurnish_orders";
-const REVIEWS_KEY = "refurnish_reviews";
+/* ========== Types ========== */
+type OrderItem = {
+  image?: string;
+  itemTitle: string;
+  sellerName: string;
+  quantity: number;
+  price: number;
+  listingId?: string;
+  sellerAddress?: string;
+  sellerState?: string;
+};
+
+type SellerConfirmation = {
+  availability?: string | null; // null | "available" | "unavailable"
+};
+
+type Dispute = {
+  status: string;
+  resolution?: string;
+};
+
+type Review = {
+  rating: number;
+  comment?: string;
+  recommend?: boolean | null;
+};
+
+type Order = {
+  reference: string;
+  createdAt: string;
+  status: string;
+  deliveryType: "delivery" | "pickup" | string;
+  fullName: string;
+  phone: string;
+  email: string;
+  address?: string;
+  lga?: string;
+  state?: string;
+  deliveryDate?: string;
+  paymentMethod: "paystack" | "transfer" | string;
+  receiptUrl?: string;
+  total: number | string;
+  rejectionReason?: string;
+  items?: OrderItem[];
+  reviews?: Review[];
+  disputes?: Dispute[];
+  sellerConfirmations?: SellerConfirmation[];
+};
+
+type ReviewPayload = {
+  rating: number;
+  comment: string;
+  recommend: boolean | null;
+};
+
+type ComplaintPayload = {
+  reason: string;
+  description: string;
+};
 
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const orderId = params?.id as string;
+  const orderId = params?.id as string | undefined;
 
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState("");
 
-  // Modals
   const [warningModal, setWarningModal] = useState(false);
   const [reviewModal, setReviewModal] = useState(false);
   const [complaintModal, setComplaintModal] = useState(false);
   const [confirmingReceived, setConfirmingReceived] = useState(false);
 
-  useEffect(() => {
+  const getToken = () => {
+    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+    return user?.token || "";
+  };
+
+  const fetchOrder = async () => {
+    setLoading(true);
+    setLoadError("");
+    const token = getToken();
+    if (!token) {
+      router.push(`/login?next=${encodeURIComponent(`/dashboard/orders/${orderId}`)}`);
+      return;
+    }
     try {
-      const stored = localStorage.getItem(ORDERS_KEY);
-      if (stored) {
-        const orders = JSON.parse(stored);
-        const found = orders.find((o: any) => o.id === orderId);
-        if (found) {
-          setOrder(found);
-        }
-      }
-    } catch {}
-    setLoading(false);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Could not load this order.");
+      setOrder(data.order);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not load this order.";
+      setLoadError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (orderId) fetchOrder();
   }, [orderId]);
 
   useEffect(() => {
@@ -75,38 +144,28 @@ export default function OrderDetailPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const updateOrder = (updates: any) => {
-    if (!order) return;
-
-    const updatedOrder = { ...order, ...updates };
-    setOrder(updatedOrder);
-
-    try {
-      const stored = localStorage.getItem(ORDERS_KEY);
-      if (stored) {
-        const orders = JSON.parse(stored);
-        const updated = orders.map((o: any) =>
-          o.id === orderId ? updatedOrder : o
-        );
-        localStorage.setItem(ORDERS_KEY, JSON.stringify(updated));
-      }
-    } catch {}
-  };
-
   const handleConfirmReceived = async () => {
     setConfirmingReceived(true);
     setWarningModal(false);
 
-    await new Promise((r) => setTimeout(r, 1200));
-
-    updateOrder({
-      status: "delivered",
-      escrowStatus: "released",
-      deliveryConfirmedAt: new Date().toISOString(),
-    });
-
-    setConfirmingReceived(false);
-    setReviewModal(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}/confirm-received`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${getToken()}` },
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to confirm.");
+      setOrder(data.order);
+      setReviewModal(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      setToast(message);
+    } finally {
+      setConfirmingReceived(false);
+    }
   };
 
   const handleSkipReview = () => {
@@ -114,43 +173,83 @@ export default function OrderDetailPage() {
     setToast("Order completed. You can review later.");
   };
 
-  const handleSubmitReview = (review: any) => {
-    // Save review
+  const handleSubmitReview = async (review: ReviewPayload) => {
     try {
-      const stored = localStorage.getItem(REVIEWS_KEY);
-      const reviews = stored ? JSON.parse(stored) : [];
-      reviews.push({
-        ...review,
-        orderId: order.id,
-        items: order.items,
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews));
-
-      updateOrder({ reviewed: true });
-    } catch {}
-
-    setReviewModal(false);
-    setToast("Review submitted. Thank you!");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}/submit-review`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify(review),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to submit review.");
+      setToast("Review submitted. Thank you!");
+      fetchOrder();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      setToast(message);
+    } finally {
+      setReviewModal(false);
+    }
   };
 
-  const handleSubmitComplaint = (complaint: any) => {
-    updateOrder({
-      status: "disputed",
-      dispute: {
-        ...complaint,
-        createdAt: new Date().toISOString(),
-        status: "open",
-      },
-    });
-
-    setComplaintModal(false);
-    setToast("Dispute filed. Our team will review within 24 hours.");
+  const handleSubmitComplaint = async (complaint: ComplaintPayload) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}/dispute`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify(complaint),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to file dispute.");
+      setToast("Dispute filed. Our team will review shortly.");
+      fetchOrder();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      setToast(message);
+    } finally {
+      setComplaintModal(false);
+    }
   };
 
   const copyId = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setToast(`${label} copied`);
+  };
+
+  const messageSeller = async (listingId?: string) => {
+    if (!listingId) return;
+    const token = getToken();
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ listingId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.message || "Couldn't start a chat with the seller.");
+        return;
+      }
+      router.push(`/dashboard/messages?conversationId=${data.conversation.id}`);
+    } catch (err) {
+      console.error(err);
+      setToast("Couldn't reach the server. Please try again.");
+    }
   };
 
   if (loading) {
@@ -161,13 +260,13 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (!order) {
+  if (loadError || !order) {
     return (
       <div className="px-4 py-20 max-w-3xl mx-auto text-center">
         <Package className="size-12 text-[#211000]/20 mx-auto mb-4" />
         <h1 className="font-serif text-2xl font-medium mb-2">Order not found</h1>
         <p className="text-sm text-[#211000]/55 mb-6">
-          We couldn't find an order with that ID.
+          {loadError || "We couldn't find an order with that ID."}
         </p>
         <Link
           href="/dashboard/orders"
@@ -179,10 +278,12 @@ export default function OrderDetailPage() {
     );
   }
 
-  const canConfirmReceived =
-    order.escrowStatus === "funds_held" && order.status !== "disputed";
-  const isCompleted = order.escrowStatus === "released";
+  const canConfirmReceived = order.status === "confirmed";
+  const isCompleted = order.status === "completed";
   const isDisputed = order.status === "disputed";
+  const hasReview = (order.reviews?.length ?? 0) > 0;
+  const openDispute = order.disputes?.find((d) => d.status !== "resolved");
+  const resolvedDispute = order.disputes?.find((d) => d.status === "resolved");
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 xl:px-10 py-4 sm:py-6 lg:py-8 max-w-5xl mx-auto pb-32">
@@ -201,11 +302,12 @@ export default function OrderDetailPage() {
             <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
               Order detail
             </p>
-            <h1 className="font-serif text-2xl sm:text-3xl font-medium tracking-tight mt-2">
-              {order.id}
+            <h1 className="font-mono text-2xl sm:text-3xl font-medium tracking-tight mt-2">
+              {order.reference}
             </h1>
             <p className="text-sm text-[#211000]/55 font-medium mt-1">
-              Placed on {new Date(order.createdAt).toLocaleDateString("en-NG", {
+              Placed on{" "}
+              {new Date(order.createdAt).toLocaleDateString("en-NG", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -214,11 +316,11 @@ export default function OrderDetailPage() {
           </div>
 
           <button
-            onClick={() => copyId(order.id, "Order ID")}
+            onClick={() => copyId(order.reference, "Reference")}
             className="inline-flex items-center gap-2 rounded-full bg-white border border-[#211000]/10 hover:border-[#B66B44]/30 px-4 py-2 text-xs font-bold transition-colors self-start"
           >
             <Copy className="size-3" />
-            Copy ID
+            Copy reference
           </button>
         </div>
       </div>
@@ -226,7 +328,6 @@ export default function OrderDetailPage() {
       <div className="grid lg:grid-cols-3 gap-5 lg:gap-6">
         {/* Left column */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Order tracking */}
           <OrderTracking order={order} />
 
           {/* Items */}
@@ -239,33 +340,32 @@ export default function OrderDetailPage() {
             </div>
 
             <div className="divide-y divide-[#211000]/6">
-              {order.items?.map((item: any, i: number) => (
+              {order.items?.map((item, i) => (
                 <div key={i} className="p-4 sm:p-5 flex items-center gap-4">
                   <div className="size-16 sm:size-20 rounded-xl overflow-hidden bg-[#E8CEB0]/30 shrink-0">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
+                    {item.image && (
+                      <img
+                        src={item.image}
+                        alt={item.itemTitle}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/45">
-                      {item.seller}
+                      {item.sellerName}
                     </p>
                     <h3 className="font-serif text-sm sm:text-base font-medium truncate">
-                      {item.title}
+                      {item.itemTitle}
                     </h3>
-                    {item.sellerLocation && (
-                      <p className="text-[11px] text-[#211000]/45 font-medium mt-1 flex items-center gap-1">
-                        <MapPin className="size-3" />
-                        {item.sellerLocation.address}
-                      </p>
-                    )}
+                    <p className="text-[11px] text-[#211000]/45 font-medium mt-1">
+                      Qty: {item.quantity}
+                    </p>
                   </div>
 
                   <p className="text-sm font-bold shrink-0">
-                    {formatNaira(item.price)}
+                    {formatNaira(item.price * item.quantity)}
                   </p>
                 </div>
               ))}
@@ -275,42 +375,59 @@ export default function OrderDetailPage() {
           {/* Delivery info */}
           <div className="rounded-2xl bg-white border border-[#211000]/6 p-5">
             <h2 className="font-serif text-lg font-medium mb-4">
-              {order.deliveryInfo?.type === "delivery"
-                ? "Delivery information"
-                : "Pickup information"}
+              {order.deliveryType === "delivery" ? "Delivery information" : "Pickup information"}
             </h2>
 
             <div className="space-y-3 text-sm">
-              <InfoRow icon={<User className="size-4" />} label="Contact" value={order.deliveryInfo?.name} />
-              <InfoRow icon={<Phone className="size-4" />} label="Phone" value={order.deliveryInfo?.phone} />
-              <InfoRow icon={<Mail className="size-4" />} label="Email" value={order.deliveryInfo?.email} />
+              <InfoRow icon={<User className="size-4" />} label="Contact" value={order.fullName} />
+              <InfoRow icon={<Phone className="size-4" />} label="Phone" value={order.phone} />
+              <InfoRow icon={<Mail className="size-4" />} label="Email" value={order.email} />
 
-              {order.deliveryInfo?.type === "delivery" ? (
+              {order.deliveryType === "delivery" ? (
                 <InfoRow
                   icon={<MapPin className="size-4" />}
                   label="Address"
-                  value={`${order.deliveryInfo.address}, ${order.deliveryInfo.lga}, ${order.deliveryInfo.state}`}
+                  value={`${order.address || ""}, ${order.lga || ""}, ${order.state || ""}`}
                 />
-              ) : (
-                <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-3">
-                  <p className="text-xs font-bold text-[#B66B44] mb-2 flex items-center gap-1">
+              ) : order.status === "confirmed" || order.status === "completed" ? (
+                <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-3 space-y-2">
+                  <p className="text-xs font-bold text-[#B66B44] mb-1 flex items-center gap-1">
                     <MapPin className="size-3.5" />
                     Pickup locations
                   </p>
-                  {order.items?.map((item: any, i: number) => (
-                    <p key={i} className="text-xs text-[#211000]/65 mb-1">
-                      <strong>{item.title}:</strong>{" "}
-                      {item.sellerLocation?.address || "Address will be shared"}
-                    </p>
+                  {order.items?.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3">
+                      <p className="text-xs text-[#211000]/65">
+                        <strong>{item.itemTitle}</strong> — {item.sellerName}
+                        {item.sellerAddress ? `, ${item.sellerAddress}` : ""}
+                        {item.sellerState ? `, ${item.sellerState}` : ""}
+                      </p>
+                      <button
+                        onClick={() => messageSeller(item.listingId)}
+                        className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#211000] text-[#FAF4EC] px-3 py-1.5 text-[10px] font-bold hover:bg-[#211000]/90 transition-colors"
+                      >
+                        <MessageCircle className="size-3" />
+                        Chat for directions
+                      </button>
+                    </div>
                   ))}
+                  <p className="text-[10px] text-[#211000]/45 font-medium pt-1">
+                    Phone numbers stay private — message the seller here to arrange exact meeting details.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-3">
+                  <p className="text-xs text-[#211000]/55">
+                    Seller pickup details will be shared once your payment is confirmed.
+                  </p>
                 </div>
               )}
 
-              {order.deliveryInfo?.date && (
+              {order.deliveryDate && (
                 <InfoRow
                   icon={<Clock className="size-4" />}
                   label="Preferred date"
-                  value={order.deliveryInfo.date}
+                  value={order.deliveryDate}
                 />
               )}
             </div>
@@ -322,15 +439,20 @@ export default function OrderDetailPage() {
 
             <div className="rounded-xl bg-[#FAF4EC] border border-[#211000]/6 p-4 mb-4">
               <div className="flex items-center gap-3 mb-3">
-                {order.paymentMethod === "card" && <CreditCard className="size-5 text-[#B66B44]" />}
-                {order.paymentMethod === "transfer" && <Banknote className="size-5 text-[#B66B44]" />}
-                {order.paymentMethod === "ussd" && <Smartphone className="size-5 text-[#B66B44]" />}
+                {order.paymentMethod === "paystack" && (
+                  <CreditCard className="size-5 text-[#B66B44]" />
+                )}
+                {order.paymentMethod === "transfer" && (
+                  <Banknote className="size-5 text-[#B66B44]" />
+                )}
                 <div>
-                  <p className="text-sm font-bold capitalize">{order.paymentMethod}</p>
+                  <p className="text-sm font-bold">
+                    {order.paymentMethod === "paystack" ? "Paystack" : "Bank Transfer"}
+                  </p>
                   <p className="text-[11px] text-[#211000]/45">
-                    {order.paymentDetails?.cardLast4
-                      ? `Card ending in ****${order.paymentDetails.cardLast4}`
-                      : "Secure payment"}
+                    {order.paymentMethod === "paystack"
+                      ? "Paid via Paystack"
+                      : "Direct bank transfer"}
                   </p>
                 </div>
               </div>
@@ -340,58 +462,72 @@ export default function OrderDetailPage() {
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/45">
                     Payment reference
                   </p>
-                  <p className="font-mono text-xs font-bold mt-0.5">
-                    {order.paymentReference}
-                  </p>
+                  <p className="font-mono text-xs font-bold mt-0.5">{order.reference}</p>
                 </div>
                 <button
-                  onClick={() => copyId(order.paymentReference, "Reference")}
+                  onClick={() => copyId(order.reference, "Reference")}
                   className="text-[#B66B44] hover:underline text-xs font-bold flex items-center gap-1"
                 >
                   <Copy className="size-3" />
                   Copy
                 </button>
               </div>
+
+              {order.receiptUrl && (
+                <div className="pt-3 mt-3 border-t border-[#211000]/8">
+                  <a
+                    href={order.receiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-bold text-[#B66B44] hover:underline"
+                  >
+                    View uploaded receipt →
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 text-sm">
-              <SummaryRow label="Subtotal" value={formatNaira(order.subtotal)} />
-              <SummaryRow label="Delivery" value={formatNaira(order.deliveryFee)} />
-              <SummaryRow label="Buyer protection" value={formatNaira(order.buyerProtection)} />
-              <div className="pt-2 mt-2 border-t border-[#211000]/8 flex items-center justify-between">
+              <div className="pt-2 flex items-center justify-between">
                 <span className="text-sm font-bold">Total paid</span>
-                <span className="text-lg font-bold">{formatNaira(order.total)}</span>
+                <span className="text-lg font-bold">
+                  {formatNaira(Number(order.total) || 0)}
+                </span>
               </div>
             </div>
+
+            {order.status === "rejected" && order.rejectionReason && (
+              <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3">
+                <p className="text-xs font-bold text-red-700 mb-1">Payment was rejected</p>
+                <p className="text-xs text-red-600">{order.rejectionReason}</p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right column - Actions */}
         <div className="space-y-5">
-          {/* Action card */}
-          {!isCompleted && !isDisputed && (
+          {canConfirmReceived && !isDisputed && (
             <div className="rounded-2xl bg-white border-2 border-[#B66B44]/30 overflow-hidden">
               <div className="bg-[#B66B44]/5 p-5 border-b border-[#B66B44]/20">
                 <div className="flex items-center gap-2 text-[#B66B44] mb-1">
                   <ShieldCheck className="size-4" />
                   <p className="text-[10px] font-bold uppercase tracking-wider">
-                    Escrow active
+                    Payment confirmed
                   </p>
                 </div>
-                <h3 className="font-serif text-xl font-medium">
-                  Have you received it?
-                </h3>
+                <h3 className="font-serif text-xl font-medium">Have you received it?</h3>
                 <p className="text-xs text-[#211000]/65 font-medium mt-1 leading-relaxed">
-                  Once confirmed, payment will be released to the seller. This cannot be undone.
+                  Let us know once you've picked up or received your item.
                 </p>
               </div>
 
               <div className="p-5 space-y-3">
-                {/* Critical warning */}
                 <div className="rounded-xl bg-red-50 border border-red-200 p-3 flex gap-2">
                   <AlertTriangle className="size-4 text-red-600 shrink-0 mt-0.5" />
                   <div className="text-[11px] text-red-700 leading-relaxed font-medium">
-                    <strong className="font-bold">Important:</strong> Do NOT click "Received" unless the item is physically in your hands and matches the description. Once funds are released, refunds become much harder.
+                    <strong className="font-bold">Important:</strong> Only click "Received" if
+                    the item is physically in your hands and matches the description.
                   </div>
                 </div>
 
@@ -424,7 +560,6 @@ export default function OrderDetailPage() {
             </div>
           )}
 
-          {/* Completed */}
           {isCompleted && (
             <div className="rounded-2xl bg-[#5F7161]/10 border border-[#5F7161]/30 p-5 text-center">
               <CheckCircle2 className="size-10 text-[#5F7161] mx-auto mb-3" />
@@ -432,9 +567,9 @@ export default function OrderDetailPage() {
                 Order completed
               </h3>
               <p className="text-xs text-[#211000]/65 font-medium leading-relaxed mb-4">
-                Payment has been released to the seller. Thank you for using Refurnish!
+                Thank you for using Refurnish!
               </p>
-              {!order.reviewed && (
+              {!hasReview && (
                 <button
                   onClick={() => setReviewModal(true)}
                   className="inline-flex items-center gap-2 rounded-full bg-[#B66B44] hover:bg-[#a05934] text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
@@ -443,7 +578,7 @@ export default function OrderDetailPage() {
                   Leave a review
                 </button>
               )}
-              {order.reviewed && (
+              {hasReview && (
                 <p className="text-xs text-[#5F7161] font-bold flex items-center justify-center gap-1">
                   <CheckCircle2 className="size-3.5" />
                   Review submitted
@@ -452,16 +587,25 @@ export default function OrderDetailPage() {
             </div>
           )}
 
-          {/* Disputed */}
           {isDisputed && (
             <div className="rounded-2xl bg-red-50 border border-red-200 p-5">
               <AlertTriangle className="size-8 text-red-600 mb-3" />
               <h3 className="font-serif text-lg font-medium text-red-700 mb-2">
-                Dispute filed
+                {resolvedDispute ? "Dispute resolved" : "Dispute filed"}
               </h3>
-              <p className="text-xs text-red-600 font-medium leading-relaxed mb-4">
-                Our team is reviewing your dispute. Expect a response within 24 hours.
-              </p>
+              {openDispute && (
+                <p className="text-xs text-red-600 font-medium leading-relaxed mb-4">
+                  Our team is reviewing your dispute. Expect a response within 24 hours.
+                </p>
+              )}
+              {resolvedDispute && (
+                <div className="rounded-xl bg-white border border-red-200 p-3 mb-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-red-500 mb-1">
+                    Resolution
+                  </p>
+                  <p className="text-xs text-red-700">{resolvedDispute.resolution}</p>
+                </div>
+              )}
               <Link
                 href="/support"
                 className="inline-flex items-center gap-2 rounded-full bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
@@ -472,14 +616,11 @@ export default function OrderDetailPage() {
             </div>
           )}
 
-          {/* Support card */}
           <div className="rounded-2xl bg-[#211000] text-[#FAF4EC] p-5">
             <MessageCircle className="size-5 text-[#E8CEB0] mb-3" />
-            <h3 className="font-serif text-lg font-medium mb-2">
-              Need help?
-            </h3>
+            <h3 className="font-serif text-lg font-medium mb-2">Need help?</h3>
             <p className="text-xs text-[#FAF4EC]/55 leading-relaxed mb-4">
-              Our support team is available 24/7 for order, escrow, and delivery issues.
+              Our support team is available 24/7 for order and delivery issues.
             </p>
             <Link
               href="/support"
@@ -489,32 +630,9 @@ export default function OrderDetailPage() {
               <ArrowRight className="size-3" />
             </Link>
           </div>
-
-          {/* Escrow info */}
-          <div className="rounded-2xl bg-white border border-[#211000]/6 p-5">
-            <h3 className="font-serif text-sm font-medium mb-3 flex items-center gap-2">
-              <ShieldCheck className="size-4 text-[#5F7161]" />
-              Escrow policy
-            </h3>
-            <ul className="space-y-2 text-xs text-[#211000]/65 leading-relaxed">
-              <li className="flex gap-2">
-                <CheckCircle2 className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                Funds held until delivery confirmed
-              </li>
-              <li className="flex gap-2">
-                <CheckCircle2 className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                3-day refund window after delivery
-              </li>
-              <li className="flex gap-2">
-                <CheckCircle2 className="size-3.5 text-[#5F7161] shrink-0 mt-0.5" />
-                Auto-release after 7 days if no dispute
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
 
-      {/* Modals */}
       <WarningModal
         open={warningModal}
         onClose={() => setWarningModal(false)}
@@ -523,7 +641,6 @@ export default function OrderDetailPage() {
 
       <ReviewModal
         open={reviewModal}
-        order={order}
         onSkip={handleSkipReview}
         onSubmit={handleSubmitReview}
       />
@@ -540,33 +657,62 @@ export default function OrderDetailPage() {
 }
 
 /* ========== Tracking ========== */
-function OrderTracking({ order }: { order: any }) {
+function OrderTracking({ order }: { order: Order }) {
+  const paymentConfirmed = ["confirmed", "completed", "disputed"].includes(order.status);
+
+  // Pickup readiness must come from the seller actually confirming — not just
+  // from payment being confirmed, otherwise the tracker overstates progress
+  // before the seller has said anything.
+  const sellerAvailability = order.sellerConfirmations?.[0]?.availability;
+  const sellerConfirmedAvailable = sellerAvailability === "available";
+  const sellerSaidUnavailable = sellerAvailability === "unavailable";
+
   const steps = [
     {
       id: "ordered",
       label: "Order placed",
-      desc: "Payment received and verified",
+      desc: "Your order has been submitted",
       done: true,
     },
     {
-      id: "escrow",
-      label: "Held in escrow",
-      desc: "Funds secured until delivery",
-      done: order.escrowStatus === "funds_held" || order.escrowStatus === "released",
+      id: "confirmed",
+      label: "Payment confirmed",
+      desc: "We've confirmed your payment",
+      done: paymentConfirmed,
     },
     {
-      id: "shipped",
-      label: order.deliveryInfo?.type === "pickup" ? "Ready for pickup" : "Shipped",
-      desc: order.deliveryInfo?.type === "pickup" ? "Seller has prepared your order" : "On the way to you",
-      done: ["shipped", "delivered"].includes(order.status) || order.escrowStatus === "released",
+      id: "pickup",
+      label: order.deliveryType === "pickup" ? "Ready for pickup" : "Out for delivery",
+      desc: sellerSaidUnavailable
+        ? "Item unavailable — refund initiated"
+        : order.deliveryType === "pickup"
+        ? sellerConfirmedAvailable
+          ? "Seller confirmed availability"
+          : "Waiting on seller to confirm"
+        : "On the way to you",
+      done: order.deliveryType === "pickup" ? sellerConfirmedAvailable : paymentConfirmed,
     },
     {
-      id: "delivered",
-      label: order.deliveryInfo?.type === "pickup" ? "Picked up" : "Delivered",
-      desc: "Buyer confirmed receipt",
-      done: order.escrowStatus === "released" || order.status === "delivered",
+      id: "received",
+      label: order.deliveryType === "pickup" ? "Picked up" : "Delivered",
+      desc: "You confirmed receipt",
+      done: order.status === "completed",
     },
   ];
+
+  const rejected = order.status === "rejected" || order.status === "payment_failed";
+
+  if (rejected) {
+    return (
+      <div className="rounded-2xl bg-white border border-[#211000]/6 p-5">
+        <h2 className="font-serif text-lg font-medium mb-3">Order status</h2>
+        <div className="flex items-center gap-3 text-red-600">
+          <AlertCircle className="size-5" />
+          <p className="text-sm font-bold">Payment could not be confirmed</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl bg-white border border-[#211000]/6 p-5">
@@ -606,9 +752,7 @@ function OrderTracking({ order }: { order: any }) {
               >
                 {step.label}
               </p>
-              <p className="text-xs text-[#211000]/45 font-medium mt-0.5">
-                {step.desc}
-              </p>
+              <p className="text-xs text-[#211000]/45 font-medium mt-0.5">{step.desc}</p>
             </div>
           </div>
         ))}
@@ -642,7 +786,10 @@ function WarningModal({
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[80] flex items-center justify-center px-4"
         >
-          <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={onClose} />
+          <div
+            className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
 
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 20 }}
@@ -660,7 +807,9 @@ function WarningModal({
               </h2>
 
               <p className="text-sm text-[#211000]/70 font-medium leading-relaxed mb-5">
-                Only confirm if you have <strong className="text-red-600">physically received</strong> the item and inspected it.
+                Only confirm if you have{" "}
+                <strong className="text-red-600">physically received</strong> the item and
+                inspected it.
               </p>
 
               <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-left mb-5">
@@ -676,14 +825,6 @@ function WarningModal({
                     <span className="shrink-0">•</span>
                     <span>It matches the description and photos</span>
                   </li>
-                  <li className="flex gap-2">
-                    <span className="shrink-0">•</span>
-                    <span>Payment will be released to the seller immediately</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="shrink-0">•</span>
-                    <span>Refunds become much harder after this</span>
-                  </li>
                 </ul>
               </div>
 
@@ -695,7 +836,7 @@ function WarningModal({
                   className="mt-0.5 size-4 rounded border-[#211000]/20 text-[#B66B44] focus:ring-[#B66B44]"
                 />
                 <span className="text-xs text-[#211000]/70 font-medium">
-                  I confirm I have received the item and inspected it. I understand this releases payment to the seller.
+                  I confirm I have received the item and inspected it.
                 </span>
               </label>
 
@@ -725,14 +866,12 @@ function WarningModal({
 /* ========== Review Modal ========== */
 function ReviewModal({
   open,
-  order,
   onSkip,
   onSubmit,
 }: {
   open: boolean;
-  order: any;
   onSkip: () => void;
-  onSubmit: (review: any) => void;
+  onSubmit: (review: ReviewPayload) => void;
 }) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -749,11 +888,7 @@ function ReviewModal({
 
   const handleSubmit = () => {
     if (rating === 0) return;
-    onSubmit({
-      rating,
-      comment: comment.trim(),
-      recommend,
-    });
+    onSubmit({ rating, comment: comment.trim(), recommend });
   };
 
   return (
@@ -786,7 +921,6 @@ function ReviewModal({
                 Your review helps other buyers make better decisions.
               </p>
 
-              {/* Star rating */}
               <div className="mb-6">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 mb-3 text-center">
                   Rate this purchase
@@ -821,7 +955,6 @@ function ReviewModal({
                 )}
               </div>
 
-              {/* Comment */}
               <div className="mb-6">
                 <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
                   Tell us more (optional)
@@ -835,7 +968,6 @@ function ReviewModal({
                 />
               </div>
 
-              {/* Recommend */}
               <div className="mb-6">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 mb-3">
                   Would you recommend this seller?
@@ -866,7 +998,6 @@ function ReviewModal({
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={onSkip}
@@ -898,7 +1029,7 @@ function ComplaintModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (complaint: any) => void;
+  onSubmit: (complaint: ComplaintPayload) => void;
 }) {
   const [reason, setReason] = useState("");
   const [description, setDescription] = useState("");
@@ -933,7 +1064,10 @@ function ComplaintModal({
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[80] flex items-center justify-center px-4"
         >
-          <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={onClose} />
+          <div
+            className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
 
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 20 }}
@@ -958,10 +1092,9 @@ function ComplaintModal({
               </h2>
 
               <p className="text-sm text-[#211000]/55 font-medium mb-6">
-                Tell us what's wrong. Your payment remains protected in escrow while we review.
+                Tell us what's wrong. Our team will review and get back to you.
               </p>
 
-              {/* Reason */}
               <div className="mb-5">
                 <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-3">
                   What's the issue?
@@ -983,7 +1116,6 @@ function ComplaintModal({
                 </div>
               </div>
 
-              {/* Description */}
               <div className="mb-6">
                 <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block mb-2">
                   Describe the problem
@@ -1000,14 +1132,6 @@ function ComplaintModal({
                 </p>
               </div>
 
-              {/* Info */}
-              <div className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-3 mb-5">
-                <p className="text-xs text-[#211000]/65 leading-relaxed">
-                  💡 You'll be able to upload photos and continue the conversation with our team via live chat.
-                </p>
-              </div>
-
-              {/* Actions */}
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={onClose}
@@ -1032,23 +1156,24 @@ function ComplaintModal({
 }
 
 /* ========== Helpers ========== */
-function InfoRow({ icon, label, value }: { icon: any; label: string; value: string }) {
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-start gap-3">
       <span className="text-[#211000]/40 mt-0.5">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/45">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/45">
+          {label}
+        </p>
         <p className="text-sm font-medium mt-0.5">{value}</p>
       </div>
-    </div>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[#211000]/55 font-medium">{label}</span>
-      <span className="font-bold">{value}</span>
     </div>
   );
 }
