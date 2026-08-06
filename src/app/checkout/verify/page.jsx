@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { formatNaira } from "@/lib/data";
 
-export default function CheckoutVerifyPage() {
+function CheckoutVerify() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -187,5 +187,23 @@ export default function CheckoutVerifyPage() {
         )}
       </div>
     </main>
+  );
+  
+export default function CheckoutVerifyPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#FAF4EC] text-[#211000] font-sans antialiased pt-28 sm:pt-32 lg:pt-40 pb-24 px-4 sm:px-8 lg:px-16 flex items-center justify-center">
+          <div className="rounded-3xl bg-white border border-[#211000]/8 shadow-sm p-10 text-center">
+            <Loader2 className="size-10 text-[#B66B44] animate-spin mx-auto mb-5" />
+            <h1 className="font-serif text-2xl font-medium tracking-tight">
+              Loading...
+            </h1>
+          </div>
+        </main>
+      }
+    >
+      <CheckoutVerify />
+    </Suspense>
   );
 }
