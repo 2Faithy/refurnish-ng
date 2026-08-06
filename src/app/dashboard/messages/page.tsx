@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -88,7 +88,7 @@ const SELLER_QUICK_REPLIES = [
   "I can share more details",
 ];
 
-export default function MessagesPage() {
+function MessagesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const conversationIdFromUrl = searchParams.get("conversationId");
@@ -898,5 +898,19 @@ function ReportModal({
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="px-4 sm:px-6 lg:px-8 xl:px-10 py-16 max-w-3xl mx-auto text-center">
+          <Loader2 className="size-6 animate-spin text-[#B66B44] mx-auto" />
+        </div>
+      }
+    >
+      <MessagesPageContent />
+    </Suspense>
   );
 }
