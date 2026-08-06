@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { Suspense, useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -204,21 +204,7 @@ const DEFECTS = [
   { id: "odors", label: "Odors / Smoke damage" },
 ];
 
-// ThumbsUp component (not in lucide-react by default? but we can use a different one or import from another set. Since we are using lucide-react, let's use ThumbsUp from 'lucide-react' if available, else use a different icon. Actually, lucide-react does have ThumbsUp. But in the code above we used ThumbsUp in CONDITIONS. Let's assume it's available. If not, we can replace with ThumbsUp from 'lucide-react'.)
-
-// We'll add a ThumbsUp import at the top? Actually, in the code above we used ThumbsUp in CONDITIONS array but didn't import it. Let's fix by importing it.
-
-// However, note that the original code for CONDITIONS used Star, Check, etc. and we added ThumbsUp. So we must import ThumbsUp.
-
-// Since I'm rewriting the entire file, I'll include the import for ThumbsUp.
-
-// But wait, in the original provided code, we used:
-//   import { ... Star, ... } from "lucide-react";
-// So we need to add ThumbsUp to the import list.
-
-// Let's adjust the import at the top.
-
-export default function CreateListingPage() {
+function CreateListingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -1693,5 +1679,19 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
       <span className="text-[#211000]/45 font-medium">{label}</span>
       <span className="font-bold text-right">{value}</span>
     </div>
+  );
+}
+
+export default function CreateListingPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#FAF4EC] flex items-center justify-center">
+          <Loader2 className="size-8 animate-spin text-[#B66B44]" />
+        </main>
+      }
+    >
+      <CreateListingPageContent />
+    </Suspense>
   );
 }
