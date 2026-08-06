@@ -115,10 +115,18 @@ const fadeUp = {
   show: { opacity: 1, y: 0 },
 };
 
+interface SectionHeaderProps {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  href?: string;
+  cta?: string;
+}
+
 export default function HomePage() {
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0);
-  const [liked, setLiked] = useState([]);
+  const [liked, setLiked] = useState<Array<string | number>>([]);
 
   const topPicks = useMemo(() => products.slice(0, 4), []);
 
@@ -141,7 +149,7 @@ export default function HomePage() {
   const currentHero = heroSlides[currentHeroSlide];
   const currentTestimonial = testimonials[currentTestimonialIndex];
 
-  const toggleLike = (id) => {
+  const toggleLike = (id: string | number) => {
     setLiked((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -324,7 +332,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ================= STYLE QUIZ CTA — LIKE YOUR IMAGE ================= */}
+      {/* ================= STYLE QUIZ CTA ================= */}
       <section className="px-4 sm:px-8 lg:px-16 pb-20 sm:pb-28">
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -708,7 +716,7 @@ export default function HomePage() {
   );
 }
 
-function SectionHeader({ eyebrow, title, description, href, cta }) {
+function SectionHeader({ eyebrow, title, description, href, cta }: SectionHeaderProps) {
   return (
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
       <div>
