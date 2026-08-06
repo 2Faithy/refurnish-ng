@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-function AuthCallback() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -12,21 +12,25 @@ function AuthCallback() {
     const userParam = searchParams.get("user");
     const next = searchParams.get("next");
 
-    if (token && userParam) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userParam));
+    if (!token || !userParam) {
+      router.replace("/login");
+      return;
+    }
 
-        localStorage.setItem(
-          "refurnish_user",
-          JSON.stringify({ ...user, token })
-        );
+    try {
+      const user = JSON.parse(decodeURIComponent(userParam));
 
-        router.push(next || "/dashboard");
-      } catch {
-        router.push("/login");
-      }
-    } else {
-      router.push("/login");
+      localStorage.setItem(
+        "refurnish_user",
+        JSON.stringify({
+          ...user,
+          token,
+        })
+      );
+
+      router.replace(next || "/dashboard");
+    } catch {
+      router.replace("/login");
     }
   }, [searchParams, router]);
 
@@ -45,12 +49,12 @@ export default function AuthCallbackPage() {
       fallback={
         <main className="min-h-screen bg-[#FAF4EC] flex items-center justify-center">
           <p className="text-sm font-bold text-[#211000]/60">
-            Loading...
+            Loading…
           </p>
         </main>
       }
     >
-      <AuthCallback />
+      <AuthCallbackContent />
     </Suspense>
   );
 }

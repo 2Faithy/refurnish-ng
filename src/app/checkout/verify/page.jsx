@@ -12,46 +12,65 @@ import {
 } from "lucide-react";
 import { formatNaira } from "@/lib/data";
 
-function CheckoutVerify() {
+function CheckoutVerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [status, setStatus] = useState("loading"); // loading | success | error
+  const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
-    // Paystack appends the reference as either `reference` or `trxref`
-    const reference = searchParams.get("reference") || searchParams.get("trxref");
+    const reference =
+      searchParams.get("reference") || searchParams.get("trxref");
 
     if (!reference) {
       setStatus("error");
-      setMessage("No payment reference was found. Please contact support if you were charged.");
+      setMessage(
+        "No payment reference was found. Please contact support if you were charged."
+      );
       return;
     }
 
-    const user = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+    let user = null;
+
+    try {
+      user = JSON.parse(
+        localStorage.getItem("refurnish_user") || "null"
+      );
+    } catch {
+      user = null;
+    }
 
     if (!user?.token) {
-      // Shouldn't normally happen since checkout requires login, but guard anyway
-      router.push(`/login?next=${encodeURIComponent(`/checkout/verify?reference=${reference}`)}`);
+      router.replace(
+        `/login?next=${encodeURIComponent(
+          `/checkout/verify?reference=${reference}`
+        )}`
+      );
       return;
     }
 
     const verify = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/orders/verify/${reference}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/orders/verify/${encodeURIComponent(
+            reference
+          )}`,
           {
             method: "GET",
-            headers: { Authorization: `Bearer ${user.token}` },
+            headers: {
+              Authorization: `Bearer ${user.token}`,
+            },
           }
         );
 
         const data = await res.json();
 
         if (!res.ok) {
-          throw new Error(data?.message || "We could not verify your payment.");
+          throw new Error(
+            data?.message || "We could not verify your payment."
+          );
         }
 
         setOrder(data.order);
@@ -59,7 +78,11 @@ function CheckoutVerify() {
       } catch (err) {
         console.error(err);
         setStatus("error");
-        setMessage(err.message || "We could not verify your payment.");
+        setMessage(
+          err instanceof Error
+            ? err.message
+            : "We could not verify your payment."
+        );
       }
     };
 
@@ -76,9 +99,11 @@ function CheckoutVerify() {
             className="rounded-3xl bg-white border border-[#211000]/8 shadow-sm p-10"
           >
             <Loader2 className="size-10 text-[#B66B44] animate-spin mx-auto mb-5" />
+
             <h1 className="font-serif text-2xl font-medium tracking-tight mb-2">
               Verifying your payment…
             </h1>
+
             <p className="text-sm text-[#211000]/55 font-medium">
               This will only take a moment. Please don't close this page.
             </p>
@@ -94,7 +119,11 @@ function CheckoutVerify() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 220, delay: 0.1 }}
+              transition={{
+                type: "spring",
+                stiffness: 220,
+                delay: 0.1,
+              }}
               className="w-20 h-20 rounded-full bg-[#5F7161]/10 flex items-center justify-center mx-auto mb-5"
             >
               <CheckCircle2 className="size-10 text-[#5F7161]" />
@@ -109,18 +138,28 @@ function CheckoutVerify() {
             </h1>
 
             <p className="text-sm text-[#211000]/60 font-medium leading-relaxed max-w-sm mx-auto">
-              We've sent the seller's details and next steps to your email. Check your inbox for
-              everything you need to arrange pickup or delivery.
+              We've sent the seller's details and next steps to your email.
+              Check your inbox for everything you need to arrange pickup or
+              delivery.
             </p>
 
             <div className="mt-6 rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-4 text-left space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-[#211000]/45 font-medium">Order reference</span>
-                <span className="font-mono font-bold text-xs">{order.reference}</span>
+                <span className="text-[#211000]/45 font-medium">
+                  Order reference
+                </span>
+                <span className="font-mono font-bold text-xs">
+                  {order.reference}
+                </span>
               </div>
+
               <div className="flex items-center justify-between text-sm">
-                <span className="text-[#211000]/45 font-medium">Amount</span>
-                <span className="font-bold">{formatNaira(Number(order.total))}</span>
+                <span className="text-[#211000]/45 font-medium">
+                  Amount
+                </span>
+                <span className="font-bold">
+                  {formatNaira(Number(order.total))}
+                </span>
               </div>
             </div>
 
@@ -132,6 +171,7 @@ function CheckoutVerify() {
                 View orders
                 <ArrowRight className="size-4" />
               </Link>
+
               <Link
                 href="/shop"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#E8CEB0]/25 border border-[#211000]/12 text-[#211000] px-5 py-3.5 text-xs font-bold uppercase tracking-wider transition-colors"
@@ -151,7 +191,11 @@ function CheckoutVerify() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 220, delay: 0.1 }}
+              transition={{
+                type: "spring",
+                stiffness: 220,
+                delay: 0.1,
+              }}
               className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5"
             >
               <AlertCircle className="size-10 text-red-500" />
@@ -176,6 +220,7 @@ function CheckoutVerify() {
               >
                 View orders
               </Link>
+
               <Link
                 href="/support"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#E8CEB0]/25 border border-[#211000]/12 text-[#211000] px-5 py-3.5 text-xs font-bold uppercase tracking-wider transition-colors"
@@ -197,14 +242,15 @@ export default function CheckoutVerifyPage() {
         <main className="min-h-screen bg-[#FAF4EC] text-[#211000] font-sans antialiased pt-28 sm:pt-32 lg:pt-40 pb-24 px-4 sm:px-8 lg:px-16 flex items-center justify-center">
           <div className="rounded-3xl bg-white border border-[#211000]/8 shadow-sm p-10 text-center">
             <Loader2 className="size-10 text-[#B66B44] animate-spin mx-auto mb-5" />
+
             <h1 className="font-serif text-2xl font-medium tracking-tight">
-              Loading...
+              Loading…
             </h1>
           </div>
         </main>
       }
     >
-      <CheckoutVerify />
+      <CheckoutVerifyContent />
     </Suspense>
   );
 }

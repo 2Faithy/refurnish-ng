@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -11,7 +11,7 @@ import {
   Package,
 } from "lucide-react";
 
-export default function SellerConfirmOrderPage() {
+function SellerConfirmOrderPageContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -156,5 +156,19 @@ export default function SellerConfirmOrderPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function SellerConfirmOrderPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#FAF4EC] flex items-center justify-center">
+          <Loader2 className="size-8 animate-spin text-[#B66B44]" />
+        </main>
+      }
+    >
+      <SellerConfirmOrderPageContent />
+    </Suspense>
   );
 }
