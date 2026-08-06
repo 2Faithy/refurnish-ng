@@ -188,7 +188,8 @@ function CheckoutVerify() {
       </div>
     </main>
   );
-  
+}
+
 export default function CheckoutVerifyPage() {
   return (
     <Suspense
