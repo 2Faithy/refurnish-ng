@@ -247,6 +247,18 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ================= WHAT IS REFURNISH ================= */}
+      <section className="px-4 sm:px-8 lg:px-16 py-10 sm:py-14 bg-white/60 border-b border-[#211000]/6">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-sm sm:text-base text-[#211000]/70 font-medium leading-relaxed">
+            <strong className="text-[#211000] font-bold">Refurnish</strong> is Nigeria&apos;s online
+            marketplace for buying and selling pre-loved furniture. Sellers list quality
+            secondhand pieces, and buyers shop with confidence through secure,
+            escrow-protected payments — funds are only released once delivery is confirmed.
+          </p>
+        </div>
+      </section>
+
       {/* ================= TOP PICKS ================= */}
       <section className="py-20 sm:py-28 px-4 sm:px-8 lg:px-16">
         <div className="max-w-7xl mx-auto">
