@@ -249,20 +249,20 @@ export default function SupportPage() {
             })
           );
           const displayMessages =
-            data.ticket.status === "waiting_for_agent" &&
-            !formattedMessages.some((message) => message.role === "agent")
-              ? [
-                  ...formattedMessages,
-                  {
-                    id: `agent-waiting-${refreshedTicket?.id || ticket.id}`,
-                    role: "agent" as const,
-                    text: "We've received your request and will connect an agent to this chat as soon as possible, usually within 0–3 minutes.",
-                    createdAt: new Date().toISOString(),
-                  },
-                ]
-              : formattedMessages;
-          setMessages(displayMessages);
-          localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
+  data.ticket.status === "waiting_for_agent" &&
+  !formattedMessages.some((message) => message.role === "agent")
+    ? [
+        ...formattedMessages,
+        {
+          id: `agent-waiting-${data.ticket?.id}`,
+          role: "agent" as const,
+          text: "We've received your request and will connect an agent to this chat as soon as possible, usually within 0–3 minutes.",
+          createdAt: new Date().toISOString(),
+        },
+      ]
+    : formattedMessages;
+setMessages(displayMessages);
+localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
         } else if (data.messages?.length === 0 && !initialFetched) {
           setMessages([
             {
