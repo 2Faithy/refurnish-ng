@@ -2503,9 +2503,9 @@ export default function AdminPage() {
                       ? "Bank Transfer"
                       : "Paystack"}
                   </p>
-                  <h2 className="font-serif text-2xl font-medium mt-1 font-mono">
-                    {selectedOrder.reference}
-                  </h2>
+                  <h2 className="text-2xl font-medium mt-1 font-mono">
+  {selectedOrder.reference}
+</h2>
                   <StatusBadge status={selectedOrder.status} />
                 </div>
 
@@ -2999,56 +2999,56 @@ export default function AdminPage() {
               </div>
 
               {/* Composer */}
-              <div className="border-t border-[#211000]/8 bg-white p-4 shrink-0">
-                {selectedTicket.status === "resolved" ? (
-                  <p className="text-center text-xs text-[#211000]/45 font-medium py-2">
-                    This ticket has been resolved.
-                  </p>
-                ) : (
-                  <div className="flex items-end gap-2">
-                    <textarea
-                      rows={1}
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          sendTicketReply();
-                        }
-                      }}
-                      placeholder="Type your reply..."
-                      className="min-h-11 max-h-32 flex-1 resize-none rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all"
-                    />
-                    <button
-                      onClick={sendTicketReply}
-                      disabled={!replyText.trim() || sendingReply}
-                      className="size-11 rounded-full bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors grid place-items-center shrink-0"
-                    >
-                      {sendingReply ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Send className="size-4" />
-                      )}
-                    </button>
-                  </div>
-                )}
+<div className="border-t border-[#211000]/8 bg-white p-4 shrink-0">
+  {selectedTicket.status === "resolved" ? (
+    <p className="text-center text-xs text-[#211000]/45 font-medium py-2">
+      This ticket has been resolved.
+    </p>
+  ) : (
+    <div className="flex items-end gap-2">
+      <textarea
+        rows={1}
+        value={replyText}
+        onChange={(e) => setReplyText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendTicketReply();
+          }
+        }}
+        placeholder="Type your reply..."
+        className="min-h-11 max-h-32 flex-1 resize-none rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all"
+      />
+      <button
+        onClick={() => sendTicketReply()}
+        disabled={!replyText.trim() || sendingReply}
+        className="size-11 rounded-full bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors grid place-items-center shrink-0"
+      >
+        {sendingReply ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Send className="size-4" />
+        )}
+      </button>
+    </div>
+  )}
 
-                <div className="flex items-center justify-between mt-3">
-                  <p className="text-[10px] text-[#211000]/35 font-medium">
-                    Replying sends an email notification to the user.
-                  </p>
-                  {selectedTicket.status !== "resolved" && (
-                    <button
-                      onClick={resolveTicketFromModal}
-                      disabled={resolvingTicket}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-[#5F7161]/30 text-[#5F7161] hover:bg-[#5F7161]/10 px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="size-3.5" />
-                      {resolvingTicket ? "Resolving…" : "Resolve ticket"}
-                    </button>
-                  )}
-                </div>
-              </div>
+  <div className="flex items-center justify-between mt-3">
+    <p className="text-[10px] text-[#211000]/35 font-medium">
+      Replying sends an email notification to the user.
+    </p>
+    {selectedTicket.status !== "resolved" && (
+      <button
+        onClick={() => resolveTicketFromModal()}
+        disabled={resolvingTicket}
+        className="inline-flex items-center gap-1.5 rounded-full border border-[#5F7161]/30 text-[#5F7161] hover:bg-[#5F7161]/10 px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50"
+      >
+        <CheckCircle2 className="size-3.5" />
+        {resolvingTicket ? "Resolving…" : "Resolve ticket"}
+      </button>
+    )}
+  </div>
+</div>
             </motion.div>
           </motion.div>
         )}
