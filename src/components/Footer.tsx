@@ -57,7 +57,7 @@ export default function Footer() {
           <div>
             <h3 className="text-base font-semibold mb-4 uppercase" style={{ color: PRIMARY_COLOR }}>Help</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/help#support" className="hover:text-black transition-colors">Support</Link></li>
+              <li><Link href="/support" className="hover:text-black transition-colors">Support</Link></li>
               <li><Link href="/returns" className="hover:text-black transition-colors">Returns</Link></li>
               <li><Link href="/help#how-it-works" className="hover:text-black transition-colors">How it works</Link></li>
             </ul>

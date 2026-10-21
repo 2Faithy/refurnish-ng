@@ -11,6 +11,7 @@ import {
   Banknote,
   CheckCircle2,
   Clock,
+  Copy,
   FileText,
   Flag,
   Headphones,
@@ -27,6 +28,7 @@ import {
   Send,
   ShieldCheck,
   Trash2,
+  Truck,
   UserCheck,
   Users,
   Wallet,
@@ -50,17 +52,21 @@ type AdminTab =
   | "payouts"
   | "listings"
   | "orders"
+  | "delivery"
   | "verifications"
   | "disputes"
   | "users"
-  | "support";
+  | "support"
+  | "reports";
 
 const tabs: { id: AdminTab; label: string; icon: any }[] = [
   { id: "listings", label: "Listings", icon: Package },
   { id: "orders", label: "Orders", icon: ListChecks },
+  { id: "delivery", label: "Delivery", icon: Truck },
   { id: "verifications", label: "Verifications", icon: UserCheck },
   { id: "payouts", label: "Payouts", icon: Wallet },
   { id: "support", label: "Support", icon: Headphones },
+  { id: "reports", label: "Reports", icon: Flag },
 ];
 
 export default function AdminPage() {
@@ -84,7 +90,9 @@ export default function AdminPage() {
 
   const [listingsLoading, setListingsLoading] = useState(true);
   const [listingsError, setListingsError] = useState("");
-  const [listingTab, setListingTab] = useState<"pending" | "approved" | "rejected">("pending");
+  const [listingTab, setListingTab] = useState<
+    "pending" | "approved" | "rejected"
+  >("pending");
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectBox, setShowRejectBox] = useState(false);
@@ -92,7 +100,9 @@ export default function AdminPage() {
   const [ordersData, setOrdersData] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState("");
-  const [orderTab, setOrderTab] = useState<"pending" | "confirmed" | "rejected">("pending");
+  const [orderTab, setOrderTab] = useState<
+    "pending" | "confirmed" | "rejected"
+  >("pending");
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderRejectReason, setOrderRejectReason] = useState("");
   const [showOrderRejectBox, setShowOrderRejectBox] = useState(false);
@@ -100,9 +110,12 @@ export default function AdminPage() {
   const [verifications, setVerifications] = useState<any[]>([]);
   const [verificationsLoading, setVerificationsLoading] = useState(true);
   const [verificationsError, setVerificationsError] = useState("");
-  const [selectedVerification, setSelectedVerification] = useState<any | null>(null);
+  const [selectedVerification, setSelectedVerification] = useState<any | null>(
+    null
+  );
   const [verificationRejectReason, setVerificationRejectReason] = useState("");
-  const [showVerificationRejectBox, setShowVerificationRejectBox] = useState(false);
+  const [showVerificationRejectBox, setShowVerificationRejectBox] =
+    useState(false);
 
   const [payoutsData, setPayoutsData] = useState<any[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
@@ -117,18 +130,32 @@ export default function AdminPage() {
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [supportLoading, setSupportLoading] = useState(true);
   const [supportError, setSupportError] = useState("");
-  const [supportTab, setSupportTab] = useState<"waiting_for_agent" | "open" | "resolved">(
-    "waiting_for_agent"
-  );
+  const [supportTab, setSupportTab] = useState<
+    "waiting_for_agent" | "open" | "resolved"
+  >("waiting_for_agent");
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [ticketMessages, setTicketMessages] = useState<any[]>([]);
   const [ticketMessagesLoading, setTicketMessagesLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const [resolvingTicket, setResolvingTicket] = useState(false);
+  const [showAgentIntroModal, setShowAgentIntroModal] = useState(false);
+  const [agentIntroName, setAgentIntroName] = useState("");
+
+  // ── Reports state ──
+  const [reports, setReports] = useState<any[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [reportsError, setReportsError] = useState("");
+  const [reportTab, setReportTab] = useState<
+    "open" | "reviewing" | "resolved" | "dismissed"
+  >("open");
+  const [reportNotes, setReportNotes] = useState<Record<string, string>>({});
+  const [reportActionBusy, setReportActionBusy] = useState<string | null>(null);
 
   const getAdminToken = () => {
-    const session = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null");
+    const session = JSON.parse(
+      localStorage.getItem(ADMIN_SESSION_KEY) || "null"
+    );
     return session?.token || "";
   };
 
@@ -262,6 +289,116 @@ export default function AdminPage() {
     }
   };
 
+  const fetchReports = async () => {
+    setReportsLoading(true);
+    setReportsError("");
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/reports`,
+        {
+          headers: { Authorization: `Bearer ${getAdminToken()}` },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          router.push("/admin/login");
+          return;
+        }
+
+        throw new Error(data?.message || "Failed to load reports.");
+      }
+
+      setReports(data.reports || []);
+    } catch (err: any) {
+      console.error(err);
+      setReportsError(err.message || "Could not load reports.");
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  const updateReport = async (
+    id: string,
+    status: "open" | "reviewing" | "resolved" | "dismissed"
+  ) => {
+    setReportActionBusy(id);
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/reports/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAdminToken()}`,
+          },
+          body: JSON.stringify({
+            status,
+            adminNotes:
+              reportNotes[id] ??
+              reports.find((r) => r.id === id)?.adminNotes ??
+              "",
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to update report.");
+      }
+
+      setToast(`Report marked as ${status.replaceAll("_", " ")}`);
+      await fetchReports();
+    } catch (err: any) {
+      console.error(err);
+      setToast(err.message || "Failed to update report.");
+    } finally {
+      setReportActionBusy(null);
+    }
+  };
+
+  const saveReportNotes = async (id: string) => {
+    setReportActionBusy(id);
+
+    try {
+      const report = reports.find((r) => r.id === id);
+      if (!report) return;
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/reports/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAdminToken()}`,
+          },
+          body: JSON.stringify({
+            status: report.status,
+            adminNotes: reportNotes[id] ?? report.adminNotes ?? "",
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to save notes.");
+      }
+
+      setToast("Admin notes saved");
+      await fetchReports();
+    } catch (err: any) {
+      setToast(err.message || "Failed to save notes.");
+    } finally {
+      setReportActionBusy(null);
+    }
+  };
+
   useEffect(() => {
     try {
       const session = localStorage.getItem(ADMIN_SESSION_KEY);
@@ -277,6 +414,7 @@ export default function AdminPage() {
       fetchVerifications();
       fetchPayouts();
       fetchSupportTickets();
+      fetchReports();
     } catch {
       router.push("/admin/login");
     } finally {
@@ -284,11 +422,20 @@ export default function AdminPage() {
     }
   }, [router]);
 
-  // Light polling while on the Support tab so new tickets/replies show up
+  // Light polling while on the Support tab
   useEffect(() => {
     if (activeTab !== "support") return;
     const interval = setInterval(() => {
       fetchSupportTickets();
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
+  // Light polling while on the Reports tab
+  useEffect(() => {
+    if (activeTab !== "reports") return;
+    const interval = setInterval(() => {
+      fetchReports();
     }, 20000);
     return () => clearInterval(interval);
   }, [activeTab]);
@@ -369,7 +516,11 @@ export default function AdminPage() {
 
   const confirmRejectFromModal = async () => {
     if (!selectedListing || !rejectReason.trim()) return;
-    await updateListingStatus(selectedListing.id, "rejected", rejectReason.trim());
+    await updateListingStatus(
+      selectedListing.id,
+      "rejected",
+      rejectReason.trim()
+    );
     closeListingModal();
   };
 
@@ -386,14 +537,56 @@ export default function AdminPage() {
 
   const orderTabCounts = useMemo(
     () => ({
-      pending: ordersData.filter((o) => ["pending_verification", "pending_payment"].includes(o.status)).length,
-      confirmed: ordersData.filter((o) => ["confirmed", "completed", "disputed"].includes(o.status)).length,
-      rejected: ordersData.filter((o) => ["rejected", "payment_failed"].includes(o.status)).length,
+      pending: ordersData.filter((o) =>
+        ["pending_verification", "pending_payment"].includes(o.status)
+      ).length,
+      confirmed: ordersData.filter((o) =>
+        ["confirmed", "completed", "disputed"].includes(o.status)
+      ).length,
+      rejected: ordersData.filter((o) =>
+        ["rejected", "payment_failed"].includes(o.status)
+      ).length,
     }),
     [ordersData]
   );
 
-  const updateOrderStatus = async (id: string, status: string, rejectionReason?: string) => {
+  const deliveryOrders = useMemo(
+    () =>
+      ordersData
+        .filter((o) => o.deliveryType === "delivery")
+        .filter((o) => searchable(o, search)),
+    [ordersData, search]
+  );
+
+  const toWhatsAppNumber = (phone: string) => {
+    const digits = (phone || "").replace(/\D/g, "");
+    if (digits.startsWith("234")) return digits;
+    if (digits.startsWith("0")) return `234${digits.slice(1)}`;
+    return digits;
+  };
+
+  const copyDeliveryDetails = (order: any) => {
+    const lines = [
+      `Order ${order.reference}`,
+      `Buyer: ${order.fullName} · ${order.phone} · ${order.email}`,
+      `Address: ${order.address || ""}, ${order.lga || ""}, ${order.state || ""}`,
+      order.landmark ? `Landmark: ${order.landmark}` : "",
+      "",
+      "Items:",
+      ...(order.items || []).map(
+        (item: any) =>
+          `- ${item.itemTitle} (Qty ${item.quantity}) — pickup from ${item.sellerName || "seller"}, ${item.sellerAddress || ""}, ${item.sellerState || ""}`
+      ),
+    ].filter(Boolean);
+    navigator.clipboard.writeText(lines.join("\n"));
+    setToast("Delivery details copied");
+  };
+
+  const updateOrderStatus = async (
+    id: string,
+    status: string,
+    rejectionReason?: string
+  ) => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/orders/${id}/review`,
@@ -436,11 +629,19 @@ export default function AdminPage() {
 
   const confirmOrderRejectFromModal = async () => {
     if (!selectedOrder || !orderRejectReason.trim()) return;
-    await updateOrderStatus(selectedOrder.id, "rejected", orderRejectReason.trim());
+    await updateOrderStatus(
+      selectedOrder.id,
+      "rejected",
+      orderRejectReason.trim()
+    );
     closeOrderModal();
   };
 
-  const updateVerificationStatus = async (id: string, status: string, rejectionReason?: string) => {
+  const updateVerificationStatus = async (
+    id: string,
+    status: string,
+    rejectionReason?: string
+  ) => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/admin/id-verifications/${id}/review`,
@@ -454,7 +655,8 @@ export default function AdminPage() {
         }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to update verification.");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to update verification.");
       setToast(`ID marked as ${status}`);
       await fetchVerifications();
     } catch (err: any) {
@@ -483,7 +685,11 @@ export default function AdminPage() {
 
   const confirmVerificationRejectFromModal = async () => {
     if (!selectedVerification || !verificationRejectReason.trim()) return;
-    await updateVerificationStatus(selectedVerification.id, "rejected", verificationRejectReason.trim());
+    await updateVerificationStatus(
+      selectedVerification.id,
+      "rejected",
+      verificationRejectReason.trim()
+    );
     closeVerificationModal();
   };
 
@@ -494,7 +700,9 @@ export default function AdminPage() {
 
   const filteredPayouts = useMemo(() => {
     return payoutsData
-      .filter((p) => (payoutTab === "pending" ? p.status !== "paid" : p.status === "paid"))
+      .filter((p) =>
+        payoutTab === "pending" ? p.status !== "paid" : p.status === "paid"
+      )
       .filter((p) => searchable(p, search));
   }, [payoutsData, payoutTab, search]);
 
@@ -511,7 +719,10 @@ export default function AdminPage() {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/payouts/admin/${id}/request-bank-details`,
-        { method: "POST", headers: { Authorization: `Bearer ${getAdminToken()}` } }
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${getAdminToken()}` },
+        }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Failed to send reminder.");
@@ -529,16 +740,21 @@ export default function AdminPage() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", preset as string);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-      method: "POST",
-      body: formData,
-    });
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error?.message || "Upload failed.");
     return data.secure_url as string;
   };
 
-  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReceiptUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingReceipt(true);
@@ -568,7 +784,8 @@ export default function AdminPage() {
         }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to mark payout as paid.");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to mark payout as paid.");
       setToast("Payout marked as paid — seller notified");
       setSelectedPayout(null);
       setPayoutReceiptUrl("");
@@ -590,7 +807,9 @@ export default function AdminPage() {
 
   const supportTabCounts = useMemo(
     () => ({
-      waiting_for_agent: supportTickets.filter((t) => t.status === "waiting_for_agent").length,
+      waiting_for_agent: supportTickets.filter(
+        (t) => t.status === "waiting_for_agent"
+      ).length,
       open: supportTickets.filter((t) => t.status === "open").length,
       resolved: supportTickets.filter((t) => t.status === "resolved").length,
     }),
@@ -608,13 +827,17 @@ export default function AdminPage() {
         { headers: { Authorization: `Bearer ${getAdminToken()}` } }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to load conversation.");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to load conversation.");
       setSelectedTicket(data.ticket);
       setTicketMessages(data.messages || []);
 
-      // Clear the "waiting" badge locally since admin has now viewed it
       setSupportTickets((prev) =>
-        prev.map((t) => (t.id === ticket.id ? { ...t, adminLastReadAt: new Date().toISOString() } : t))
+        prev.map((t) =>
+          t.id === ticket.id
+            ? { ...t, adminLastReadAt: new Date().toISOString() }
+            : t
+        )
       );
     } catch (err: any) {
       console.error(err);
@@ -628,10 +851,13 @@ export default function AdminPage() {
     setSelectedTicket(null);
     setTicketMessages([]);
     setReplyText("");
+    setShowAgentIntroModal(false);
+    setAgentIntroName("");
   };
 
-  const sendTicketReply = async () => {
-    if (!selectedTicket || !replyText.trim() || sendingReply) return;
+  const sendTicketReply = async (quickReply?: string) => {
+    const messageText = (quickReply ?? replyText).trim();
+    if (!selectedTicket || !messageText || sendingReply) return false;
     setSendingReply(true);
     try {
       const res = await fetch(
@@ -642,26 +868,50 @@ export default function AdminPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${getAdminToken()}`,
           },
-          body: JSON.stringify({ text: replyText.trim() }),
+          body: JSON.stringify({ text: messageText }),
         }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Failed to send reply.");
 
       setTicketMessages((prev) => [...prev, data.message]);
-      setReplyText("");
+      if (!quickReply) setReplyText("");
       setToast("Reply sent — user notified by email");
 
-      // Reflect status change (waiting_for_agent -> open) in list + modal
-      setSelectedTicket((prev: any) => (prev ? { ...prev, status: "open" } : prev));
-      setSupportTickets((prev) =>
-        prev.map((t) => (t.id === selectedTicket.id ? { ...t, status: "open", updatedAt: new Date().toISOString() } : t))
+      setSelectedTicket((prev: any) =>
+        prev ? { ...prev, status: "open" } : prev
       );
+      setSupportTickets((prev) =>
+        prev.map((t) =>
+          t.id === selectedTicket.id
+            ? { ...t, status: "open", updatedAt: new Date().toISOString() }
+            : t
+        )
+      );
+      return true;
     } catch (err: any) {
       console.error(err);
       setToast(err.message || "Failed to send reply.");
+      return false;
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  const sendAgentIntroduction = async () => {
+    const name = agentIntroName.trim();
+    if (!name) {
+      setToast("Enter the name you want the customer to see.");
+      return;
+    }
+    if (!selectedTicket) return;
+    const customerFirstName = selectedTicket.user?.name?.split(" ")[0] || "there";
+    const sent = await sendTicketReply(
+      `Hi ${customerFirstName}, I'm ${name}. ${name} has joined this chat and will help you with your issue.`
+    );
+    if (sent) {
+      setShowAgentIntroModal(false);
+      setAgentIntroName("");
     }
   };
 
@@ -677,10 +927,13 @@ export default function AdminPage() {
         }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to resolve ticket.");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to resolve ticket.");
       setToast("Ticket resolved");
       setSupportTickets((prev) =>
-        prev.map((t) => (t.id === selectedTicket.id ? { ...t, status: "resolved" } : t))
+        prev.map((t) =>
+          t.id === selectedTicket.id ? { ...t, status: "resolved" } : t
+        )
       );
       closeTicketModal();
     } catch (err: any) {
@@ -691,10 +944,26 @@ export default function AdminPage() {
     }
   };
 
+  // ── Reports helpers ──
+
+  const reportTabCounts = useMemo(
+    () => ({
+      open: reports.filter((r) => r.status === "open").length,
+      reviewing: reports.filter((r) => r.status === "reviewing").length,
+      resolved: reports.filter((r) => r.status === "resolved").length,
+      dismissed: reports.filter((r) => r.status === "dismissed").length,
+    }),
+    [reports]
+  );
+
   const stats = useMemo(() => {
     const pendingPayouts = payouts.filter((p) => p.status === "pending").length;
-    const pendingListings = listings.filter((l) => l.status === "pending").length;
-    const escrowOrders = orders.filter((o) => o.escrowStatus === "funds_held").length;
+    const pendingListings = listings.filter(
+      (l) => l.status === "pending"
+    ).length;
+    const escrowOrders = orders.filter(
+      (o) => o.escrowStatus === "funds_held"
+    ).length;
     const openComplaints = complaints.filter(
       (c) => c.status !== "resolved"
     ).length;
@@ -719,7 +988,9 @@ export default function AdminPage() {
             ...p,
             status,
             updatedAt: new Date().toISOString(),
-            ...(status === "paid" ? { paidAt: new Date().toISOString() } : {}),
+            ...(status === "paid"
+              ? { paidAt: new Date().toISOString() }
+              : {}),
           }
         : p
     );
@@ -889,8 +1160,13 @@ export default function AdminPage() {
         <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 mb-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
-            const badgeCount =
-              tab.id === "support" ? supportTabCounts.waiting_for_agent : 0;
+
+            let badgeCount = 0;
+            if (tab.id === "support") {
+              badgeCount = supportTabCounts.waiting_for_agent;
+            } else if (tab.id === "reports") {
+              badgeCount = reportTabCounts.open;
+            }
 
             return (
               <button
@@ -915,525 +1191,932 @@ export default function AdminPage() {
         </div>
 
         {/* Search */}
-        {(
-          <div className="relative mb-6">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#211000]/35" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${activeTab}...`}
-              className="w-full rounded-full bg-white border border-[#211000]/8 pl-11 pr-10 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44]"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <X className="size-4 text-[#211000]/35" />
-              </button>
-            )}
-          </div>
-        )}
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#211000]/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${activeTab}...`}
+            className="w-full rounded-full bg-white border border-[#211000]/8 pl-11 pr-10 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44]"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+            >
+              <X className="size-4 text-[#211000]/35" />
+            </button>
+          )}
+        </div>
 
         <AnimatePresence mode="wait">
           {activeTab === "listings" && (
-          <AdminSection key="listings">
-            <AdminCard title="Listings moderation">
-              <div className="flex gap-1.5 mb-6">
-                {(["pending", "approved", "rejected"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setListingTab(t)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
-                      listingTab === t
-                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
-                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
-                    }`}
-                  >
-                    {t}
-                    <span
-                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+            <AdminSection key="listings">
+              <AdminCard title="Listings moderation">
+                <div className="flex gap-1.5 mb-6">
+                  {(["pending", "approved", "rejected"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setListingTab(t)}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
                         listingTab === t
-                          ? "bg-[#E8CEB0] text-[#211000]"
-                          : "bg-[#211000]/8 text-[#211000]/60"
+                          ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                          : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
                       }`}
                     >
-                      {tabCounts[t]}
-                    </span>
-                  </button>
-                ))}
-              </div>
+                      {t}
+                      <span
+                        className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                          listingTab === t
+                            ? "bg-[#E8CEB0] text-[#211000]"
+                            : "bg-[#211000]/8 text-[#211000]/60"
+                        }`}
+                      >
+                        {tabCounts[t]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
 
-              {listingsLoading ? (
-                <div className="py-14 flex justify-center">
-                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
-                </div>
-              ) : listingsError ? (
-                <div className="py-14 text-center">
-                  <p className="text-sm text-red-600 font-medium mb-3">
-                    {listingsError}
-                  </p>
-                  <button
-                    onClick={fetchListings}
-                    className="text-xs font-bold text-[#B66B44] hover:underline"
-                  >
-                    Try again
-                  </button>
-                </div>
-              ) : filteredListings.length === 0 ? (
-                <EmptyState
-                  text={
-                    listingTab === "pending"
-                      ? "No listings awaiting review."
-                      : listingTab === "approved"
-                      ? "No approved listings yet."
-                      : "No rejected listings."
-                  }
-                />
-              ) : (
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredListings.map((listing) => (
-                    <div
-                      key={listing.id}
-                      className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 overflow-hidden"
+                {listingsLoading ? (
+                  <div className="py-14 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : listingsError ? (
+                  <div className="py-14 text-center">
+                    <p className="text-sm text-red-600 font-medium mb-3">
+                      {listingsError}
+                    </p>
+                    <button
+                      onClick={fetchListings}
+                      className="text-xs font-bold text-[#B66B44] hover:underline"
                     >
-                      <div className="aspect-[4/3] bg-[#E8CEB0]/30 overflow-hidden">
-                        {listing.photos?.[0] && (
-                          <img
-                            src={listing.photos[0]}
-                            alt={listing.itemTitle}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-
-                      <div className="p-4">
-                        <p className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold">
-                          {listing.category}
-                        </p>
-                        <p className="font-serif text-lg font-medium mt-1 truncate">
-                          {listing.itemTitle}
-                        </p>
-                        <p className="text-sm font-bold mt-1">
-                          {formatNaira(Number(listing.sellingPrice) || 0)}
-                        </p>
-
-                        <div className="mt-3">
-                          <StatusBadge status={listing.status} />
-                        </div>
-
-                        {listing.status === "rejected" && listing.rejectionReason && (
-                          <p className="mt-2 text-[11px] text-red-600 font-medium">
-                            Reason: {listing.rejectionReason}
-                          </p>
-                        )}
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {listingTab === "pending" && (
-                            <ActionButton
-                              label="View"
-                              onClick={() => openListingModal(listing)}
+                      Try again
+                    </button>
+                  </div>
+                ) : filteredListings.length === 0 ? (
+                  <EmptyState
+                    text={
+                      listingTab === "pending"
+                        ? "No listings awaiting review."
+                        : listingTab === "approved"
+                          ? "No approved listings yet."
+                          : "No rejected listings."
+                    }
+                  />
+                ) : (
+                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredListings.map((listing) => (
+                      <div
+                        key={listing.id}
+                        className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 overflow-hidden"
+                      >
+                        <div className="aspect-[4/3] bg-[#E8CEB0]/30 overflow-hidden">
+                          {listing.photos?.[0] && (
+                            <img
+                              src={listing.photos[0]}
+                              alt={listing.itemTitle}
+                              className="w-full h-full object-cover"
                             />
                           )}
+                        </div>
 
-                          {listingTab === "approved" && (
-                            <>
-                              <Link
-                                href={`/product/${listing.id}`}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
-                              >
-                                View
-                              </Link>
+                        <div className="p-4">
+                          <p className="text-[10px] uppercase tracking-wider text-[#211000]/45 font-bold">
+                            {listing.category}
+                          </p>
+                          <p className="font-serif text-lg font-medium mt-1 truncate">
+                            {listing.itemTitle}
+                          </p>
+                          <p className="text-sm font-bold mt-1">
+                            {formatNaira(Number(listing.sellingPrice) || 0)}
+                          </p>
+
+                          <div className="mt-3">
+                            <StatusBadge status={listing.status} />
+                          </div>
+
+                          {listing.status === "rejected" &&
+                            listing.rejectionReason && (
+                              <p className="mt-2 text-[11px] text-red-600 font-medium">
+                                Reason: {listing.rejectionReason}
+                              </p>
+                            )}
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {listingTab === "pending" && (
+                              <ActionButton
+                                label="View"
+                                onClick={() => openListingModal(listing)}
+                              />
+                            )}
+
+                            {listingTab === "approved" && (
+                              <>
+                                <Link
+                                  href={`/product/${listing.id}`}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                                >
+                                  View
+                                </Link>
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        `Delete "${listing.itemTitle}"? This can't be undone.`
+                                      )
+                                    ) {
+                                      deleteListing(listing.id);
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-red-200 text-red-500 px-3 py-2 text-xs font-bold hover:bg-red-50"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                  Delete
+                                </button>
+                              </>
+                            )}
+
+                            {listingTab === "rejected" && (
                               <button
-                                onClick={() => {
-                                  if (window.confirm(`Delete "${listing.itemTitle}"? This can't be undone.`)) {
-                                    deleteListing(listing.id);
-                                  }
-                                }}
+                                onClick={() => deleteListing(listing.id)}
                                 className="inline-flex items-center gap-1.5 rounded-full border border-red-200 text-red-500 px-3 py-2 text-xs font-bold hover:bg-red-50"
                               >
                                 <Trash2 className="size-3.5" />
                                 Delete
                               </button>
-                            </>
-                          )}
-
-                          {listingTab === "rejected" && (
-                            <button
-                              onClick={() => deleteListing(listing.id)}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-red-200 text-red-500 px-3 py-2 text-xs font-bold hover:bg-red-50"
-                            >
-                              <Trash2 className="size-3.5" />
-                              Delete
-                            </button>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </AdminCard>
-          </AdminSection>
+                    ))}
+                  </div>
+                )}
+              </AdminCard>
+            </AdminSection>
           )}
 
           {activeTab === "orders" && (
-          <AdminSection key="orders">
-            <AdminCard title="Order & payment review">
-              <div className="flex gap-1.5 mb-6">
-                {(["pending", "confirmed", "rejected"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setOrderTab(t)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
-                      orderTab === t
-                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
-                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
-                    }`}
-                  >
-                    {t}
-                    <span
-                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
-                        orderTab === t ? "bg-[#E8CEB0] text-[#211000]" : "bg-[#211000]/8 text-[#211000]/60"
+            <AdminSection key="orders">
+              <AdminCard title="Order & payment review">
+                <div className="flex gap-1.5 mb-6">
+                  {(["pending", "confirmed", "rejected"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setOrderTab(t)}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
+                        orderTab === t
+                          ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                          : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
                       }`}
                     >
-                      {orderTabCounts[t]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {ordersLoading ? (
-                <div className="py-14 flex justify-center">
-                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
-                </div>
-              ) : ordersError ? (
-                <div className="py-14 text-center">
-                  <p className="text-sm text-red-600 font-medium mb-3">{ordersError}</p>
-                  <button onClick={fetchOrders} className="text-xs font-bold text-[#B66B44] hover:underline">
-                    Try again
-                  </button>
-                </div>
-              ) : filteredOrders.length === 0 ? (
-                <EmptyState
-                  text={
-                    orderTab === "pending"
-                      ? "No orders awaiting review."
-                      : orderTab === "confirmed"
-                      ? "No confirmed orders yet."
-                      : "No rejected orders."
-                  }
-                />
-              ) : (
-                <div className="divide-y divide-[#211000]/6">
-                  {filteredOrders.map((order) => (
-                    <div key={order.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div>
-                        <p className="font-bold font-mono text-sm">{order.reference}</p>
-                        <p className="text-xs text-[#211000]/55 font-medium mt-1">
-                          {formatNaira(Number(order.total))} · {order.paymentMethod} · {order.fullName}
-                        </p>
-                        <p className="text-[10px] text-[#211000]/35 mt-1">
-                          {order.email} · {order.createdAt?.split("T")[0]}
-                        </p>
-                        {order.status === "rejected" && order.rejectionReason && (
-                          <p className="text-[11px] text-red-600 font-medium mt-1">
-                            Reason: {order.rejectionReason}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge status={order.status} />
-                        {order.status === "pending_verification" && order.paymentMethod === "transfer" && (
-                          <ActionButton label="Review" onClick={() => openOrderModal(order)} />
-                        )}
-                        {order.status !== "pending_verification" && (
-                          <ActionButton label="View" onClick={() => openOrderModal(order)} />
-                        )}
-                      </div>
-                    </div>
+                      {t}
+                      <span
+                        className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                          orderTab === t
+                            ? "bg-[#E8CEB0] text-[#211000]"
+                            : "bg-[#211000]/8 text-[#211000]/60"
+                        }`}
+                      >
+                        {orderTabCounts[t]}
+                      </span>
+                    </button>
                   ))}
                 </div>
-              )}
-            </AdminCard>
-          </AdminSection>
-          )}
 
-          {activeTab === "verifications" && (
-          <AdminSection key="verifications">
-            <AdminCard title="Identity verifications">
-              {verificationsLoading ? (
-                <div className="py-14 flex justify-center">
-                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
-                </div>
-              ) : verificationsError ? (
-                <div className="py-14 text-center">
-                  <p className="text-sm text-red-600 font-medium mb-3">{verificationsError}</p>
-                  <button onClick={fetchVerifications} className="text-xs font-bold text-[#B66B44] hover:underline">
-                    Try again
-                  </button>
-                </div>
-              ) : filteredVerifications.length === 0 ? (
-                <EmptyState text="No IDs awaiting review." />
-              ) : (
-                <div className="divide-y divide-[#211000]/6">
-                  {filteredVerifications.map((v) => (
-                    <div key={v.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="size-11 rounded-xl overflow-hidden bg-[#E8CEB0]/40 shrink-0">
-                          {v.profileImage ? (
-                            <img src={v.profileImage} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center font-bold text-[#B66B44]">
-                              {v.name?.[0]?.toUpperCase() || "U"}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm">{v.name}</p>
-                          <p className="text-xs text-[#211000]/55 font-medium mt-0.5">{v.email}</p>
-                          <p className="text-[10px] text-[#211000]/35 mt-1">
-                            {v.idType} · {v.idNumber}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge status="pending" />
-                        <ActionButton label="Review" onClick={() => openVerificationModal(v)} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </AdminCard>
-          </AdminSection>
-          )}
-
-          {activeTab === "payouts" && (
-          <AdminSection key="payouts">
-            <AdminCard title="Seller payouts">
-              <div className="flex gap-1.5 mb-6">
-                {(["pending", "paid"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setPayoutTab(t)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
-                      payoutTab === t
-                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
-                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
-                    }`}
-                  >
-                    {t}
-                    <span
-                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
-                        payoutTab === t ? "bg-[#E8CEB0] text-[#211000]" : "bg-[#211000]/8 text-[#211000]/60"
-                      }`}
+                {ordersLoading ? (
+                  <div className="py-14 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : ordersError ? (
+                  <div className="py-14 text-center">
+                    <p className="text-sm text-red-600 font-medium mb-3">
+                      {ordersError}
+                    </p>
+                    <button
+                      onClick={fetchOrders}
+                      className="text-xs font-bold text-[#B66B44] hover:underline"
                     >
-                      {payoutTabCounts[t]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {payoutsLoading ? (
-                <div className="py-14 flex justify-center">
-                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
-                </div>
-              ) : payoutsError ? (
-                <div className="py-14 text-center">
-                  <p className="text-sm text-red-600 font-medium mb-3">{payoutsError}</p>
-                  <button onClick={fetchPayouts} className="text-xs font-bold text-[#B66B44] hover:underline">
-                    Try again
-                  </button>
-                </div>
-              ) : filteredPayouts.length === 0 ? (
-                <EmptyState text={payoutTab === "pending" ? "No pending payouts." : "No payouts made yet."} />
-              ) : (
-                <div className="divide-y divide-[#211000]/6">
-                  {filteredPayouts.map((payout) => {
-                    const hasBank = !!(payout.seller?.bankName && payout.seller?.accountNumber);
-                    return (
-                      <div key={payout.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      Try again
+                    </button>
+                  </div>
+                ) : filteredOrders.length === 0 ? (
+                  <EmptyState
+                    text={
+                      orderTab === "pending"
+                        ? "No orders awaiting review."
+                        : orderTab === "confirmed"
+                          ? "No confirmed orders yet."
+                          : "No rejected orders."
+                    }
+                  />
+                ) : (
+                  <div className="divide-y divide-[#211000]/6">
+                    {filteredOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                      >
                         <div>
-                          <p className="font-bold text-sm">{payout.itemTitle}</p>
+                          <p className="font-bold font-mono text-sm">
+                            {order.reference}
+                          </p>
                           <p className="text-xs text-[#211000]/55 font-medium mt-1">
-                            {payout.seller?.name} · {payout.seller?.email}
+                            {formatNaira(Number(order.total))} ·{" "}
+                            {order.paymentMethod} · {order.fullName}
                           </p>
-                          <p className="text-xs text-[#211000]/45 font-medium mt-1">
-                            Net {formatNaira(Number(payout.netAmount))} (gross {formatNaira(Number(payout.grossAmount))}, {payout.feePercent}% fee)
+                          <p className="text-[10px] text-[#211000]/35 mt-1">
+                            {order.email} · {order.createdAt?.split("T")[0]}
                           </p>
-                          {hasBank ? (
-                            <p className="text-[11px] text-[#5F7161] font-bold mt-1">
-                              {payout.seller.bankName} · {payout.seller.accountNumber}
-                            </p>
-                          ) : (
-                            <p className="text-[11px] text-red-500 font-bold mt-1">No bank details on file</p>
-                          )}
-                          {payout.issueReported && (
-                            <p className="text-[11px] text-red-600 font-medium mt-1">
-                              Issue reported: {payout.issueDescription}
-                            </p>
-                          )}
+                          {order.status === "rejected" &&
+                            order.rejectionReason && (
+                              <p className="text-[11px] text-red-600 font-medium mt-1">
+                                Reason: {order.rejectionReason}
+                              </p>
+                            )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
-                          <StatusBadge status={payout.status} />
-                          {payout.status !== "paid" && !hasBank && (
+                          <StatusBadge status={order.status} />
+                          {order.status === "pending_verification" &&
+                            order.paymentMethod === "transfer" && (
+                              <ActionButton
+                                label="Review"
+                                onClick={() => openOrderModal(order)}
+                              />
+                            )}
+                          {order.status !== "pending_verification" && (
                             <ActionButton
-                              label="Request bank details"
-                              onClick={() => requestBankDetails(payout.id)}
+                              label="View"
+                              onClick={() => openOrderModal(order)}
                             />
-                          )}
-                          {payout.status !== "paid" && hasBank && (
-                            <ActionButton
-                              label="Mark as paid"
-                              tone="success"
-                              onClick={() => {
-                                setSelectedPayout(payout);
-                                setPayoutReceiptUrl("");
-                              }}
-                            />
-                          )}
-                          {payout.status === "paid" && payout.receiptUrl && (
-                            
-                              <a href={payout.receiptUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
-                            >
-                              View receipt
-                            </a>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </AdminCard>
-          </AdminSection>
+                    ))}
+                  </div>
+                )}
+              </AdminCard>
+            </AdminSection>
           )}
 
-          {activeTab === "support" && (
-          <AdminSection key="support">
-            <AdminCard title="Support tickets">
-              <div className="flex gap-1.5 mb-6">
-                {(["waiting_for_agent", "open", "resolved"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setSupportTab(t)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
-                      supportTab === t
-                        ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
-                        : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
-                    }`}
-                  >
-                    {t.replaceAll("_", " ")}
-                    <span
-                      className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
-                        supportTab === t ? "bg-[#E8CEB0] text-[#211000]" : "bg-[#211000]/8 text-[#211000]/60"
-                      }`}
+          {activeTab === "delivery" && (
+            <AdminSection key="delivery">
+              <AdminCard title="Deliveries to arrange">
+                {ordersLoading ? (
+                  <div className="py-14 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : ordersError ? (
+                  <div className="py-14 text-center">
+                    <p className="text-sm text-red-600 font-medium mb-3">
+                      {ordersError}
+                    </p>
+                    <button
+                      onClick={fetchOrders}
+                      className="text-xs font-bold text-[#B66B44] hover:underline"
                     >
-                      {supportTabCounts[t]}
-                    </span>
-                  </button>
-                ))}
-
-                <button
-                  onClick={fetchSupportTickets}
-                  className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border border-[#211000]/10 bg-white hover:border-[#B66B44]/30 transition-colors"
-                >
-                  <RefreshCcw className="size-3.5" />
-                  Refresh
-                </button>
-              </div>
-
-              {supportLoading ? (
-                <div className="py-14 flex justify-center">
-                  <Loader2 className="size-6 animate-spin text-[#B66B44]" />
-                </div>
-              ) : supportError ? (
-                <div className="py-14 text-center">
-                  <p className="text-sm text-red-600 font-medium mb-3">{supportError}</p>
-                  <button onClick={fetchSupportTickets} className="text-xs font-bold text-[#B66B44] hover:underline">
-                    Try again
-                  </button>
-                </div>
-              ) : filteredSupportTickets.length === 0 ? (
-                <EmptyState
-                  text={
-                    supportTab === "waiting_for_agent"
-                      ? "No tickets waiting for a reply."
-                      : supportTab === "open"
-                      ? "No open tickets."
-                      : "No resolved tickets yet."
-                  }
-                />
-              ) : (
-                <div className="divide-y divide-[#211000]/6">
-                  {filteredSupportTickets.map((ticket) => {
-                    const lastMessage = ticket.messages?.[0];
-                    return (
+                      Try again
+                    </button>
+                  </div>
+                ) : deliveryOrders.length === 0 ? (
+                  <EmptyState text="No home-delivery orders right now." />
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {deliveryOrders.map((order) => (
                       <div
-                        key={ticket.id}
+                        key={order.id}
+                        className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-5"
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div>
+                            <p className="font-bold font-mono text-sm">
+                              {order.reference}
+                            </p>
+                            <p className="text-xs text-[#211000]/55 font-medium mt-0.5">
+                              {order.fullName} · {order.phone}
+                            </p>
+                          </div>
+                          <StatusBadge status={order.status} />
+                        </div>
+
+                        <div className="rounded-xl bg-white border border-[#211000]/8 p-3 mb-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#211000]/40 mb-1">
+                            Delivery address
+                          </p>
+                          <p className="text-sm font-medium">
+                            {order.address}, {order.lga}, {order.state}
+                          </p>
+                          {order.landmark && (
+                            <p className="text-xs text-[#211000]/55 mt-1">
+                              Landmark: {order.landmark}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          {(order.items || []).map((item: any, i: number) => (
+                            <div
+                              key={i}
+                              className="rounded-xl bg-white border border-[#211000]/8 p-3 text-xs"
+                            >
+                              <p className="font-bold">{item.itemTitle}</p>
+                              <p className="text-[#211000]/55 mt-0.5">
+                                Qty {item.quantity} · Pickup from{" "}
+                                {item.sellerName} — {item.sellerAddress},{" "}
+                                {item.sellerState}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={`https://wa.me/${toWhatsAppNumber(order.phone)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#5F7161]/40 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                          >
+                            <MessageCircle className="size-3.5 text-[#5F7161]" />
+                            WhatsApp buyer
+                          </a>
+                          <a
+                            href={`mailto:${order.email}`}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                          >
+                            <Mail className="size-3.5" />
+                            Email buyer
+                          </a>
+                          <button
+                            onClick={() => copyDeliveryDetails(order)}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                          >
+                            <Copy className="size-3.5" />
+                            Copy details
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </AdminCard>
+            </AdminSection>
+          )}
+
+          {activeTab === "verifications" && (
+            <AdminSection key="verifications">
+              <AdminCard title="Identity verifications">
+                {verificationsLoading ? (
+                  <div className="py-14 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : verificationsError ? (
+                  <div className="py-14 text-center">
+                    <p className="text-sm text-red-600 font-medium mb-3">
+                      {verificationsError}
+                    </p>
+                    <button
+                      onClick={fetchVerifications}
+                      className="text-xs font-bold text-[#B66B44] hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : filteredVerifications.length === 0 ? (
+                  <EmptyState text="No IDs awaiting review." />
+                ) : (
+                  <div className="divide-y divide-[#211000]/6">
+                    {filteredVerifications.map((v) => (
+                      <div
+                        key={v.id}
                         className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                       >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="size-10 rounded-full bg-[#B66B44]/10 flex items-center justify-center shrink-0 font-bold text-[#B66B44] text-sm">
-                            {ticket.user?.name?.[0]?.toUpperCase() || "U"}
+                        <div className="flex items-center gap-3">
+                          <div className="size-11 rounded-xl overflow-hidden bg-[#E8CEB0]/40 shrink-0">
+                            {v.profileImage ? (
+                              <img
+                                src={v.profileImage}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center font-bold text-[#B66B44]">
+                                {v.name?.[0]?.toUpperCase() || "U"}
+                              </div>
+                            )}
                           </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-bold text-sm">{ticket.user?.name}</p>
-                              <span className="font-mono text-[10px] text-[#211000]/40">
-                                {ticket.reference}
-                              </span>
-                            </div>
+                          <div>
+                            <p className="font-bold text-sm">{v.name}</p>
                             <p className="text-xs text-[#211000]/55 font-medium mt-0.5">
-                              {ticket.user?.email}
+                              {v.email}
                             </p>
-                            <p className="text-xs text-[#211000]/45 font-medium mt-1 truncate max-w-md">
-                              {lastMessage
-                                ? `${lastMessage.role === "agent" ? "You: " : ""}${lastMessage.text}`
-                                : "No messages yet"}
+                            <p className="text-[10px] text-[#211000]/35 mt-1">
+                              {v.idType} · {v.idNumber}
                             </p>
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <span className="text-[10px] font-bold bg-[#E8CEB0]/30 px-2 py-0.5 rounded-full capitalize">
-                                {ticket.topic}
-                              </span>
-                              {ticket.order && (
-                                <span className="text-[10px] font-bold bg-[#5F7161]/10 text-[#5F7161] px-2 py-0.5 rounded-full font-mono">
-                                  {ticket.order.reference}
-                                </span>
-                              )}
-                              <span className="text-[10px] text-[#211000]/35 font-medium">
-                                Updated {new Date(ticket.updatedAt).toLocaleString([], {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
-                          <StatusBadge status={ticket.status} />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusBadge status="pending" />
                           <ActionButton
-                            label={ticket.status === "resolved" ? "View" : "Reply"}
-                            onClick={() => openTicketModal(ticket)}
+                            label="Review"
+                            onClick={() => openVerificationModal(v)}
                           />
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </AdminCard>
+            </AdminSection>
+          )}
+
+          {activeTab === "payouts" && (
+            <AdminSection key="payouts">
+              <AdminCard title="Seller payouts">
+                <div className="flex gap-1.5 mb-6">
+                  {(["pending", "paid"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setPayoutTab(t)}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
+                        payoutTab === t
+                          ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                          : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
+                      }`}
+                    >
+                      {t}
+                      <span
+                        className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                          payoutTab === t
+                            ? "bg-[#E8CEB0] text-[#211000]"
+                            : "bg-[#211000]/8 text-[#211000]/60"
+                        }`}
+                      >
+                        {payoutTabCounts[t]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {payoutsLoading ? (
+                  <div className="py-14 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : payoutsError ? (
+                  <div className="py-14 text-center">
+                    <p className="text-sm text-red-600 font-medium mb-3">
+                      {payoutsError}
+                    </p>
+                    <button
+                      onClick={fetchPayouts}
+                      className="text-xs font-bold text-[#B66B44] hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : filteredPayouts.length === 0 ? (
+                  <EmptyState
+                    text={
+                      payoutTab === "pending"
+                        ? "No pending payouts."
+                        : "No payouts made yet."
+                    }
+                  />
+                ) : (
+                  <div className="divide-y divide-[#211000]/6">
+                    {filteredPayouts.map((payout) => {
+                      const hasBank = !!(
+                        payout.seller?.bankName &&
+                        payout.seller?.accountNumber
+                      );
+                      return (
+                        <div
+                          key={payout.id}
+                          className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                        >
+                          <div>
+                            <p className="font-bold text-sm">
+                              {payout.itemTitle}
+                            </p>
+                            <p className="text-xs text-[#211000]/55 font-medium mt-1">
+                              {payout.seller?.name} · {payout.seller?.email}
+                            </p>
+                            <p className="text-xs text-[#211000]/45 font-medium mt-1">
+                              Net {formatNaira(Number(payout.netAmount))} (gross{" "}
+                              {formatNaira(Number(payout.grossAmount))},{" "}
+                              {payout.feePercent}% fee)
+                            </p>
+                            {hasBank ? (
+                              <p className="text-[11px] text-[#5F7161] font-bold mt-1">
+                                {payout.seller.bankName} ·{" "}
+                                {payout.seller.accountNumber}
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-red-500 font-bold mt-1">
+                                No bank details on file
+                              </p>
+                            )}
+                            {payout.issueReported && (
+                              <p className="text-[11px] text-red-600 font-medium mt-1">
+                                Issue reported: {payout.issueDescription}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge status={payout.status} />
+                            {payout.status !== "paid" && !hasBank && (
+                              <ActionButton
+                                label="Request bank details"
+                                onClick={() => requestBankDetails(payout.id)}
+                              />
+                            )}
+                            {payout.status !== "paid" && hasBank && (
+                              <ActionButton
+                                label="Mark as paid"
+                                tone="success"
+                                onClick={() => {
+                                  setSelectedPayout(payout);
+                                  setPayoutReceiptUrl("");
+                                }}
+                              />
+                            )}
+                            {payout.status === "paid" &&
+                              payout.receiptUrl && (
+                                <a
+                                  href={payout.receiptUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-full border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white px-3 py-2 text-xs font-bold transition-colors"
+                                >
+                                  View receipt
+                                </a>
+                              )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </AdminCard>
+            </AdminSection>
+          )}
+
+          {activeTab === "support" && (
+            <AdminSection key="support">
+              <AdminCard title="Support tickets">
+                <div className="flex gap-1.5 mb-6">
+                  {(
+                    ["waiting_for_agent", "open", "resolved"] as const
+                  ).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setSupportTab(t)}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all capitalize ${
+                        supportTab === t
+                          ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                          : "bg-white text-[#211000]/60 border-[#211000]/10 hover:border-[#211000]/25"
+                      }`}
+                    >
+                      {t.replaceAll("_", " ")}
+                      <span
+                        className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-[10px] px-1 ${
+                          supportTab === t
+                            ? "bg-[#E8CEB0] text-[#211000]"
+                            : "bg-[#211000]/8 text-[#211000]/60"
+                        }`}
+                      >
+                        {supportTabCounts[t]}
+                      </span>
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={fetchSupportTickets}
+                    className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border border-[#211000]/10 bg-white hover:border-[#B66B44]/30 transition-colors"
+                  >
+                    <RefreshCcw className="size-3.5" />
+                    Refresh
+                  </button>
+                </div>
+
+                {supportLoading ? (
+                  <div className="py-14 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : supportError ? (
+                  <div className="py-14 text-center">
+                    <p className="text-sm text-red-600 font-medium mb-3">
+                      {supportError}
+                    </p>
+                    <button
+                      onClick={fetchSupportTickets}
+                      className="text-xs font-bold text-[#B66B44] hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : filteredSupportTickets.length === 0 ? (
+                  <EmptyState
+                    text={
+                      supportTab === "waiting_for_agent"
+                        ? "No tickets waiting for a reply."
+                        : supportTab === "open"
+                          ? "No open tickets."
+                          : "No resolved tickets yet."
+                    }
+                  />
+                ) : (
+                  <div className="divide-y divide-[#211000]/6">
+                    {filteredSupportTickets.map((ticket) => {
+                      const lastMessage = ticket.messages?.[0];
+                      return (
+                        <div
+                          key={ticket.id}
+                          className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="size-10 rounded-full bg-[#B66B44]/10 flex items-center justify-center shrink-0 font-bold text-[#B66B44] text-sm">
+                              {ticket.user?.name?.[0]?.toUpperCase() || "U"}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold text-sm">
+                                  {ticket.user?.name}
+                                </p>
+                                <span className="font-mono text-[10px] text-[#211000]/40">
+                                  {ticket.reference}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#211000]/55 font-medium mt-0.5">
+                                {ticket.user?.email}
+                              </p>
+                              <p className="text-xs text-[#211000]/45 font-medium mt-1 truncate max-w-md">
+                                {lastMessage
+                                  ? `${lastMessage.role === "agent" ? "You: " : ""}${lastMessage.text}`
+                                  : "No messages yet"}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="text-[10px] font-bold bg-[#E8CEB0]/30 px-2 py-0.5 rounded-full capitalize">
+                                  {ticket.topic}
+                                </span>
+                                {ticket.order && (
+                                  <span className="text-[10px] font-bold bg-[#5F7161]/10 text-[#5F7161] px-2 py-0.5 rounded-full font-mono">
+                                    {ticket.order.reference}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-[#211000]/35 font-medium">
+                                  Updated{" "}
+                                  {new Date(ticket.updatedAt).toLocaleString(
+                                    [],
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 shrink-0">
+                            <StatusBadge status={ticket.status} />
+                            <ActionButton
+                              label={
+                                ticket.status === "resolved" ? "View" : "Reply"
+                              }
+                              onClick={() => openTicketModal(ticket)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </AdminCard>
+            </AdminSection>
+          )}
+
+          {activeTab === "reports" && (
+            <AdminSection key="reports">
+              <AdminCard title="User reports">
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {(
+                    ["open", "reviewing", "resolved", "dismissed"] as const
+                  ).map((status) => {
+                    const count = reports.filter(
+                      (r) => r.status === status
+                    ).length;
+
+                    return (
+                      <button
+                        key={status}
+                        onClick={() => setReportTab(status)}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border capitalize ${
+                          reportTab === status
+                            ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
+                            : "bg-white text-[#211000]/60 border-[#211000]/10"
+                        }`}
+                      >
+                        {status}
+                        <span className="rounded-full bg-[#211000]/10 px-2 py-0.5">
+                          {count}
+                        </span>
+                      </button>
                     );
                   })}
+
+                  <button
+                    onClick={fetchReports}
+                    className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border border-[#211000]/10 bg-white hover:border-[#B66B44]/30 transition-colors"
+                  >
+                    <RefreshCcw className="size-3.5" />
+                    Refresh
+                  </button>
                 </div>
-              )}
-            </AdminCard>
-          </AdminSection>
+
+                {reportsLoading ? (
+                  <div className="py-14 flex justify-center">
+                    <Loader2 className="size-6 animate-spin text-[#B66B44]" />
+                  </div>
+                ) : reportsError ? (
+                  <div className="py-10 text-center">
+                    <p className="text-sm text-red-600 mb-3">{reportsError}</p>
+                    <button
+                      onClick={fetchReports}
+                      className="text-xs font-bold text-[#B66B44]"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : reports.filter(
+                    (r) => r.status === reportTab && searchable(r, search)
+                  ).length === 0 ? (
+                  <EmptyState text={`No ${reportTab} reports.`} />
+                ) : (
+                  <div className="divide-y divide-[#211000]/10">
+                    {reports
+                      .filter(
+                        (r) =>
+                          r.status === reportTab && searchable(r, search)
+                      )
+                      .map((report) => (
+                        <div key={report.id} className="py-5 space-y-4">
+                          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
+                            <div>
+                              <p className="font-bold text-sm">
+                                {report.reason}
+                              </p>
+                              <p className="text-xs text-[#211000]/50 mt-1">
+                                Reported{" "}
+                                {new Date(report.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <StatusBadge status={report.status} />
+                          </div>
+
+                          <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="rounded-xl bg-[#FAF4EC] p-4">
+                              <p className="text-[10px] uppercase tracking-wider font-bold text-[#211000]/50 mb-2">
+                                Reported by
+                              </p>
+                              <p className="text-sm font-bold">
+                                {report.reporter?.name}
+                              </p>
+                              <p className="text-xs text-[#211000]/60">
+                                {report.reporter?.email}
+                              </p>
+                            </div>
+
+                            <div className="rounded-xl bg-[#FAF4EC] p-4">
+                              <p className="text-[10px] uppercase tracking-wider font-bold text-[#211000]/50 mb-2">
+                                Reported user
+                              </p>
+                              <p className="text-sm font-bold">
+                                {report.reportedUser?.name}
+                              </p>
+                              <p className="text-xs text-[#211000]/60">
+                                {report.reportedUser?.email}
+                              </p>
+                            </div>
+                          </div>
+
+                          {report.conversation?.listing?.itemTitle && (
+                            <p className="text-xs text-[#211000]/70">
+                              Listing:{" "}
+                              <span className="font-bold">
+                                {report.conversation.listing.itemTitle}
+                              </span>
+                            </p>
+                          )}
+
+                          <div>
+                            <p className="text-xs font-bold mb-1">
+                              Report details
+                            </p>
+                            <p className="text-sm whitespace-pre-wrap text-[#211000]/70">
+                              {report.details ||
+                                "No additional details supplied."}
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold block mb-2">
+                              Internal admin notes
+                            </label>
+                            <textarea
+                              value={
+                                reportNotes[report.id] ??
+                                report.adminNotes ??
+                                ""
+                              }
+                              onChange={(e) =>
+                                setReportNotes((prev) => ({
+                                  ...prev,
+                                  [report.id]: e.target.value,
+                                }))
+                              }
+                              rows={2}
+                              placeholder="Add investigation notes..."
+                              className="w-full rounded-xl border border-[#211000]/10 bg-white p-3 text-sm focus:outline-none focus:border-[#B66B44]"
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/dashboard/messages?conversationId=${encodeURIComponent(report.conversationId)}`}
+                              className="inline-flex items-center justify-center rounded-full border border-[#211000]/10 bg-white px-4 py-2 text-xs font-bold"
+                            >
+                              View conversation
+                            </Link>
+
+                            <button
+                              onClick={() => saveReportNotes(report.id)}
+                              disabled={reportActionBusy === report.id}
+                              className="rounded-full border border-[#211000]/10 bg-white px-4 py-2 text-xs font-bold disabled:opacity-50"
+                            >
+                              Save notes
+                            </button>
+
+                            {report.status === "open" && (
+                              <button
+                                onClick={() =>
+                                  updateReport(report.id, "reviewing")
+                                }
+                                disabled={reportActionBusy === report.id}
+                                className="rounded-full bg-[#211000] text-white px-4 py-2 text-xs font-bold disabled:opacity-50"
+                              >
+                                Start review
+                              </button>
+                            )}
+
+                            {(report.status === "open" ||
+                              report.status === "reviewing") && (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    updateReport(report.id, "resolved")
+                                  }
+                                  disabled={reportActionBusy === report.id}
+                                  className="rounded-full bg-[#5F7161] text-white px-4 py-2 text-xs font-bold disabled:opacity-50"
+                                >
+                                  Resolve
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    updateReport(report.id, "dismissed")
+                                  }
+                                  disabled={reportActionBusy === report.id}
+                                  className="rounded-full border border-red-200 text-red-600 px-4 py-2 text-xs font-bold disabled:opacity-50"
+                                >
+                                  Dismiss
+                                </button>
+                              </>
+                            )}
+
+                            {(report.status === "resolved" ||
+                              report.status === "dismissed") && (
+                              <button
+                                onClick={() =>
+                                  updateReport(report.id, "open")
+                                }
+                                disabled={reportActionBusy === report.id}
+                                className="rounded-full border border-[#211000]/10 bg-white px-4 py-2 text-xs font-bold disabled:opacity-50"
+                              >
+                                Reopen
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </AdminCard>
+            </AdminSection>
           )}
         </AnimatePresence>
       </div>
@@ -1464,11 +2147,17 @@ export default function AdminPage() {
                 <X className="size-4 text-[#211000]/60" />
               </button>
 
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">Mark payout as paid</p>
-              <h2 className="font-serif text-2xl font-medium mt-1">{selectedPayout.itemTitle}</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">
+                Mark payout as paid
+              </p>
+              <h2 className="font-serif text-2xl font-medium mt-1">
+                {selectedPayout.itemTitle}
+              </h2>
               <p className="text-sm text-[#211000]/55 font-medium mt-1">
-                Paying {selectedPayout.seller?.name} — {formatNaira(Number(selectedPayout.netAmount))} to{" "}
-                {selectedPayout.seller?.bankName} ({selectedPayout.seller?.accountNumber})
+                Paying {selectedPayout.seller?.name} —{" "}
+                {formatNaira(Number(selectedPayout.netAmount))} to{" "}
+                {selectedPayout.seller?.bankName} (
+                {selectedPayout.seller?.accountNumber})
               </p>
 
               <div className="mt-5">
@@ -1477,7 +2166,11 @@ export default function AdminPage() {
                 </label>
                 {payoutReceiptUrl ? (
                   <div className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-3 flex items-center justify-between">
-                    <img src={payoutReceiptUrl} alt="Receipt" className="max-h-32 rounded-lg" />
+                    <img
+                      src={payoutReceiptUrl}
+                      alt="Receipt"
+                      className="max-h-32 rounded-lg"
+                    />
                     <button
                       onClick={() => setPayoutReceiptUrl("")}
                       className="text-xs font-bold text-red-500 hover:underline"
@@ -1487,8 +2180,15 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <label className="block border-2 border-dashed border-[#211000]/15 rounded-xl p-6 text-center cursor-pointer hover:border-[#B66B44]/40 transition-all">
-                    {uploadingReceipt ? "Uploading…" : "Click to upload receipt"}
-                    <input type="file" accept="image/*,application/pdf" onChange={handleReceiptUpload} className="hidden" />
+                    {uploadingReceipt
+                      ? "Uploading…"
+                      : "Click to upload receipt"}
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={handleReceiptUpload}
+                      className="hidden"
+                    />
                   </label>
                 )}
               </div>
@@ -1544,14 +2244,20 @@ export default function AdminPage() {
 
               {selectedListing.photos?.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto px-6 pt-4">
-                  {selectedListing.photos.slice(1).map((p: string, i: number) => (
-                    <div
-                      key={i}
-                      className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-[#211000]/8"
-                    >
-                      <img src={p} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
+                  {selectedListing.photos
+                    .slice(1)
+                    .map((p: string, i: number) => (
+                      <div
+                        key={i}
+                        className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-[#211000]/8"
+                      >
+                        <img
+                          src={p}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
                 </div>
               )}
 
@@ -1577,7 +2283,9 @@ export default function AdminPage() {
                   </span>
                   {selectedListing.originalPrice && (
                     <span className="text-sm text-[#211000]/40 line-through">
-                      {formatNaira(Number(selectedListing.originalPrice) || 0)}
+                      {formatNaira(
+                        Number(selectedListing.originalPrice) || 0
+                      )}
                     </span>
                   )}
                   {selectedListing.negotiable && (
@@ -1588,28 +2296,64 @@ export default function AdminPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <InfoBlock label="Condition" value={selectedListing.condition || "—"} />
-                  <InfoBlock label="Age" value={selectedListing.age || "—"} />
-                  <InfoBlock label="Color" value={selectedListing.color || "—"} />
-                  <InfoBlock label="Material" value={selectedListing.material || "—"} />
+                  <InfoBlock
+                    label="Condition"
+                    value={selectedListing.condition || "—"}
+                  />
+                  <InfoBlock
+                    label="Age"
+                    value={selectedListing.age || "—"}
+                  />
+                  <InfoBlock
+                    label="Color"
+                    value={selectedListing.color || "—"}
+                  />
+                  <InfoBlock
+                    label="Material"
+                    value={selectedListing.material || "—"}
+                  />
                   <InfoBlock
                     label="Dimensions"
                     value={
-                      selectedListing.dimLength || selectedListing.dimWidth || selectedListing.dimHeight
+                      selectedListing.dimLength ||
+                      selectedListing.dimWidth ||
+                      selectedListing.dimHeight
                         ? `${selectedListing.dimLength || "—"} × ${selectedListing.dimWidth || "—"} × ${selectedListing.dimHeight || "—"} cm`
                         : "—"
                     }
                   />
-                  <InfoBlock label="Weight" value={selectedListing.dimWeight ? `${selectedListing.dimWeight} kg` : "—"} />
-                  <InfoBlock label="Seller" value={`${selectedListing.sellerName} · ${selectedListing.phone}`} />
-                  <InfoBlock label="Email" value={selectedListing.email || "—"} />
+                  <InfoBlock
+                    label="Weight"
+                    value={
+                      selectedListing.dimWeight
+                        ? `${selectedListing.dimWeight} kg`
+                        : "—"
+                    }
+                  />
+                  <InfoBlock
+                    label="Seller"
+                    value={`${selectedListing.sellerName} · ${selectedListing.phone}`}
+                  />
+                  <InfoBlock
+                    label="Email"
+                    value={selectedListing.email || "—"}
+                  />
                   <InfoBlock
                     label="Location"
                     value={`${selectedListing.address || "—"}${selectedListing.lga ? `, ${selectedListing.lga}` : ""}, ${selectedListing.state || "—"}`}
                   />
-                  <InfoBlock label="Sell reason" value={selectedListing.sellReason || "—"} />
-                  <InfoBlock label="Availability" value={selectedListing.availability || "—"} />
-                  <InfoBlock label="Urgency" value={selectedListing.urgency || "—"} />
+                  <InfoBlock
+                    label="Sell reason"
+                    value={selectedListing.sellReason || "—"}
+                  />
+                  <InfoBlock
+                    label="Availability"
+                    value={selectedListing.availability || "—"}
+                  />
+                  <InfoBlock
+                    label="Urgency"
+                    value={selectedListing.urgency || "—"}
+                  />
                 </div>
 
                 {selectedListing.defects?.length > 0 && (
@@ -1639,7 +2383,9 @@ export default function AdminPage() {
                   </p>
                   {selectedListing.conditionNotes && (
                     <div className="mt-3 pt-3 border-t border-[#211000]/6">
-                      <p className="text-xs font-bold text-[#211000]/50 mb-1">Condition notes:</p>
+                      <p className="text-xs font-bold text-[#211000]/50 mb-1">
+                        Condition notes:
+                      </p>
                       <p className="text-xs text-[#211000]/60 leading-relaxed">
                         {selectedListing.conditionNotes}
                       </p>
@@ -1660,12 +2406,13 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {selectedListing.warranty && selectedListing.warranty !== "None" && (
-                  <InfoBlock
-                    label="Warranty"
-                    value={`${selectedListing.warranty}${selectedListing.warrantyDuration ? ` · ${selectedListing.warrantyDuration}` : ""}`}
-                  />
-                )}
+                {selectedListing.warranty &&
+                  selectedListing.warranty !== "None" && (
+                    <InfoBlock
+                      label="Warranty"
+                      value={`${selectedListing.warranty}${selectedListing.warrantyDuration ? ` · ${selectedListing.warrantyDuration}` : ""}`}
+                    />
+                  )}
 
                 <div className="border-t border-[#211000]/8 pt-5">
                   {!showRejectBox ? (
@@ -1730,7 +2477,10 @@ export default function AdminPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
           >
-            <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={closeOrderModal} />
+            <div
+              className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+              onClick={closeOrderModal}
+            />
 
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1749,9 +2499,13 @@ export default function AdminPage() {
               <div className="p-6 space-y-5">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">
-                    {selectedOrder.paymentMethod === "transfer" ? "Bank Transfer" : "Paystack"}
+                    {selectedOrder.paymentMethod === "transfer"
+                      ? "Bank Transfer"
+                      : "Paystack"}
                   </p>
-                  <h2 className="font-serif text-2xl font-medium mt-1 font-mono">{selectedOrder.reference}</h2>
+                  <h2 className="font-serif text-2xl font-medium mt-1 font-mono">
+                    {selectedOrder.reference}
+                  </h2>
                   <StatusBadge status={selectedOrder.status} />
                 </div>
 
@@ -1759,9 +2513,22 @@ export default function AdminPage() {
                   <InfoBlock label="Buyer" value={selectedOrder.fullName} />
                   <InfoBlock label="Phone" value={selectedOrder.phone} />
                   <InfoBlock label="Email" value={selectedOrder.email} />
-                  <InfoBlock label="Amount" value={formatNaira(Number(selectedOrder.total))} />
-                  <InfoBlock label="Delivery" value={selectedOrder.deliveryType === "delivery" ? "Home delivery" : "Pickup"} />
-                  <InfoBlock label="Created" value={selectedOrder.createdAt?.split("T")[0]} />
+                  <InfoBlock
+                    label="Amount"
+                    value={formatNaira(Number(selectedOrder.total))}
+                  />
+                  <InfoBlock
+                    label="Delivery"
+                    value={
+                      selectedOrder.deliveryType === "delivery"
+                        ? "Home delivery"
+                        : "Pickup"
+                    }
+                  />
+                  <InfoBlock
+                    label="Created"
+                    value={selectedOrder.createdAt?.split("T")[0]}
+                  />
                 </div>
 
                 {selectedOrder.deliveryType === "delivery" && (
@@ -1772,16 +2539,24 @@ export default function AdminPage() {
                 )}
 
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">Items</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">
+                    Items
+                  </p>
                   <div className="space-y-2">
-                    {(selectedOrder.items || []).map((item: any, i: number) => (
-                      <div key={i} className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-3 text-xs">
-                        <p className="font-bold">{item.itemTitle}</p>
-                        <p className="text-[#211000]/55 mt-0.5">
-                          Qty {item.quantity} · {formatNaira(item.price)} · Seller: {item.sellerName}
-                        </p>
-                      </div>
-                    ))}
+                    {(selectedOrder.items || []).map(
+                      (item: any, i: number) => (
+                        <div
+                          key={i}
+                          className="rounded-xl bg-[#FAF4EC] border border-[#211000]/8 p-3 text-xs"
+                        >
+                          <p className="font-bold">{item.itemTitle}</p>
+                          <p className="text-[#211000]/55 mt-0.5">
+                            Qty {item.quantity} · {formatNaira(item.price)} ·
+                            Seller: {item.sellerName}
+                          </p>
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
 
@@ -1790,7 +2565,11 @@ export default function AdminPage() {
                     <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">
                       Payment receipt
                     </p>
-                    <a href={selectedOrder.receiptUrl} target="_blank" rel="noreferrer">
+                    <a
+                      href={selectedOrder.receiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       <img
                         src={selectedOrder.receiptUrl}
                         alt="Receipt"
@@ -1800,59 +2579,62 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {selectedOrder.status === "pending_verification" && selectedOrder.paymentMethod === "transfer" && (
-                  <div className="border-t border-[#211000]/8 pt-5">
-                    {!showOrderRejectBox ? (
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          onClick={confirmOrderFromModal}
-                          className="flex-1 inline-flex items-center justify-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
-                        >
-                          <CheckCircle2 className="size-4" />
-                          Confirm payment
-                        </button>
-                        <button
-                          onClick={() => setShowOrderRejectBox(true)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
-                        >
-                          <X className="size-4" />
-                          Reject payment
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block">
-                          Reason for rejection (shown to the buyer)
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={orderRejectReason}
-                          onChange={(e) => setOrderRejectReason(e.target.value)}
-                          placeholder="e.g. We could not find a matching transfer for this reference."
-                          className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
-                        />
-                        <div className="flex gap-3">
+                {selectedOrder.status === "pending_verification" &&
+                  selectedOrder.paymentMethod === "transfer" && (
+                    <div className="border-t border-[#211000]/8 pt-5">
+                      {!showOrderRejectBox ? (
+                        <div className="flex flex-wrap gap-3">
                           <button
-                            onClick={confirmOrderRejectFromModal}
-                            disabled={!orderRejectReason.trim()}
-                            className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                            onClick={confirmOrderFromModal}
+                            className="flex-1 inline-flex items-center justify-center gap-2 bg-[#5F7161] hover:bg-[#4d5e50] text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
                           >
-                            Confirm rejection
+                            <CheckCircle2 className="size-4" />
+                            Confirm payment
                           </button>
                           <button
-                            onClick={() => {
-                              setShowOrderRejectBox(false);
-                              setOrderRejectReason("");
-                            }}
-                            className="rounded-full border border-[#211000]/10 hover:border-[#211000]/25 bg-white px-5 py-3 text-sm font-bold transition-colors"
+                            onClick={() => setShowOrderRejectBox(true)}
+                            className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
                           >
-                            Cancel
+                            <X className="size-4" />
+                            Reject payment
                           </button>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold uppercase tracking-wider text-[#211000]/60 block">
+                            Reason for rejection (shown to the buyer)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={orderRejectReason}
+                            onChange={(e) =>
+                              setOrderRejectReason(e.target.value)
+                            }
+                            placeholder="e.g. We could not find a matching transfer for this reference."
+                            className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
+                          />
+                          <div className="flex gap-3">
+                            <button
+                              onClick={confirmOrderRejectFromModal}
+                              disabled={!orderRejectReason.trim()}
+                              className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold text-sm px-5 py-3 rounded-full transition-colors"
+                            >
+                              Confirm rejection
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowOrderRejectBox(false);
+                                setOrderRejectReason("");
+                              }}
+                              className="rounded-full border border-[#211000]/10 hover:border-[#211000]/25 bg-white px-5 py-3 text-sm font-bold transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
             </motion.div>
           </motion.div>
@@ -1865,7 +2647,10 @@ export default function AdminPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
           >
-            <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={closeVerificationModal} />
+            <div
+              className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+              onClick={closeVerificationModal}
+            />
 
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1885,7 +2670,11 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3">
                   <div className="size-14 rounded-full overflow-hidden bg-[#E8CEB0]/40 shrink-0">
                     {selectedVerification.profileImage ? (
-                      <img src={selectedVerification.profileImage} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={selectedVerification.profileImage}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center font-bold text-lg text-[#B66B44]">
                         {selectedVerification.name?.[0]?.toUpperCase() || "U"}
@@ -1896,15 +2685,28 @@ export default function AdminPage() {
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">
                       Identity verification
                     </p>
-                    <h2 className="font-serif text-2xl font-medium mt-0.5">{selectedVerification.name}</h2>
-                    <p className="text-xs text-[#211000]/55 font-medium">{selectedVerification.email}</p>
+                    <h2 className="font-serif text-2xl font-medium mt-0.5">
+                      {selectedVerification.name}
+                    </h2>
+                    <p className="text-xs text-[#211000]/55 font-medium">
+                      {selectedVerification.email}
+                    </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <InfoBlock label="ID type" value={selectedVerification.idType || "—"} />
-                  <InfoBlock label="ID number" value={selectedVerification.idNumber || "—"} />
-                  <InfoBlock label="Phone" value={selectedVerification.phone || "—"} />
+                  <InfoBlock
+                    label="ID type"
+                    value={selectedVerification.idType || "—"}
+                  />
+                  <InfoBlock
+                    label="ID number"
+                    value={selectedVerification.idNumber || "—"}
+                  />
+                  <InfoBlock
+                    label="Phone"
+                    value={selectedVerification.phone || "—"}
+                  />
                   <InfoBlock
                     label="Address"
                     value={
@@ -1920,7 +2722,11 @@ export default function AdminPage() {
                     <p className="text-xs font-bold uppercase tracking-wider text-[#211000]/50 mb-2">
                       ID document
                     </p>
-                    <a href={selectedVerification.idImage} target="_blank" rel="noreferrer">
+                    <a
+                      href={selectedVerification.idImage}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       <img
                         src={selectedVerification.idImage}
                         alt="ID document"
@@ -1956,7 +2762,9 @@ export default function AdminPage() {
                       <textarea
                         rows={3}
                         value={verificationRejectReason}
-                        onChange={(e) => setVerificationRejectReason(e.target.value)}
+                        onChange={(e) =>
+                          setVerificationRejectReason(e.target.value)
+                        }
                         placeholder="e.g. Document is blurry — please upload a clearer photo."
                         className="w-full rounded-xl bg-[#FAF4EC] border border-[#211000]/12 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/30 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/15 transition-all resize-none"
                       />
@@ -1993,7 +2801,10 @@ export default function AdminPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
           >
-            <div className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm" onClick={closeTicketModal} />
+            <div
+              className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+              onClick={closeTicketModal}
+            />
 
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -2039,11 +2850,80 @@ export default function AdminPage() {
                   {selectedTicket.order && (
                     <span className="text-[10px] font-bold bg-[#5F7161]/10 text-[#5F7161] px-2 py-1 rounded-full font-mono">
                       Order {selectedTicket.order.reference} ·{" "}
-                      {formatNaira(Number(selectedTicket.order.total || 0))}
+                      {formatNaira(
+                        Number(selectedTicket.order.total || 0)
+                      )}
                     </span>
                   )}
                 </div>
               </div>
+
+              {/* Agent quick replies */}
+              {selectedTicket.status !== "resolved" && (
+                <div className="shrink-0 border-b border-[#211000]/8 bg-white px-5 py-3">
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-[#211000]/45 mb-2">
+                    Quick replies
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        setAgentIntroName("");
+                        setShowAgentIntroModal(true);
+                      }}
+                      disabled={sendingReply}
+                      className="rounded-full bg-[#B66B44]/10 text-[#8C482F] hover:bg-[#B66B44]/20 px-3 py-2 text-[11px] font-bold disabled:opacity-50"
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <UserCheck className="size-3.5" /> Join chat
+                      </span>
+                    </button>
+                    <button
+                      onClick={() =>
+                        sendTicketReply(
+                          `Hi ${selectedTicket.user?.name?.split(" ")[0] || "there"}, thanks for your patience. I'm reviewing the details now and will update you here shortly.`
+                        )
+                      }
+                      disabled={sendingReply}
+                      className="rounded-full border border-[#211000]/10 hover:bg-[#FAF4EC] px-3 py-2 text-[11px] font-bold disabled:opacity-50"
+                    >
+                      Thanks for your patience
+                    </button>
+                    <button
+                      onClick={() =>
+                        sendTicketReply(
+                          "Could you please share a little more detail so I can investigate? If relevant, attach a screenshot or a clear photo. Please do not share passwords or verification codes."
+                        )
+                      }
+                      disabled={sendingReply}
+                      className="rounded-full border border-[#211000]/10 hover:bg-[#FAF4EC] px-3 py-2 text-[11px] font-bold disabled:opacity-50"
+                    >
+                      Ask for details
+                    </button>
+                    <button
+                      onClick={() =>
+                        sendTicketReply(
+                          "Does this solve your problem? Please let me know if everything is resolved or if you still need help."
+                        )
+                      }
+                      disabled={sendingReply}
+                      className="rounded-full border border-[#5F7161]/30 text-[#5F7161] hover:bg-[#5F7161]/10 px-3 py-2 text-[11px] font-bold disabled:opacity-50"
+                    >
+                      Check if solved
+                    </button>
+                    <button
+                      onClick={() =>
+                        sendTicketReply(
+                          "Thank you for contacting the Refurnish Support team. We're glad we could help. If you need anything else, please start a new support ticket. Have a lovely day!"
+                        )
+                      }
+                      disabled={sendingReply}
+                      className="rounded-full border border-[#211000]/10 hover:bg-[#FAF4EC] px-3 py-2 text-[11px] font-bold disabled:opacity-50"
+                    >
+                      Thank-you message
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto bg-[#FAF4EC] p-5 space-y-4">
@@ -2092,7 +2972,9 @@ export default function AdminPage() {
                                     target="_blank"
                                     rel="noreferrer"
                                     className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-bold ${
-                                      isAgent ? "bg-[#FAF4EC]/10" : "bg-[#FAF4EC]"
+                                      isAgent
+                                        ? "bg-[#FAF4EC]/10"
+                                        : "bg-[#FAF4EC]"
                                     }`}
                                   >
                                     <FileText className="size-3.5" />
@@ -2171,6 +3053,59 @@ export default function AdminPage() {
           </motion.div>
         )}
 
+        {showAgentIntroModal && selectedTicket && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-8"
+          >
+            <button
+              aria-label="Close agent introduction"
+              className="absolute inset-0 bg-[#211000]/60 backdrop-blur-sm"
+              onClick={() => setShowAgentIntroModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              className="relative w-full max-w-md rounded-3xl border border-[#211000]/10 bg-white p-6 shadow-2xl"
+            >
+              <div className="flex items-start gap-3 mb-5">
+                <div className="size-11 rounded-2xl bg-[#B66B44]/10 text-[#B66B44] grid place-items-center shrink-0">
+                  <UserCheck className="size-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-xl font-medium">Introduce yourself</h3>
+                  <p className="text-xs text-[#211000]/55 mt-1">The customer will see your name in the chat, and it will be saved with this ticket.</p>
+                </div>
+              </div>
+              <label className="block text-xs font-bold text-[#211000]/60 mb-2" htmlFor="agent-intro-name">Agent name</label>
+              <input
+                id="agent-intro-name"
+                autoFocus
+                value={agentIntroName}
+                onChange={(e) => setAgentIntroName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void sendAgentIntroduction(); } }}
+                placeholder="e.g. Mike"
+                maxLength={80}
+                className="w-full rounded-2xl border border-[#211000]/12 bg-[#FAF4EC] px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10"
+              />
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() => setShowAgentIntroModal(false)}
+                  className="flex-1 rounded-full border border-[#211000]/10 px-4 py-3 text-xs font-bold hover:bg-[#FAF4EC]"
+                >Cancel</button>
+                <button
+                  onClick={() => void sendAgentIntroduction()}
+                  disabled={!agentIntroName.trim() || sendingReply}
+                  className="flex-1 rounded-full bg-[#B66B44] px-4 py-3 text-xs font-bold text-white hover:bg-[#a05934] disabled:opacity-50"
+                >{sendingReply ? "Sending…" : "Send introduction"}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: 20, x: "-50%" }}
@@ -2244,9 +3179,7 @@ function StatCard({
         {icon}
       </div>
       <p className="text-2xl font-bold">{value}</p>
-      <p className="text-xs text-[#211000]/50 font-medium mt-0.5">
-        {label}
-      </p>
+      <p className="text-xs text-[#211000]/50 font-medium mt-0.5">{label}</p>
       {sub && (
         <p className="text-[11px] text-[#B66B44] font-bold mt-1">{sub}</p>
       )}
@@ -2279,18 +3212,33 @@ function AttentionRow({
 function StatusBadge({ status }: { status: string }) {
   const normalized = String(status || "unknown").toLowerCase();
 
-  const color =
-    ["active", "paid", "completed", "released", "verified", "resolved"].includes(
-      normalized
-    )
-      ? "bg-[#5F7161]/10 text-[#5F7161]"
-      : ["pending", "processing", "reviewing", "waiting_for_agent"].includes(normalized)
+  const color = [
+    "active",
+    "paid",
+    "completed",
+    "released",
+    "verified",
+    "resolved",
+  ].includes(normalized)
+    ? "bg-[#5F7161]/10 text-[#5F7161]"
+    : [
+          "pending",
+          "processing",
+          "reviewing",
+          "waiting_for_agent",
+        ].includes(normalized)
       ? "bg-yellow-50 text-yellow-700"
-      : ["rejected", "refunded", "disputed", "unverified"].includes(normalized)
-      ? "bg-red-50 text-red-600"
-      : ["open"].includes(normalized)
-      ? "bg-[#B66B44]/10 text-[#B66B44]"
-      : "bg-[#211000]/8 text-[#211000]/60";
+      : [
+            "rejected",
+            "refunded",
+            "disputed",
+            "unverified",
+            "dismissed",
+          ].includes(normalized)
+        ? "bg-red-50 text-red-600"
+        : ["open"].includes(normalized)
+          ? "bg-[#B66B44]/10 text-[#B66B44]"
+          : "bg-[#211000]/8 text-[#211000]/60";
 
   return (
     <span
@@ -2314,8 +3262,8 @@ function ActionButton({
     tone === "success"
       ? "bg-[#5F7161] text-white hover:bg-[#4d5e50]"
       : tone === "danger"
-      ? "bg-red-500 text-white hover:bg-red-600"
-      : "border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white";
+        ? "bg-red-500 text-white hover:bg-red-600"
+        : "border border-[#211000]/10 hover:border-[#B66B44]/30 bg-white";
 
   return (
     <button

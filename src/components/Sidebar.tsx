@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { io, type Socket } from "socket.io-client";
 import {
   LayoutDashboard,
   Package,
@@ -25,7 +26,13 @@ import {
 } from "lucide-react";
 
 type SidebarProps = { children?: React.ReactNode };
-type UserData = { name?: string; email?: string; profileImage?: string; token?: string };
+
+type UserData = {
+  name?: string;
+  email?: string;
+  profileImage?: string;
+  token?: string;
+};
 
 const primaryLinks = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
@@ -51,14 +58,22 @@ const accountLinks = [
 export default function Sidebar({ children }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [showSignOut, setShowSignOut] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  const unreadByConversation = useRef<Map<string, number>>(new Map());
+  const rolesByConversation = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     let storedUser: UserData | null = null;
+
     try {
-      storedUser = JSON.parse(localStorage.getItem("refurnish_user") || "null");
+      storedUser = JSON.parse(
+        localStorage.getItem("refurnish_user") || "null"
+      );
       setUser(storedUser);
     } catch {
       setUser(null);
@@ -68,16 +83,161 @@ export default function Sidebar({ children }: SidebarProps) {
     // so a photo uploaded later (or on another device) shows up here too.
     if (storedUser?.token) {
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
-        headers: { Authorization: `Bearer ${storedUser.token}` },
+        headers: {
+          Authorization: `Bearer ${storedUser.token}`,
+        },
       })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data?.user) {
-            setUser((prev) => ({ ...prev, ...data.user }));
+            setUser((previous) => ({
+              ...previous,
+              ...data.user,
+            }));
           }
         })
         .catch((err) => console.error(err));
     }
+  }, []);
+
+  useEffect(() => {
+    let socket: Socket | null = null;
+    let disposed = false;
+
+    const storedUser = (() => {
+      try {
+        return JSON.parse(
+          localStorage.getItem("refurnish_user") || "null"
+        );
+      } catch {
+        return null;
+      }
+    })();
+
+    if (!storedUser?.token) return;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!apiUrl) {
+      console.error("NEXT_PUBLIC_API_URL is not configured.");
+      return;
+    }
+
+    const refreshUnread = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/conversations/mine`, {
+          headers: {
+            Authorization: `Bearer ${storedUser.token}`,
+          },
+        });
+
+        if (!res.ok || disposed) return;
+
+        const data = await res.json();
+
+        const nextCounts = new Map<string, number>();
+        const nextRoles = new Map<string, string>();
+
+        for (const conversation of data.conversations || []) {
+          nextCounts.set(
+            conversation.id,
+            conversation.unreadCount || 0
+          );
+
+          nextRoles.set(
+            conversation.id,
+            conversation.myRole
+          );
+        }
+
+        unreadByConversation.current = nextCounts;
+        rolesByConversation.current = nextRoles;
+
+        setUnreadMessages(
+          [...nextCounts.values()].reduce(
+            (total, count) => total + count,
+            0
+          )
+        );
+      } catch (error) {
+        console.error("Failed to refresh unread messages:", error);
+      }
+    };
+
+    void refreshUnread();
+
+    socket = io(apiUrl, {
+      auth: {
+        token: storedUser.token,
+      },
+    });
+
+    socket.on(
+      "message:new",
+      (event: {
+        conversationId: string;
+        message: {
+          id: string;
+          role: string;
+          type?: string;
+        };
+      }) => {
+        const { conversationId, message } = event;
+
+        // Ignore system messages and messages sent by this user.
+        const myRole = rolesByConversation.current.get(conversationId);
+
+        if (
+          !myRole ||
+          message.role === "system" ||
+          message.role === myRole
+        ) {
+          return;
+        }
+
+        // Do not count a message as unread if the user is currently
+        // viewing that exact conversation.
+        const activeConversationId = new URLSearchParams(
+          window.location.search
+        ).get("conversationId");
+
+        if (
+          window.location.pathname === "/dashboard/messages" &&
+          activeConversationId === conversationId
+        ) {
+          return;
+        }
+
+        const previous =
+          unreadByConversation.current.get(conversationId) || 0;
+
+        unreadByConversation.current.set(
+          conversationId,
+          previous + 1
+        );
+
+        setUnreadMessages((count) => count + 1);
+      }
+    );
+
+    // Lets the messages page force a fresh unread-count fetch
+    // after a user opens and reads a conversation.
+    window.addEventListener(
+      "refurnish:refresh-unread",
+      refreshUnread
+    );
+
+    return () => {
+      disposed = true;
+
+      window.removeEventListener(
+        "refurnish:refresh-unread",
+        refreshUnread
+      );
+
+      socket?.removeAllListeners();
+      socket?.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -86,9 +246,10 @@ export default function Sidebar({ children }: SidebarProps) {
 
   const initials = useMemo(() => {
     const name = user?.name || "Guest";
+
     return name
       .split(" ")
-      .map((n) => n[0])
+      .map((part) => part[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
@@ -96,7 +257,13 @@ export default function Sidebar({ children }: SidebarProps) {
 
   const confirmLogout = () => {
     localStorage.removeItem("refurnish_user");
+
+    unreadByConversation.current.clear();
+    rolesByConversation.current.clear();
+
+    setUnreadMessages(0);
     setShowSignOut(false);
+
     router.push("/login");
   };
 
@@ -110,11 +277,13 @@ export default function Sidebar({ children }: SidebarProps) {
             Refurnish
           </span>
         </Link>
+
         <div className="flex items-center gap-2">
           <button className="relative size-10 rounded-full bg-white border border-[#211000]/8 grid place-items-center">
             <Bell className="size-4 text-[#211000]/60" />
             <span className="absolute top-2.5 right-2.5 size-1.5 rounded-full bg-[#B66B44]" />
           </button>
+
           <button
             onClick={() => setMobileOpen(true)}
             className="size-10 rounded-full bg-white border border-[#211000]/8 grid place-items-center"
@@ -131,6 +300,7 @@ export default function Sidebar({ children }: SidebarProps) {
           pathname={pathname}
           user={user}
           initials={initials}
+          unreadMessages={unreadMessages}
           onLogout={() => setShowSignOut(true)}
         />
       </aside>
@@ -146,25 +316,33 @@ export default function Sidebar({ children }: SidebarProps) {
               onClick={() => setMobileOpen(false)}
               className="fixed inset-0 z-[70] bg-[#211000]/40 backdrop-blur-sm lg:hidden"
             />
+
             <motion.aside
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 32 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 32,
+              }}
               className="fixed inset-y-0 left-0 z-[80] w-[85vw] max-w-[320px] bg-[#FAF4EC] border-r border-[#211000]/6 shadow-xl lg:hidden flex flex-col"
             >
               <div className="absolute top-4 right-4">
                 <button
                   onClick={() => setMobileOpen(false)}
                   className="size-8 rounded-full bg-white border border-[#211000]/8 grid place-items-center"
+                  aria-label="Close menu"
                 >
                   <X className="size-4 text-[#211000]/60" />
                 </button>
               </div>
+
               <SidebarContent
                 pathname={pathname}
                 user={user}
                 initials={initials}
+                unreadMessages={unreadMessages}
                 onLogout={() => setShowSignOut(true)}
               />
             </motion.aside>
@@ -190,18 +368,25 @@ export default function Sidebar({ children }: SidebarProps) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", stiffness: 280, damping: 28 }}
+              transition={{
+                type: "spring",
+                stiffness: 280,
+                damping: 28,
+              }}
               className="w-full max-w-sm rounded-3xl bg-[#FAF4EC] border border-[#211000]/10 shadow-2xl p-7 text-center"
             >
               <div className="w-14 h-14 rounded-full bg-[#E8CEB0]/40 flex items-center justify-center mx-auto mb-4">
                 <LogOut className="size-6 text-[#B66B44]" />
               </div>
+
               <h3 className="font-serif text-2xl font-medium tracking-tight mb-2">
                 Sign out?
               </h3>
+
               <p className="text-sm text-[#211000]/60 font-medium mb-7">
                 Are you sure you want to sign out of your Refurnish account?
               </p>
+
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setShowSignOut(false)}
@@ -209,6 +394,7 @@ export default function Sidebar({ children }: SidebarProps) {
                 >
                   Cancel
                 </button>
+
                 <button
                   onClick={confirmLogout}
                   className="rounded-full bg-[#211000] hover:bg-[#211000]/90 text-[#FAF4EC] py-3 text-xs font-bold uppercase tracking-wider transition-colors"
@@ -224,16 +410,30 @@ export default function Sidebar({ children }: SidebarProps) {
   );
 }
 
-function SidebarContent({ pathname, user, initials, onLogout }: any) {
+function SidebarContent({
+  pathname,
+  user,
+  initials,
+  onLogout,
+  unreadMessages,
+}: {
+  pathname: string;
+  user: UserData | null;
+  initials: string;
+  onLogout: () => void;
+  unreadMessages: number;
+}) {
   return (
     <div className="flex flex-col h-full">
       <div className="h-20 px-6 flex items-center">
         <Link href="/dashboard" className="flex items-center gap-3">
           <Image src="/logo.png" alt="Refurnish" width={32} height={32} />
+
           <div>
             <p className="font-serif text-lg font-medium tracking-tight leading-none">
               Refurnish
             </p>
+
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44] mt-1">
               Dashboard
             </p>
@@ -255,10 +455,12 @@ function SidebarContent({ pathname, user, initials, onLogout }: any) {
                 {initials}
               </div>
             )}
+
             <div className="min-w-0">
               <p className="text-sm font-bold truncate">
                 {user?.name || "Guest User"}
               </p>
+
               <p className="text-[11px] text-[#211000]/45 truncate">
                 {user?.email || "Welcome to Refurnish"}
               </p>
@@ -270,14 +472,24 @@ function SidebarContent({ pathname, user, initials, onLogout }: any) {
       <nav className="flex-1 overflow-y-auto px-3 space-y-6">
         <NavGroup title="Main">
           {primaryLinks.map((link) => (
-            <SidebarLink key={link.href} link={link} pathname={pathname} />
+            <div key={link.href} className="relative">
+              <SidebarLink link={link} pathname={pathname} />
+
+              {link.label === "Messages" && unreadMessages > 0 && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-[#B66B44] px-2 py-1 text-[10px] font-bold text-white pointer-events-none">
+                  {unreadMessages > 99 ? "99+" : unreadMessages} new
+                </span>
+              )}
+            </div>
           ))}
         </NavGroup>
+
         <NavGroup title="Marketplace">
           {marketplaceLinks.map((link) => (
             <SidebarLink key={link.href} link={link} pathname={pathname} />
           ))}
         </NavGroup>
+
         <NavGroup title="Account">
           {accountLinks.map((link) => (
             <SidebarLink key={link.href} link={link} pathname={pathname} />
@@ -310,17 +522,30 @@ function NavGroup({
       <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#211000]/30">
         {title}
       </p>
+
       <div className="space-y-0.5">{children}</div>
     </div>
   );
 }
 
-function SidebarLink({ link, pathname }: { link: any; pathname: string }) {
+function SidebarLink({
+  link,
+  pathname,
+}: {
+  link: {
+    label: string;
+    href: string;
+    icon: React.ElementType;
+  };
+  pathname: string;
+}) {
   const Icon = link.icon;
+
   const active =
     link.href === "/dashboard"
       ? pathname === "/dashboard"
       : pathname === link.href || pathname.startsWith(`${link.href}/`);
+
   return (
     <Link
       href={link.href}
@@ -339,6 +564,7 @@ function SidebarLink({ link, pathname }: { link: any; pathname: string }) {
       >
         <Icon className="size-4" />
       </span>
+
       <span>{link.label}</span>
     </Link>
   );

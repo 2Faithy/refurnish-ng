@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -13,15 +12,12 @@ import {
   CreditCard,
   CheckCircle2,
   Sparkles,
-  HelpCircle,
-  MessageCircle,
   Store,
-  Sofa,
   BadgeCheck,
 } from "lucide-react";
 
 import DiscountModal from "@/components/DiscountModal";
-import { products, formatNaira } from "@/lib/data";
+import { formatNaira } from "@/lib/data";
 
 const heroSlides = [
   {
@@ -81,12 +77,36 @@ const testimonials = [
 ];
 
 const categories = [
-  { name: "Living Room", image: "/living.jpg", href: "/shop?category=Living%20Room" },
-  { name: "Bedroom", image: "/bedroom.jpg", href: "/shop?category=Bedroom" },
-  { name: "Dining", image: "/dining.jpg", href: "/shop?category=Dining" },
-  { name: "Workspace", image: "/workspace.jpg", href: "/shop?category=Office" },
-  { name: "Studio", image: "/studio.jpg", href: "/shop?category=Studio" },
-  { name: "Outdoor", image: "/hero-bg3.png", href: "/shop?category=Outdoor" },
+  {
+    name: "Living Room",
+    image: "/living.jpg",
+    href: "/shop?category=Living%20Room",
+  },
+  {
+    name: "Bedroom",
+    image: "/bedroom.jpg",
+    href: "/shop?category=Bedroom",
+  },
+  {
+    name: "Dining",
+    image: "/dining.jpg",
+    href: "/shop?category=Dining",
+  },
+  {
+    name: "Workspace",
+    image: "/workspace.jpg",
+    href: "/shop?category=Office",
+  },
+  {
+    name: "Studio",
+    image: "/studio.jpg",
+    href: "/shop?category=Studio",
+  },
+  {
+    name: "Outdoor",
+    image: "/hero-bg3.png",
+    href: "/shop?category=Outdoor",
+  },
 ];
 
 const articles = [
@@ -123,12 +143,26 @@ interface SectionHeaderProps {
   cta?: string;
 }
 
+interface PublicListing {
+  id: string;
+  itemTitle: string;
+  photos: string[];
+  category: string;
+  brand?: string | null;
+  condition: string;
+  sellingPrice: number;
+  originalPrice?: number | null;
+  state?: string | null;
+  lga?: string | null;
+  createdAt: string;
+}
+
 export default function HomePage() {
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0);
   const [liked, setLiked] = useState<Array<string | number>>([]);
-
-  const topPicks = useMemo(() => products.slice(0, 4), []);
+  const [topPicks, setTopPicks] = useState<PublicListing[]>([]);
+  const [topPicksLoading, setTopPicksLoading] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -144,6 +178,54 @@ export default function HomePage() {
     }, 9000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchRecentListings() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+
+        if (!apiUrl) {
+          throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+        }
+
+        const response = await fetch(`${apiUrl}/api/listings`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch recent listings.");
+        }
+
+        const data = await response.json();
+
+        if (!cancelled) {
+          // The backend already sorts active listings newest first.
+          setTopPicks(
+            Array.isArray(data.listings) ? data.listings.slice(0, 4) : []
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load curated finds:", error);
+
+        if (!cancelled) {
+          setTopPicks([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setTopPicksLoading(false);
+        }
+      }
+    }
+
+    void fetchRecentListings();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const currentHero = heroSlides[currentHeroSlide];
@@ -251,10 +333,11 @@ export default function HomePage() {
       <section className="px-4 sm:px-8 lg:px-16 py-10 sm:py-14 bg-white/60 border-b border-[#211000]/6">
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-sm sm:text-base text-[#211000]/70 font-medium leading-relaxed">
-            <strong className="text-[#211000] font-bold">Refurnish</strong> is Nigeria&apos;s online
-            marketplace for buying and selling pre-loved furniture. Sellers list quality
-            secondhand pieces, and buyers shop with confidence through secure,
-            escrow-protected payments — funds are only released once delivery is confirmed.
+            <strong className="text-[#211000] font-bold">Refurnish </strong> is
+            Nigeria&apos;s online marketplace for buying and selling pre-loved
+            furniture. Sellers list quality secondhand pieces, and buyers shop
+            with confidence through secure, escrow-protected payments — funds
+            are only released once delivery is confirmed.
           </p>
         </div>
       </section>
@@ -271,75 +354,128 @@ export default function HomePage() {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12 mt-10">
-            {topPicks.map((product) => {
-              const isLiked = liked.includes(product.id);
+            {topPicksLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="aspect-[2/3] rounded-2xl bg-[#E8CEB0]/40" />
+                  <div className="mt-4 h-3 w-1/3 rounded bg-[#E8CEB0]/50" />
+                  <div className="mt-2 h-5 w-3/4 rounded bg-[#E8CEB0]/50" />
+                  <div className="mt-3 h-4 w-1/2 rounded bg-[#E8CEB0]/50" />
+                </div>
+              ))
+            ) : topPicks.length > 0 ? (
+              topPicks.map((listing) => {
+                const isLiked = liked.includes(listing.id);
 
-              return (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45 }}
-                  className="group"
-                >
-                  <Link href={`/product/${product.slug}`} className="block">
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-white border border-[#211000]/5 shadow-sm">
-                      <img
-                        src={product.images?.[0]}
-                        alt={product.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
+                const location = [listing.lga, listing.state]
+                  .filter(Boolean)
+                  .join(", ");
 
-                      <span className="absolute bottom-3 left-3 bg-[#E8CEB0] text-[#211000] text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
-                        {product.condition}
-                      </span>
-
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toggleLike(product.id);
-                        }}
-                        className="absolute top-3 right-3 size-9 rounded-full bg-white/90 backdrop-blur grid place-items-center text-[#211000]/50 hover:text-red-500 transition-colors shadow-sm"
-                        aria-label="Save item"
-                      >
-                        <Heart
-                          className={`size-4 ${
-                            isLiked ? "fill-red-500 text-red-500" : ""
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="mt-4 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#211000]/45 truncate">
-                          {product.brand}
-                        </p>
-                        <h3 className="font-serif text-lg font-medium tracking-tight truncate mt-0.5">
-                          {product.title}
-                        </h3>
-                        <p className="mt-1 text-[11px] text-[#211000]/45 font-medium flex items-center gap-1">
-                          <BadgeCheck className="size-3 text-[#5F7161]" />
-                          Verified · {product.location}
-                        </p>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold">
-                          {formatNaira(product.price)}
-                        </p>
-                        {product.originalPrice && (
-                          <p className="text-[10px] text-[#211000]/35 line-through font-medium">
-                            {formatNaira(product.originalPrice)}
-                          </p>
+                return (
+                  <motion.div
+                    key={listing.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.45 }}
+                    className="group"
+                  >
+                    <Link href={`/product/${listing.id}`} className="block">
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-white border border-[#211000]/5 shadow-sm">
+                        {listing.photos?.[0] ? (
+                          <img
+                            src={listing.photos[0]}
+                            alt={listing.itemTitle}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-[#E8CEB0]/20 text-sm text-[#211000]/45">
+                            No image available
+                          </div>
                         )}
+
+                        <span className="absolute bottom-3 left-3 bg-[#E8CEB0] text-[#211000] text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
+                          {listing.condition}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            toggleLike(listing.id);
+                          }}
+                          className="absolute top-3 right-3 size-9 rounded-full bg-white/90 backdrop-blur grid place-items-center text-[#211000]/50 hover:text-red-500 transition-colors shadow-sm"
+                          aria-label={
+                            isLiked ? "Remove saved item" : "Save item"
+                          }
+                        >
+                          <Heart
+                            className={`size-4 ${
+                              isLiked ? "fill-red-500 text-red-500" : ""
+                            }`}
+                          />
+                        </button>
                       </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              );
-            })}
+
+                      <div className="mt-4 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#211000]/45 truncate">
+                            {listing.brand || listing.category}
+                          </p>
+
+                          <h3 className="font-serif text-lg font-medium tracking-tight truncate mt-0.5">
+                            {listing.itemTitle}
+                          </h3>
+
+                          <p className="mt-1 text-[11px] text-[#211000]/45 font-medium flex items-center gap-1">
+                            <BadgeCheck className="size-3 text-[#5F7161] shrink-0" />
+                            <span className="truncate">
+                              Verified
+                              {location ? ` · ${location}` : ""}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold">
+                            {formatNaira(listing.sellingPrice)}
+                          </p>
+
+                          {listing.originalPrice != null &&
+                            listing.originalPrice > listing.sellingPrice && (
+                              <p className="text-[10px] text-[#211000]/35 line-through font-medium">
+                                {formatNaira(listing.originalPrice)}
+                              </p>
+                            )}
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })
+            ) : (
+              <div className="col-span-full rounded-2xl border border-dashed border-[#211000]/15 bg-white/50 px-6 py-12 text-center">
+                <Store className="size-8 mx-auto text-[#B66B44]/70" />
+
+                <h3 className="mt-4 font-serif text-xl font-medium">
+                  Fresh finds are on the way.
+                </h3>
+
+                <p className="mt-2 text-sm text-[#211000]/55">
+                  There are no approved listings to feature right now. Check
+                  back soon for new furniture finds.
+                </p>
+
+                <Link
+                  href="/shop"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#B66B44] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#a05934] transition-colors"
+                >
+                  Browse shop
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -728,7 +864,13 @@ export default function HomePage() {
   );
 }
 
-function SectionHeader({ eyebrow, title, description, href, cta }: SectionHeaderProps) {
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  href,
+  cta,
+}: SectionHeaderProps) {
   return (
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
       <div>

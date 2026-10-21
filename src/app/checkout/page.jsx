@@ -42,7 +42,7 @@ const PENDING_CHECKOUT_KEY = "refurnish_pending_checkout";
 const NEGOTIATED_PRICES_KEY = "refurnish_negotiated_prices";
 
 const REFUND_WINDOW_DAYS = 3;
-const DELIVERY_ENABLED = false; // flip to true once a logistics API is wired up
+const DELIVERY_ENABLED = true; // logistics arranged manually via email after payment is confirmed
 
 const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue",
@@ -440,33 +440,33 @@ export default function CheckoutPage() {
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <motion.button
-                          disabled={!DELIVERY_ENABLED}
-                          whileTap={DELIVERY_ENABLED ? { scale: 0.98 } : undefined}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => {
-                            if (!DELIVERY_ENABLED) return;
                             setDeliveryType("delivery");
                             setShowMap(false);
                           }}
                           className={`relative p-5 rounded-xl border text-left transition-all ${
-                            !DELIVERY_ENABLED
-                              ? "bg-[#211000]/5 border-[#211000]/8 cursor-not-allowed opacity-60"
-                              : deliveryType === "delivery"
+                            deliveryType === "delivery"
                               ? "bg-[#211000] text-[#E8CEB0] border-[#211000]"
                               : "bg-[#FAF4EC] border-[#211000]/10 hover:border-[#B66B44]/30"
                           }`}
                         >
-                          {deliveryType === "delivery" && DELIVERY_ENABLED && (
+                          {deliveryType === "delivery" && (
                             <div className="absolute top-4 right-4 size-6 rounded-full bg-[#E8CEB0] flex items-center justify-center">
                               <Check className="size-3.5 text-[#211000]" />
                             </div>
                           )}
                           <Truck className="size-6 mb-3" />
                           <p className="text-sm font-bold">Home Delivery</p>
-                          <p className="text-[11px] mt-1 text-[#211000]/45">
-                            Logistics partner delivers to your address
+                          <p
+                            className={`text-[11px] mt-1 ${
+                              deliveryType === "delivery" ? "text-[#E8CEB0]/70" : "text-[#211000]/45"
+                            }`}
+                          >
+                            Our logistics partner delivers to your address
                           </p>
                           <p className="text-xs font-bold mt-2 text-[#B66B44]">
-                            Feature coming soon
+                            Delivery price arranged by phone/email after payment
                           </p>
                         </motion.button>
 
@@ -500,6 +500,26 @@ export default function CheckoutPage() {
                         </motion.button>
                       </div>
                     </div>
+
+                    {deliveryType === "delivery" && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="rounded-xl bg-[#E8CEB0]/30 border border-[#E8CEB0] p-5 space-y-2"
+                      >
+                        <div className="flex items-center gap-2 text-[#B66B44]">
+                          <Truck className="size-4" />
+                          <p className="text-sm font-bold">How delivery works</p>
+                        </div>
+                        <p className="text-xs text-[#211000]/65 leading-relaxed">
+                          Once the seller confirms your item is available, our logistics partner will
+                          contact you directly (by phone and email) to arrange pickup timing and the
+                          delivery price — this isn't paid through Refurnish checkout. Your name, phone
+                          number, and delivery address will be shared with our logistics partner so they
+                          can reach you.
+                        </p>
+                      </motion.div>
+                    )}
 
                     {deliveryType === "pickup" && cartProducts.length > 0 && (
                       <motion.div

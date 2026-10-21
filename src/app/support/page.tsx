@@ -70,20 +70,84 @@ type Order = {
 const MESSAGES_KEY = "refurnish_support_messages";
 const TICKET_KEY = "refurnish_support_ticket";
 
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+
+const apiUrl = (path: string) =>
+  `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+// Reads the same stored session the rest of the app uses and builds
+// the Authorization header the backend's auth middleware expects.
+function getSupportAuthHeaders(includeJson = false): HeadersInit {
+  const rawUser = localStorage.getItem("refurnish_user");
+  const storedUser = rawUser ? JSON.parse(rawUser) : null;
+  const token = storedUser?.token;
+
+  if (!token) {
+    throw new Error("Your session has expired. Please log in again.");
+  }
+
+  return {
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+    Authorization: `Bearer ${token}`,
+  };
+}
+
 const SUPPORT_TOPICS = [
-  { id: "escrow", title: "Escrow protection", desc: "Payment release, received item, seller payout", icon: ShieldCheck },
-  { id: "refund", title: "Refund / dispute", desc: "Item not as described, damaged item, return request", icon: RefreshCcw },
-  { id: "payment", title: "Payment issue", desc: "Bank transfer receipt, card payment, payment reference", icon: CreditCard },
-  { id: "delivery", title: "Delivery / pickup", desc: "Logistics partner, pickup address, delivery updates", icon: Truck },
-  { id: "order", title: "Order support", desc: "Track order, update contact info, seller details", icon: Package },
-  { id: "general", title: "General question", desc: "Anything else you need help with", icon: MessageCircle },
+  {
+    id: "escrow",
+    title: "Escrow protection",
+    desc: "Payment release, received item, seller payout",
+    icon: ShieldCheck,
+  },
+  {
+    id: "refund",
+    title: "Refund / dispute",
+    desc: "Item not as described, damaged item, return request",
+    icon: RefreshCcw,
+  },
+  {
+    id: "payment",
+    title: "Payment issue",
+    desc: "Bank transfer receipt, card payment, payment reference",
+    icon: CreditCard,
+  },
+  {
+    id: "delivery",
+    title: "Delivery / pickup",
+    desc: "Logistics partner, pickup address, delivery updates",
+    icon: Truck,
+  },
+  {
+    id: "order",
+    title: "Order support",
+    desc: "Track order, update contact info, seller details",
+    icon: Package,
+  },
+  {
+    id: "general",
+    title: "General question",
+    desc: "Anything else you need help with",
+    icon: MessageCircle,
+  },
 ];
 
 const FAQS = [
-  { q: "When is money released to the seller?", a: "Funds are released when the buyer confirms delivery/pickup, or automatically after the protection window if no dispute is raised." },
-  { q: "What if the buyer never clicks received?", a: "Seller protection applies. If there is delivery proof and no dispute, Refurnish can automatically release funds after the protection window." },
-  { q: "Can I request a refund?", a: "Yes. If the item is not as described, damaged, or missing parts, open a dispute and upload photos within the refund window." },
-  { q: "How do bank transfers get confirmed?", a: "Use your payment reference in the transfer narration, upload your receipt, and our team verifies it before notifying the seller." },
+  {
+    q: "When is money released to the seller?",
+    a: "Funds are released when the buyer confirms delivery/pickup, or automatically after the protection window if no dispute is raised.",
+  },
+  {
+    q: "What if the buyer never clicks received?",
+    a: "Seller protection applies. If there is delivery proof and no dispute, Refurnish can automatically release funds after the protection window.",
+  },
+  {
+    q: "Can I request a refund?",
+    a: "Yes. If the item is not as described, damaged, or missing parts, open a dispute and upload photos within the refund window.",
+  },
+  {
+    q: "How do bank transfers get confirmed?",
+    a: "Use your payment reference in the transfer narration, upload your receipt, and our team verifies it before notifying the seller.",
+  },
 ];
 
 function makeId(prefix = "id") {
@@ -91,11 +155,28 @@ function makeId(prefix = "id") {
 }
 
 function formatTime(dateString: string) {
-  return new Date(dateString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(dateString).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  return new Date(dateString).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function parseAttachments(raw: unknown): Attachment[] | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export default function SupportPage() {
@@ -106,6 +187,8 @@ export default function SupportPage() {
   const [input, setInput] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
+  const [ticketHistory, setTicketHistory] = useState<SupportTicket[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
@@ -113,9 +196,12 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [initialFetched, setInitialFetched] = useState(false);
+  const [pendingBotQuestion, setPendingBotQuestion] = useState<string | null>(null);
+  const [pendingBotAttachments, setPendingBotAttachments] = useState<Attachment[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedOrder = useMemo(() => {
@@ -133,61 +219,172 @@ export default function SupportPage() {
     });
   }, [orders, searchOrders]);
 
-  // Fetch ticket and messages
   const fetchTicket = async () => {
     try {
-      const res = await fetch("/api/support/mine", { credentials: "include" });
+      const res = await fetch(apiUrl("/api/support/mine"), {
+        headers: getSupportAuthHeaders(),
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to load support ticket.");
+      }
+
       const data = await res.json();
-      
+
       if (data.ticket) {
         setTicket(data.ticket);
         localStorage.setItem(TICKET_KEY, JSON.stringify(data.ticket));
-        
+
         if (data.messages && data.messages.length > 0) {
-          const formattedMessages: ChatMessage[] = data.messages.map((msg: any) => ({
-            id: msg.id,
-            role: msg.role,
-            text: msg.text,
-            createdAt: msg.createdAt,
-            attachments: msg.attachments ? JSON.parse(msg.attachments) : undefined,
-          }));
-          setMessages(formattedMessages);
-          localStorage.setItem(MESSAGES_KEY, JSON.stringify(formattedMessages));
+          const formattedMessages: ChatMessage[] = data.messages.map(
+            (msg: any) => ({
+              id: msg.id,
+              role: msg.role,
+              text: msg.text,
+              createdAt: msg.createdAt,
+              attachments: parseAttachments(msg.attachments),
+            })
+          );
+          const displayMessages =
+            data.ticket.status === "waiting_for_agent" &&
+            !formattedMessages.some((message) => message.role === "agent")
+              ? [
+                  ...formattedMessages,
+                  {
+                    id: `agent-waiting-${refreshedTicket?.id || ticket.id}`,
+                    role: "agent" as const,
+                    text: "We've received your request and will connect an agent to this chat as soon as possible, usually within 0–3 minutes.",
+                    createdAt: new Date().toISOString(),
+                  },
+                ]
+              : formattedMessages;
+          setMessages(displayMessages);
+          localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
         } else if (data.messages?.length === 0 && !initialFetched) {
-          // First time user - show welcome message
-          setMessages([{
+          setMessages([
+            {
+              id: makeId("msg"),
+              role: "agent",
+              text: "Hi, welcome to Refurnish Support. I can help with escrow, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        }
+      } else if (!initialFetched) {
+        setMessages([
+          {
             id: makeId("msg"),
             role: "agent",
             text: "Hi, welcome to Refurnish Support. I can help with escrow, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
             createdAt: new Date().toISOString(),
-          }]);
-        }
-      } else if (!initialFetched) {
-        // No ticket exists - show welcome message
-        setMessages([{
-          id: makeId("msg"),
-          role: "agent",
-          text: "Hi, welcome to Refurnish Support. I can help with escrow, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
-          createdAt: new Date().toISOString(),
-        }]);
+          },
+        ]);
       }
     } catch (err) {
       console.error("Failed to fetch ticket:", err);
       if (!initialFetched) {
-        setMessages([{
-          id: makeId("msg"),
-          role: "agent",
-          text: "Hi, welcome to Refurnish Support. How can we help today?",
-          createdAt: new Date().toISOString(),
-        }]);
+        setMessages([
+          {
+            id: makeId("msg"),
+            role: "agent",
+            text: "Hi, welcome to Refurnish Support. How can we help today?",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
       }
     }
   };
 
-  // Fetch orders
+  const fetchTicketHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(apiUrl("/api/support/mine/tickets"), {
+        headers: getSupportAuthHeaders(),
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to load ticket history.");
+      const data = await res.json();
+      const tickets: SupportTicket[] = Array.isArray(data.tickets) ? data.tickets : [];
+      setTicketHistory(tickets);
+    } catch (err) {
+      console.error("Failed to load support ticket history:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const openTicketFromHistory = async (selected: SupportTicket) => {
+    try {
+      const res = await fetch(apiUrl(`/api/support/mine/tickets/${selected.id}/messages`), {
+        headers: getSupportAuthHeaders(),
+        credentials: "include",
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Could not open this ticket.");
+      const selectedTicket = data.ticket || selected;
+      const formatted: ChatMessage[] = (data.messages || []).map((msg: any) => ({
+        id: msg.id,
+        role: msg.role,
+        text: msg.text,
+        createdAt: msg.createdAt,
+        attachments: parseAttachments(msg.attachments),
+      }));
+      setTicket(selectedTicket);
+      setMessages(formatted);
+      setSelectedTopic(selectedTicket.topic || "general");
+      setSelectedOrderId(selectedTicket.orderId || selectedTicket.order?.id || "");
+      localStorage.setItem(TICKET_KEY, JSON.stringify(selectedTicket));
+      localStorage.setItem(MESSAGES_KEY, JSON.stringify(formatted));
+    } catch (err: any) {
+      showToast(err?.message || "Could not open this ticket.", "error");
+    }
+  };
+
+  const startNewTicket = async () => {
+    if (sending) return;
+    try {
+      const res = await fetch(apiUrl("/api/support/mine/tickets"), {
+        method: "POST",
+        headers: getSupportAuthHeaders(true),
+        credentials: "include",
+        body: JSON.stringify({ topic: selectedTopic, orderId: selectedOrderId || undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ticket) throw new Error(data.message || "Could not create a new ticket.");
+      setTicket(data.ticket);
+      setMessages([]);
+      setPendingBotQuestion(null);
+      setPendingBotAttachments([]);
+      setInput("");
+      setPendingAttachments([]);
+      localStorage.setItem(TICKET_KEY, JSON.stringify(data.ticket));
+      localStorage.setItem(MESSAGES_KEY, JSON.stringify([]));
+      await fetchTicketHistory();
+      showToast("New support ticket created");
+      textareaRef.current?.focus();
+    } catch (err: any) {
+      showToast(err?.message || "Could not create a new ticket.", "error");
+    }
+  };
+
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders/mine", { credentials: "include" });
+      const res = await fetch(apiUrl("/api/orders/mine"), {
+        headers: getSupportAuthHeaders(),
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to load orders.");
+      }
+
       const data = await res.json();
       if (data.orders) {
         setOrders(data.orders);
@@ -200,40 +397,82 @@ export default function SupportPage() {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchTicket(), fetchOrders()]);
+      await Promise.all([fetchTicket(), fetchOrders(), fetchTicketHistory()]);
       setLoading(false);
       setInitialFetched(true);
     };
     init();
   }, []);
 
-  // Restore from localStorage if needed
+  // Poll for new agent replies while a ticket is active.
   useEffect(() => {
-    if (!loading && !ticket) {
+    if (!ticket || ticket.status === "resolved") return;
+
+    const pollMessages = async () => {
       try {
-        const storedTicket = localStorage.getItem(TICKET_KEY);
-        const storedMessages = localStorage.getItem(MESSAGES_KEY);
-        
-        if (storedTicket) {
-          setTicket(JSON.parse(storedTicket));
-        }
-        if (storedMessages) {
-          const parsed = JSON.parse(storedMessages);
-          if (parsed.length > 0 && messages.length === 0) {
-            setMessages(parsed);
+        const res = await fetch(apiUrl(`/api/support/mine/tickets/${ticket.id}/messages`), {
+          headers: getSupportAuthHeaders(),
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        if ((data.ticket || ticket) && Array.isArray(data.messages)) {
+          const refreshedTicket = data.ticket || ticket;
+          setTicket(refreshedTicket);
+          if (refreshedTicket) {
+            setTicketHistory((prev) => prev.map((item) => item.id === refreshedTicket.id ? refreshedTicket : item));
+            localStorage.setItem(TICKET_KEY, JSON.stringify(refreshedTicket));
           }
+
+          const formattedMessages: ChatMessage[] = data.messages.map(
+            (msg: any) => ({
+              id: msg.id,
+              role: msg.role,
+              text: msg.text,
+              createdAt: msg.createdAt,
+              attachments: parseAttachments(msg.attachments),
+            })
+          );
+
+          const displayMessages =
+            refreshedTicket?.status === "waiting_for_agent" &&
+            !formattedMessages.some((message) => message.role === "agent")
+              ? [
+                  ...formattedMessages,
+                  {
+                    id: `agent-waiting-${refreshedTicket?.id || ticket.id}`,
+                    role: "agent" as const,
+                    text: "We've received your request and will connect an agent to this chat as soon as possible, usually within 0–3 minutes.",
+                    createdAt: new Date().toISOString(),
+                  },
+                ]
+              : formattedMessages;
+          setMessages(displayMessages);
         }
-      } catch {
-        // Ignore localStorage errors
+      } catch (error) {
+        console.error("Failed to refresh support messages:", error);
       }
-    }
-  }, [loading]);
+    };
+
+    const interval = setInterval(pollMessages, 5000);
+
+    return () => clearInterval(interval);
+  }, [ticket?.id, ticket?.status]);
+
 
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
     }
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll only the chat history, not the entire page.
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -242,19 +481,21 @@ export default function SupportPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const showToast = (message: string, type: "success" | "error" = "success") => {
+  const showToast = (
+    message: string,
+    type: "success" | "error" = "success"
+  ) => {
     setToastType(type);
     setToast(message);
   };
 
-  // Update ticket metadata (topic, orderId)
   const updateTicketMeta = async (topic?: string, orderId?: string) => {
     try {
-      const res = await fetch("/api/support/mine", {
+      const res = await fetch(apiUrl("/api/support/mine"), {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getSupportAuthHeaders(true),
         credentials: "include",
-        body: JSON.stringify({ topic, orderId }),
+        body: JSON.stringify({ topic, orderId, ticketId: ticket?.id }),
       });
       const data = await res.json();
       if (data.ticket) {
@@ -266,21 +507,27 @@ export default function SupportPage() {
     }
   };
 
-  // Send message to backend
-  const sendMessage = async (overrideText?: string) => {
+  const sendMessageToSupport = async (
+    overrideText?: string,
+    overrideTopic?: string,
+    overrideAttachments?: Attachment[]
+  ) => {
     const text = typeof overrideText === "string" ? overrideText : input.trim();
+    const topicToSend = overrideTopic || selectedTopic;
 
-    if (!text && pendingAttachments.length === 0) return;
-    if (sending) return;
+    if (!text && (overrideAttachments ?? pendingAttachments).length === 0) return false;
+    if (sending) return false;
 
     setSending(true);
+
+    const attachmentsToSend = overrideAttachments ?? pendingAttachments;
 
     const userMessage: ChatMessage = {
       id: makeId("msg"),
       role: "user",
       text: text || "Sent an attachment",
       createdAt: new Date().toISOString(),
-      attachments: pendingAttachments.length > 0 ? pendingAttachments : undefined,
+      attachments: attachmentsToSend.length > 0 ? attachmentsToSend : undefined,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -288,52 +535,57 @@ export default function SupportPage() {
     setPendingAttachments([]);
 
     try {
-      // If no ticket exists yet, create one first
-      if (!ticket) {
-        await updateTicketMeta(selectedTopic, selectedOrderId || undefined);
-      } else if (ticket.topic !== selectedTopic || ticket.orderId !== selectedOrderId) {
-        // Update metadata if changed
-        await updateTicketMeta(selectedTopic, selectedOrderId || undefined);
+      let activeTicket = ticket;
+      if (!activeTicket) {
+        const createRes = await fetch(apiUrl("/api/support/mine/tickets"), {
+          method: "POST",
+          headers: getSupportAuthHeaders(true),
+          credentials: "include",
+          body: JSON.stringify({ topic: topicToSend, orderId: selectedOrderId || undefined }),
+        });
+        const createData = await createRes.json().catch(() => ({}));
+        if (!createRes.ok || !createData.ticket) {
+          throw new Error(createData.message || "Could not create a support ticket.");
+        }
+        activeTicket = createData.ticket;
+        setTicket(activeTicket);
+        localStorage.setItem(TICKET_KEY, JSON.stringify(activeTicket));
+      } else if (
+        activeTicket.topic !== topicToSend ||
+        (activeTicket.orderId || "") !== selectedOrderId
+      ) {
+        await updateTicketMeta(topicToSend, selectedOrderId || undefined);
       }
 
-      // Build form data for attachments
-      const formData = new FormData();
-      formData.append("text", text || "Sent an attachment");
-      
-      // Handle file uploads - in real implementation, upload to Cloudinary first
-      // For now, we'll send attachment metadata
-      if (pendingAttachments.length > 0) {
-        formData.append("attachments", JSON.stringify(pendingAttachments));
-      }
-
-      const res = await fetch("/api/support/mine/messages", {
+      const res = await fetch(apiUrl("/api/support/mine/messages"), {
         method: "POST",
+        headers: getSupportAuthHeaders(true),
         credentials: "include",
-        body: formData,
+        body: JSON.stringify({
+          text: text || "Sent an attachment",
+          attachments: attachmentsToSend.length
+            ? JSON.stringify(attachmentsToSend)
+            : undefined,
+          topic: topicToSend,
+          orderId: selectedOrderId || undefined,
+          ticketId: activeTicket?.id,
+        }),
       });
 
       const data = await res.json();
 
-      if (data.ticket && !ticket) {
-        setTicket(data.ticket);
-        localStorage.setItem(TICKET_KEY, JSON.stringify(data.ticket));
-        
-        // Add system message about ticket creation
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: makeId("msg"),
-            role: "system",
-            text: `Support ticket created: ${data.ticket.reference}`,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-        
-        showToast("Ticket created - our team will review shortly");
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send message");
       }
 
+      if (data.ticket) {
+        setTicket(data.ticket);
+        localStorage.setItem(TICKET_KEY, JSON.stringify(data.ticket));
+        setTicketHistory((prev) => [data.ticket, ...prev.filter((item) => item.id !== data.ticket.id)]);
+      }
+      void fetchTicketHistory();
+
       if (data.message) {
-        // Add system message indicating message sent
         setMessages((prev) => [
           ...prev,
           {
@@ -343,69 +595,199 @@ export default function SupportPage() {
             createdAt: new Date().toISOString(),
           },
         ]);
+
+        showToast("Message sent successfully");
       }
-    } catch (err) {
+      return true;
+    } catch (err: any) {
       console.error("Failed to send message:", err);
-      showToast("Failed to send message. Please try again.", "error");
-      
-      // Remove the optimistic message on error
+      showToast(
+        err?.message || "Failed to send message. Please try again.",
+        "error"
+      );
+
       setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+      return false;
     } finally {
       setSending(false);
     }
   };
 
-  // Topic selection handler
+  const getBotReply = (question: string, topicId: string) => {
+    const q = question.toLowerCase().trim().replace(/[!?.,]+$/g, "");
+
+    // Greetings should receive a friendly bot response, never an agent-waiting message.
+    if (/^(hi|hello|hey|good morning|good afternoon|good evening|hiya|hey there)(\s|$)/i.test(q)) {
+      return "Hi there! 👋 Welcome to Refurnish Support. I'm here to help with escrow protection, refunds and disputes, payment issues, delivery or pickup, and orders. What can I help you with today? You can describe the issue in your own words or choose a support topic.";
+    }
+    if (/^(thanks|thank you|thank u|thx)(\s|$)/i.test(q)) {
+      return "You're very welcome! 😊 Is there anything else about your Refurnish order or account that I can help with?";
+    }
+    if (/^(bye|goodbye|that's all|that is all|nothing else)(\s|$)/i.test(q)) {
+      return "Thanks for contacting Refurnish Support. If you need help later, just start a new chat and I'll be happy to help. Have a lovely day!";
+    }
+    if (/refund|return|damaged|broken|missing part|not as described|dispute/.test(q)) {
+      return "If your item arrived damaged, is missing parts, or is not as described, open a dispute within the applicable protection window and upload clear photos as evidence. Our team can review the case and guide you through the next steps.";
+    }
+    if (/escrow|release|seller.*(money|payment|fund|payout)|when.*paid|received|buyer confirm/.test(q)) {
+      return FAQS[0].a + "\n\nIf an item has not arrived or a dispute is open, contact support before confirming receipt so the team can review the case.";
+    }
+    if (/transfer|bank|receipt|payment|paid|paystack|transaction|payment reference|card declined|charged/.test(q)) {
+      return FAQS[3].a + " If the payment still hasn't been confirmed, share your payment reference and receipt with support.";
+    }
+    if (/delivery|deliver|pickup|pick up|logistics|shipping|tracking|courier|collection address/.test(q)) {
+      return "For delivery or pickup, open your order details to review the latest status and confirm that your contact and pickup information are correct. Refurnish may use a logistics partner depending on the order. If the delivery is delayed, the pickup address is wrong, or tracking has not updated, select the relevant order and I can help you contact support.";
+    }
+    if (/order|seller|track|tracking number|contact info|change.*phone|update.*contact|seller detail/.test(q)) {
+      return "You can check your order status in your Refurnish account. Select the relevant order in this support page so the team can identify it more easily. For a status that looks incorrect or an update you can't make yourself, I can connect you with a support agent.";
+    }
+    if (/account|login|log in|password|profile/.test(q)) {
+      return "For account access issues, first make sure you're using the email address registered with Refurnish. Never share your password or verification codes in chat. If you still can't access your account, I can connect you with a support agent.";
+    }
+    if (topicId === "refund") return "For refund or dispute concerns, explain what went wrong and upload clear photos if the item is damaged or not as described. A support agent can review the details if the guidance here doesn't resolve it.";
+    if (topicId === "escrow") return FAQS[0].a;
+    if (topicId === "payment") return FAQS[3].a;
+    if (topicId === "delivery") return "For delivery or pickup concerns, check your order status and make sure your contact and pickup details are correct. If you still need help, I can connect you with our support team.";
+    if (topicId === "order") return "You can check your order status in your Refurnish account and attach the relevant order using the order selector on this page. If you need an update or something looks wrong, I can connect you with an agent.";
+    return "Thanks for contacting Refurnish Support. I can help with escrow protection, refunds and disputes, payment verification, delivery or pickup, and order questions. Please share a little more detail so I can point you in the right direction.";
+  };
+
+  const sendMessage = async (overrideText?: string, overrideTopic?: string) => {
+    const text = typeof overrideText === "string" ? overrideText : input.trim();
+    const topicToUse = overrideTopic || selectedTopic;
+
+    if (!text && pendingAttachments.length === 0) return;
+    if (sending || uploadingAttachments) return;
+
+    // Once a ticket is active, send new messages directly to the support team.
+    if (ticket && ticket.status !== "resolved") {
+      await sendMessageToSupport(text, topicToUse);
+      return;
+    }
+
+    const attachmentsToSend = pendingAttachments;
+    const userMessage: ChatMessage = {
+      id: makeId("msg"),
+      role: "user",
+      text: text || "Sent an attachment",
+      createdAt: new Date().toISOString(),
+      attachments: attachmentsToSend.length ? attachmentsToSend : undefined,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setPendingAttachments([]);
+    setPendingBotQuestion(text || "I have attached an image for support.");
+    setPendingBotAttachments(attachmentsToSend);
+
+    const botReply = getBotReply(text, topicToUse);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: makeId("bot"),
+        role: "agent",
+        text: `${botReply}\n\nDid this solve your issue?`,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  };
+
+  const handleBotSolved = () => {
+    setPendingBotQuestion(null);
+    setPendingBotAttachments([]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: makeId("bot"),
+        role: "agent",
+        text: "You're welcome! 😊 Thanks for contacting Refurnish Support. We're glad we could help. If you need anything else, we're here for you!",
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  };
+
+  const handleBotNeedsAgent = async () => {
+    if (sending) return;
+    const originalQuestion = pendingBotQuestion || "I'd like to speak with a support agent.";
+    const escalationText = `Please connect me to a support agent.\n\nOriginal question: ${originalQuestion}`;
+    const didSend = await sendMessageToSupport(
+      escalationText,
+      selectedTopic,
+      pendingBotAttachments
+    );
+
+    if (didSend) {
+      setPendingBotQuestion(null);
+      setPendingBotAttachments([]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `agent-waiting-${ticket?.id || "new"}`,
+          role: "agent",
+          text: "No worries! We've received your request and will connect an agent to this chat as soon as possible, usually within 0–3 minutes.",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    }
+  };
+
   const handleTopicSelect = (topicId: string) => {
+    if (ticket?.status === "resolved") {
+      setTicket(null);
+      setMessages([]);
+      localStorage.removeItem(TICKET_KEY);
+    }
     setSelectedTopic(topicId);
     const topic = SUPPORT_TOPICS.find((t) => t.id === topicId);
     if (topic) {
-      sendMessage(`I need help with ${topic.title}.`);
+      sendMessage(`I need help with ${topic.title}.`, topicId);
     }
   };
 
-  // Create ticket manually
-  const createTicket = () => {
-    if (ticket) {
-      showToast("This chat is already attached to a support ticket");
-      return;
-    }
-    sendMessage("I'd like to speak with a support agent.");
+  const createTicket = async () => {
+    await startNewTicket();
   };
 
-  // Resolve ticket (clear chat)
   const resolveTicket = async () => {
     if (!ticket) {
-      // Just clear local state
       clearChatLocal();
       return;
     }
 
     try {
-      const res = await fetch("/api/support/mine/resolve", {
+      const res = await fetch(apiUrl("/api/support/mine/resolve"), {
         method: "POST",
+        headers: getSupportAuthHeaders(true),
         credentials: "include",
+        body: JSON.stringify({ ticketId: ticket.id }),
       });
 
       if (res.ok) {
-        clearChatLocal();
-        showToast("Ticket resolved");
+        const data = await res.json().catch(() => ({}));
+        const resolvedTicket = data.ticket || { ...ticket, status: "resolved" as const };
+        setTicket(resolvedTicket);
+        localStorage.setItem(TICKET_KEY, JSON.stringify(resolvedTicket));
+        setTicketHistory((prev) => prev.map((item) => item.id === resolvedTicket.id ? resolvedTicket : item));
+        await fetchTicketHistory();
+        showToast("Ticket resolved. You can start a new ticket anytime.");
       } else {
         showToast("Failed to resolve ticket", "error");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to resolve ticket:", err);
-      showToast("Failed to resolve ticket", "error");
+      showToast(err?.message || "Failed to resolve ticket", "error");
     }
   };
 
   const clearChatLocal = () => {
-    const starter: ChatMessage[] = [{
-      id: makeId("msg"),
-      role: "agent",
-      text: "Chat cleared. How can we help you today?",
-      createdAt: new Date().toISOString(),
-    }];
+    const starter: ChatMessage[] = [
+      {
+        id: makeId("msg"),
+        role: "agent",
+        text: "Chat cleared. How can we help you today?",
+        createdAt: new Date().toISOString(),
+      },
+    ];
 
     setMessages(starter);
     setTicket(null);
@@ -434,54 +816,101 @@ export default function SupportPage() {
     showToast("Order ID copied");
   };
 
-  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleAttachmentUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(e.target.files || []) as File[];
     if (files.length === 0) return;
 
     const remaining = 3 - pendingAttachments.length;
     const selectedFiles = files.slice(0, Math.max(0, remaining));
+    if (selectedFiles.length === 0) {
+      showToast("You can attach up to 3 images per message", "error");
+      e.target.value = "";
+      return;
+    }
 
-    selectedFiles.forEach((file) => {
-      const validTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-      if (!validTypes.includes(file.type)) {
-        showToast("Only JPG, PNG, or PDF files are allowed", "error");
-        return;
+    if (!cloudName || !uploadPreset) {
+      showToast("Image upload is not configured. Please contact support.", "error");
+      e.target.value = "";
+      return;
+    }
+
+    const validFiles = selectedFiles.filter((file) => {
+      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+        showToast("Only JPG, PNG, or WEBP images are allowed", "error");
+        return false;
       }
-
       if (file.size > 5 * 1024 * 1024) {
-        showToast("Each file must be under 5MB", "error");
-        return;
+        showToast("Each image must be under 5MB", "error");
+        return false;
       }
-
-      const reader = new FileReader();
-
-      reader.onload = (event) => {
-        const attachment: Attachment = {
-          id: makeId("att"),
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: String(event.target?.result || ""),
-        };
-
-        setPendingAttachments((prev) => [...prev, attachment]);
-      };
-
-      reader.readAsDataURL(file);
+      return true;
     });
 
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (validFiles.length === 0) {
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingAttachments(true);
+    try {
+      const uploaded = await Promise.all(
+        validFiles.map(async (file): Promise<Attachment> => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("upload_preset", uploadPreset);
+
+          const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+            { method: "POST", body: formData }
+          );
+          const data = await response.json();
+
+          if (!response.ok || !data.secure_url) {
+            throw new Error(data.error?.message || `Could not upload ${file.name}`);
+          }
+
+          return {
+            id: makeId("att"),
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            url: data.secure_url,
+          };
+        })
+      );
+
+      setPendingAttachments((prev) => [...prev, ...uploaded].slice(0, 3));
+      showToast(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} uploaded`);
+    } catch (err: any) {
+      console.error("Cloudinary upload failed:", err);
+      showToast(err?.message || "Image upload failed. Please try again.", "error");
+    } finally {
+      setUploadingAttachments(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const removePendingAttachment = (id: string) => {
-    setPendingAttachments((prev) => prev.filter((file) => file.id !== id));
+    setPendingAttachments((prev) =>
+      prev.filter((file) => file.id !== id)
+    );
   };
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     open: { label: "Open", color: "text-[#B66B44] bg-[#B66B44]/10" },
-    waiting_for_agent: { label: "Waiting for agent", color: "text-[#5F7161] bg-[#5F7161]/10" },
-    resolved: { label: "Resolved", color: "text-[#211000]/50 bg-[#211000]/5" },
+    waiting_for_agent: {
+      label: "Waiting for agent",
+      color: "text-[#5F7161] bg-[#5F7161]/10",
+    },
+    resolved: {
+      label: "Resolved",
+      color: "text-[#211000]/50 bg-[#211000]/5",
+    },
   };
 
   if (loading) {
@@ -489,7 +918,9 @@ export default function SupportPage() {
       <main className="min-h-screen bg-[#FAF4EC] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="size-8 text-[#B66B44] animate-spin" />
-          <p className="text-sm text-[#211000]/50 font-medium">Loading support...</p>
+          <p className="text-sm text-[#211000]/50 font-medium">
+            Loading support...
+          </p>
         </div>
       </main>
     );
@@ -517,14 +948,17 @@ export default function SupportPage() {
                 We&apos;re here to help.
               </h1>
               <p className="text-sm text-[#211000]/55 font-medium mt-2 max-w-xl">
-                Chat with Refurnish support for escrow, refunds, delivery, pickup, payment verification, and order issues.
+                Chat with Refurnish support for escrow, refunds, delivery,
+                pickup, payment verification, and order issues.
               </p>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 px-4 py-2">
               <span className="size-2 rounded-full bg-[#5F7161] animate-pulse" />
               <span className="text-xs font-bold text-[#5F7161]">
-                {ticket ? `Ticket: ${ticket.reference}` : "Start a conversation"}
+                {ticket
+                  ? `Ticket: ${ticket.reference}`
+                  : "Start a conversation"}
               </span>
             </div>
           </div>
@@ -541,20 +975,20 @@ export default function SupportPage() {
                     Conversation
                   </p>
                   <h2 className="font-serif text-xl font-medium mt-1">
-                    {ticket ? "Ticket active" : "No ticket yet"}
+                    {ticket ? (ticket.status === "resolved" ? "Ticket closed" : "Ticket active") : "No active ticket"}
                   </h2>
                 </div>
 
                 <button
-                  onClick={clearChat}
+                  onClick={() => ticket?.status === "resolved" ? startNewTicket() : clearChat()}
                   className="size-9 rounded-full bg-[#FAF4EC] border border-[#211000]/8 hover:bg-red-50 hover:text-red-500 transition-colors grid place-items-center"
-                  aria-label="Clear chat"
+                  aria-label={ticket?.status === "resolved" ? "Start a new ticket" : "Resolve ticket"}
                 >
                   <Trash2 className="size-4" />
                 </button>
               </div>
 
-              {ticket ? (
+              {ticket && ticket.status !== "resolved" ? (
                 <div className="mt-4 rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -575,15 +1009,25 @@ export default function SupportPage() {
                   </div>
 
                   <div className="mt-3 flex items-center justify-between text-xs">
-                    <span className="text-[#211000]/50 font-medium">Status</span>
-                    <span className={`font-bold px-2 py-0.5 rounded-full ${statusConfig[ticket.status]?.color || ""}`}>
+                    <span className="text-[#211000]/50 font-medium">
+                      Status
+                    </span>
+                    <span
+                      className={`font-bold px-2 py-0.5 rounded-full ${
+                        statusConfig[ticket.status]?.color || ""
+                      }`}
+                    >
                       {statusConfig[ticket.status]?.label || ticket.status}
                     </span>
                   </div>
 
                   <div className="mt-3 pt-3 border-t border-[#211000]/8 flex items-center justify-between text-xs">
-                    <span className="text-[#211000]/50 font-medium">Created</span>
-                    <span className="font-medium">{formatDate(ticket.createdAt)}</span>
+                    <span className="text-[#211000]/50 font-medium">
+                      Created
+                    </span>
+                    <span className="font-medium">
+                      {formatDate(ticket.createdAt)}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -592,8 +1036,37 @@ export default function SupportPage() {
                   className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#B66B44] hover:bg-[#a05934] text-white py-3 text-xs font-bold uppercase tracking-wider transition-colors shadow-md shadow-[#B66B44]/15"
                 >
                   <Headphones className="size-4" />
-                  Create support ticket
+                  {ticket?.status === "resolved" ? "Start a new ticket" : "Create support ticket"}
                 </button>
+              )}
+            </div>
+
+            {/* Persistent ticket history */}
+            <div className="rounded-3xl bg-white border border-[#211000]/8 shadow-sm p-5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B66B44]">Your support history</p>
+                  <h2 className="font-serif text-xl font-medium mt-1">Previous tickets</h2>
+                </div>
+                <span className="text-[10px] font-bold rounded-full bg-[#FAF4EC] px-2.5 py-1">{ticketHistory.length}</span>
+              </div>
+              {historyLoading ? (
+                <div className="py-4 flex justify-center"><Loader2 className="size-5 animate-spin text-[#B66B44]" /></div>
+              ) : ticketHistory.length === 0 ? (
+                <p className="text-xs text-[#211000]/45 py-2">Your previous support tickets will appear here.</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {ticketHistory.map((item) => (
+                    <button key={item.id} onClick={() => openTicketFromHistory(item)} className={`w-full text-left rounded-2xl border p-3 transition-colors ${ticket?.id === item.id ? "border-[#B66B44]/50 bg-[#B66B44]/5" : "border-[#211000]/8 bg-[#FAF4EC] hover:border-[#B66B44]/30"}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-mono text-[10px] font-bold">{item.reference}</span>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${statusConfig[item.status]?.color || ""}`}>{statusConfig[item.status]?.label || item.status}</span>
+                      </div>
+                      <p className="text-xs font-bold mt-1 capitalize">{String(item.topic || "general").replaceAll("_", " ")}</p>
+                      <p className="text-[10px] text-[#211000]/40 mt-1">{formatDate(item.createdAt)}</p>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -623,7 +1096,8 @@ export default function SupportPage() {
                 <div className="rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 p-4 text-center">
                   <Package className="size-6 text-[#211000]/35 mx-auto mb-2" />
                   <p className="text-xs text-[#211000]/50 font-medium">
-                    No orders found. Your orders will appear here after purchase.
+                    No orders found. Your orders will appear here after
+                    purchase.
                   </p>
                 </div>
               ) : (
@@ -651,7 +1125,8 @@ export default function SupportPage() {
                     <option value="">No order selected</option>
                     {filteredOrders.map((order) => (
                       <option key={order.id} value={order.id}>
-                        {order.reference || order.id} · {order.status?.replaceAll("_", " ")}
+                        {order.reference || order.id} ·{" "}
+                        {order.status?.replaceAll("_", " ")}
                       </option>
                     ))}
                   </select>
@@ -669,7 +1144,9 @@ export default function SupportPage() {
                         </div>
 
                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-[#5F7161]/10 text-[#5F7161] capitalize">
-                          {String(selectedOrder.status || "active").replaceAll("_", " ")}
+                          {String(
+                            selectedOrder.status || "active"
+                          ).replaceAll("_", " ")}
                         </span>
                       </div>
 
@@ -686,8 +1163,12 @@ export default function SupportPage() {
 
                       {typeof selectedOrder.total === "number" && (
                         <div className="mt-3 flex items-center justify-between text-xs">
-                          <span className="text-[#211000]/50 font-medium">Total</span>
-                          <span className="font-bold">{formatNaira(selectedOrder.total)}</span>
+                          <span className="text-[#211000]/50 font-medium">
+                            Total
+                          </span>
+                          <span className="font-bold">
+                            {formatNaira(selectedOrder.total)}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -721,9 +1202,13 @@ export default function SupportPage() {
                         <Icon className="size-4 mt-0.5 shrink-0" />
                         <div>
                           <p className="text-xs font-bold">{topic.title}</p>
-                          <p className={`text-[11px] mt-0.5 leading-relaxed ${
-                            active ? "text-[#E8CEB0]/65" : "text-[#211000]/45"
-                          }`}>
+                          <p
+                            className={`text-[11px] mt-0.5 leading-relaxed ${
+                              active
+                                ? "text-[#E8CEB0]/65"
+                                : "text-[#211000]/45"
+                            }`}
+                          >
                             {topic.desc}
                           </p>
                         </div>
@@ -759,7 +1244,9 @@ export default function SupportPage() {
               </div>
 
               <button
-                onClick={() => sendMessage("Please explain how escrow protection works.")}
+                onClick={() =>
+                  sendMessage("Please explain how escrow protection works.")
+                }
                 className="mt-5 w-full rounded-full bg-[#FAF4EC]/10 hover:bg-[#FAF4EC]/15 border border-[#FAF4EC]/15 py-3 text-xs font-bold transition-colors"
               >
                 Ask about escrow
@@ -787,7 +1274,9 @@ export default function SupportPage() {
                       >
                         <span className="text-xs font-bold">{faq.q}</span>
                         <ChevronDown
-                          className={`size-4 text-[#211000]/40 transition-transform ${open ? "rotate-180" : ""}`}
+                          className={`size-4 text-[#211000]/40 transition-transform ${
+                            open ? "rotate-180" : ""
+                          }`}
                         />
                       </button>
 
@@ -828,11 +1317,11 @@ export default function SupportPage() {
                       Refurnish Support
                     </h2>
                     <p className="text-xs text-[#211000]/45 font-medium">
-                      {ticket?.status === "waiting_for_agent" 
-                        ? "Waiting for agent response" 
+                      {ticket?.status === "waiting_for_agent"
+                        ? "Waiting for agent response"
                         : ticket?.status === "resolved"
-                        ? "This ticket has been resolved"
-                        : "Average response: under 2 minutes"}
+                          ? "This ticket has been resolved"
+                          : "Average response: under 2 minutes"}
                     </p>
                   </div>
                 </div>
@@ -846,13 +1335,10 @@ export default function SupportPage() {
               </div>
 
               {/* Messages */}
-              <div className="h-[62vh] min-h-[520px] overflow-y-auto bg-[#FAF4EC] p-4 sm:p-6">
+              <div ref={messagesContainerRef} className="h-[62vh] min-h-[520px] overflow-y-auto overscroll-contain bg-[#FAF4EC] p-4 sm:p-6">
                 <div className="space-y-5">
                   {messages.map((message) => (
-                    <MessageBubble
-                      key={message.id}
-                      message={message}
-                    />
+                    <MessageBubble key={message.id} message={message} />
                   ))}
 
                   {sending && (
@@ -875,13 +1361,38 @@ export default function SupportPage() {
                     </motion.div>
                   )}
 
-                  <div ref={bottomRef} />
+                  {pendingBotQuestion && !ticket && (
+                    <div className="ml-11 flex flex-wrap gap-2">
+                      <button
+                        onClick={handleBotSolved}
+                        className="rounded-full bg-[#5F7161] hover:bg-[#4d5f4f] text-white px-4 py-2.5 text-xs font-bold transition-colors"
+                      >
+                        Yes, thank you
+                      </button>
+                      <button
+                        onClick={handleBotNeedsAgent}
+                        disabled={sending}
+                        className="rounded-full border border-[#B66B44]/40 bg-white hover:bg-[#B66B44]/5 text-[#8C482F] px-4 py-2.5 text-xs font-bold transition-colors disabled:opacity-50"
+                      >
+                        No, connect me to an agent
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {ticket?.status === "resolved" && (
+                <div className="border-t border-[#211000]/8 bg-[#5F7161]/5 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-[#5F7161]">This conversation is closed</p>
+                    <p className="text-xs text-[#211000]/50 mt-1">Your messages are saved in ticket history. Start a new ticket if you need more help.</p>
+                  </div>
+                  <button onClick={createTicket} className="shrink-0 rounded-full bg-[#B66B44] hover:bg-[#a05934] text-white px-4 py-2.5 text-xs font-bold">Start new ticket</button>
+                </div>
+              )}
+
               {/* Composer */}
               <div className="border-t border-[#211000]/8 bg-white p-4 sm:p-5">
-                {/* Pending attachments */}
                 <AnimatePresence>
                   {pendingAttachments.length > 0 && (
                     <motion.div
@@ -920,7 +1431,7 @@ export default function SupportPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/jpg,application/pdf"
+                  accept="image/png,image/jpeg,image/webp"
                   multiple
                   onChange={handleAttachmentUpload}
                   className="hidden"
@@ -931,9 +1442,9 @@ export default function SupportPage() {
                     onClick={() => fileInputRef.current?.click()}
                     className="size-11 rounded-full bg-[#FAF4EC] border border-[#211000]/8 hover:border-[#B66B44]/30 hover:text-[#B66B44] transition-colors grid place-items-center shrink-0"
                     aria-label="Attach file"
-                    disabled={ticket?.status === "resolved"}
+                    disabled={ticket?.status === "resolved" || uploadingAttachments || sending || (!!pendingBotQuestion && !ticket)}
                   >
-                    <Paperclip className="size-4" />
+                    {uploadingAttachments ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
                   </button>
 
                   <textarea
@@ -942,9 +1453,11 @@ export default function SupportPage() {
                     value={input}
                     onChange={(e) => {
                       setInput(e.target.value);
-                      // Auto-resize
                       e.target.style.height = "auto";
-                      e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
+                      e.target.style.height = `${Math.min(
+                        e.target.scrollHeight,
+                        128
+                      )}px`;
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
@@ -952,14 +1465,24 @@ export default function SupportPage() {
                         sendMessage();
                       }
                     }}
-                    placeholder={ticket?.status === "resolved" ? "This ticket is resolved" : "Type your message..."}
-                    disabled={ticket?.status === "resolved" || sending}
+                    placeholder={
+                      ticket?.status === "resolved"
+                        ? "This ticket is resolved"
+                        : "Type your message..."
+                    }
+                    disabled={ticket?.status === "resolved" || sending || (!!pendingBotQuestion && !ticket)}
                     className="min-h-11 max-h-32 flex-1 resize-none rounded-2xl bg-[#FAF4EC] border border-[#211000]/8 px-4 py-3 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44] focus:ring-2 focus:ring-[#B66B44]/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
 
                   <button
                     onClick={() => sendMessage()}
-                    disabled={(!input.trim() && pendingAttachments.length === 0) || sending || ticket?.status === "resolved"}
+                    disabled={
+                      (!input.trim() && pendingAttachments.length === 0) ||
+                      sending ||
+                      uploadingAttachments ||
+                      (!!pendingBotQuestion && !ticket) ||
+                      ticket?.status === "resolved"
+                    }
                     className="size-11 rounded-full bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors grid place-items-center shrink-0 shadow-md shadow-[#B66B44]/15"
                     aria-label="Send message"
                   >
@@ -972,7 +1495,8 @@ export default function SupportPage() {
                 </div>
 
                 <p className="mt-2 text-[11px] text-[#211000]/35 font-medium">
-                  Attach JPG, PNG, or PDF files up to 5MB. For disputes, upload photos/videos of the issue where possible.
+                  Attach JPG, PNG, or PDF files up to 5MB. For disputes, upload
+                  photos/videos of the issue where possible.
                 </p>
               </div>
             </div>
@@ -1008,7 +1532,9 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex items-start gap-3 ${isUser ? "justify-end" : "justify-start"}`}
+      className={`flex items-start gap-3 ${
+        isUser ? "justify-end" : "justify-start"
+      }`}
     >
       {!isUser && (
         <div className="size-8 rounded-full bg-[#B66B44]/10 flex items-center justify-center shrink-0">
@@ -1016,7 +1542,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         </div>
       )}
 
-      <div className={`max-w-[86%] sm:max-w-[72%] ${isUser ? "items-end" : "items-start"} flex flex-col`}>
+      <div
+        className={`max-w-[86%] sm:max-w-[72%] ${
+          isUser ? "items-end" : "items-start"
+        } flex flex-col`}
+      >
         <div
           className={`rounded-2xl px-4 py-3 shadow-sm ${
             isUser
@@ -1041,7 +1571,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                   }`}
                 >
                   {file.type.startsWith("image/") ? (
-                    <ImageIcon className="size-4" />
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      className="max-h-48 max-w-full rounded-lg object-contain"
+                    />
                   ) : (
                     <FileText className="size-4" />
                   )}
@@ -1066,7 +1600,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-function Toast({ message, type }: { message: string; type?: "success" | "error" }) {
+function Toast({
+  message,
+  type,
+}: {
+  message: string;
+  type?: "success" | "error";
+}) {
   return (
     <AnimatePresence>
       {message && (
@@ -1075,7 +1615,9 @@ function Toast({ message, type }: { message: string; type?: "success" | "error" 
           animate={{ opacity: 1, y: 0, x: "-50%" }}
           exit={{ opacity: 0, y: 20, x: "-50%" }}
           className={`fixed bottom-6 left-1/2 z-[90] inline-flex items-center gap-2 px-5 py-3 rounded-full shadow-2xl ${
-            type === "error" ? "bg-red-600 text-white" : "bg-[#211000] text-[#FAF4EC]"
+            type === "error"
+              ? "bg-red-600 text-white"
+              : "bg-[#211000] text-[#FAF4EC]"
           }`}
         >
           {type === "error" ? (
