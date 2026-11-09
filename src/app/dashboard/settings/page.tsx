@@ -249,11 +249,11 @@ export default function SettingsPage() {
                   onChange={(v) => savePreferences({ orderUpdatesSMS: v })}
                 />
                 <ToggleRow
-                  label="Escrow alerts via SMS"
-                  description="Critical alerts when escrow funds are held or released"
-                  checked={preferences.escrowAlertsSMS}
-                  onChange={(v) => savePreferences({ escrowAlertsSMS: v })}
-                />
+  label="Protected Payment Alerts via SMS"
+  description="Important updates when your payment is secured or released after delivery"
+  checked={preferences.escrowAlertsSMS}
+  onChange={(v) => savePreferences({ escrowAlertsSMS: v })}
+/>
               </div>
             </SettingsCard>
           </TabContent>
@@ -382,8 +382,6 @@ export default function SettingsPage() {
                 {[
                   { label: "Terms of Service", href: "/terms" },
                   { label: "Privacy Policy", href: "/privacy" },
-                  { label: "Escrow Policy", href: "/escrow-policy" },
-                  { label: "Community Guidelines", href: "/guidelines" },
                 ].map((item) => (
                   <Link
                     key={item.label}

@@ -345,9 +345,9 @@ function AuthPageContent() {
               className="mt-8 flex items-center gap-6 text-[#FAF4EC]/90"
             >
               <div className="flex items-center gap-2 text-xs font-bold">
-                <ShieldCheck className="size-4 text-[#E8CEB0]" />
-                Escrow protected
-              </div>
+  <ShieldCheck className="size-4 text-[#E8CEB0]" />
+  Payment protected until delivery
+</div>
               <div className="flex items-center gap-2 text-xs font-bold">
                 <CheckCircle2 className="size-4 text-[#E8CEB0]" />
                 Verified sellers

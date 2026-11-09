@@ -186,9 +186,9 @@ export default function SellLandingPage() {
               text: "The number-one shopping destination for design-conscious buyers in Lagos.",
             },
             {
-              icon: <ShieldCheck className="size-6 text-[#B66B44]" />,
-              text: "Payments made safely and securely through escrow — released only after delivery.",
-            },
+  icon: <ShieldCheck className="size-6 text-[#B66B44]" />,
+  text: "Your payments stay protected until delivery is confirmed.",
+},
             {
               icon: <Wallet className="size-6 text-[#B66B44]" />,
               text: "No monthly fees, no listing fees, no hidden fees. You only pay when you sell.",

@@ -55,7 +55,7 @@ const ALWAYS_BLOCKED_PATTERNS = [
   },
   {
     regex:
-      /\b(pay directly|pay offline|outside platform|skip escrow|avoid refurnish|cash payment|direct transfer)\b/i,
+      /\b(pay directly|pay offline|outside platform|skip Protected payments|avoid refurnish|cash payment|direct transfer)\b/i,
     label: "off-platform payment",
   },
 ];
@@ -746,7 +746,7 @@ function MessagesPageContent() {
             </strong>{" "}
             Sharing phone numbers, emails, bank details, or suggesting
             off-platform deals is automatically blocked. Negotiate price freely
-            — but every payment must go through Refurnish escrow.
+            — but every payment must go through Refurnish protected payments system.
           </div>
         </div>
 
@@ -1093,7 +1093,7 @@ function MessagesPageContent() {
                   </p>
 
                   <p className="text-[10px] text-red-600/70 font-medium mt-1">
-                    All deals must stay on Refurnish. Use escrow for
+                    All deals must stay on Refurnish. Use Protected payments system to make
                     payments.
                   </p>
                 </div>

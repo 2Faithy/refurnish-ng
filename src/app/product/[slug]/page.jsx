@@ -450,10 +450,10 @@ export default function ProductPage() {
               />
 
               <TrustRow
-                icon={<ShieldCheck className="size-4 text-[#5F7161]" />}
-                label="Secure escrow payment"
-                value="Funds released after delivery confirmation"
-              />
+  icon={<ShieldCheck className="size-4 text-[#5F7161]" />}
+  label="Protected payment"
+  value="Payment released only after delivery confirmation"
+/>
 
               <TrustRow
                 icon={<Truck className="size-4 text-[#5F7161]" />}

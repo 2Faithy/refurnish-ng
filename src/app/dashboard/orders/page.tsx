@@ -124,17 +124,17 @@ export default function OrdersPage() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 xl:px-10 py-6 lg:py-10 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
-          Your orders
-        </p>
-        <h1 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-1">
-          Orders & escrow
-        </h1>
-        <p className="text-sm text-[#211000]/55 font-medium mt-1">
-          Track your purchases, confirm deliveries, and manage escrow.
-        </p>
-      </div>
+     <div className="mb-8">
+  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44]">
+    Your orders
+  </p>
+  <h1 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight mt-1">
+    Orders & Protected Payments
+  </h1>
+  <p className="text-sm text-[#211000]/55 font-medium mt-1">
+    Track your purchases, confirm deliveries, and enjoy protected payments until your items arrive.
+  </p>
+</div>
 
       {/* Info banner */}
       <div className="mb-6 rounded-2xl bg-[#5F7161]/10 border border-[#5F7161]/20 p-4 flex items-start gap-3">

@@ -21,19 +21,19 @@ import { formatNaira } from "@/lib/data";
 
 const heroSlides = [
   {
-    title: "Find quality pre-loved furniture near you.",
+    title: "Beautiful furniture. Better ways to furnish.",
     description:
-      "Discover curated, gently-used furniture in excellent condition — verified, protected, and ready for your space.",
+      "Discover quality, verified furniture for every space and budget. Find your next favourite piece and shop with confidence.",
     image: "/hero1.jpg",
-    primaryText: "Browse shop",
+    primaryText: "Explore furniture",
     primaryHref: "/shop",
     secondaryText: "Start selling",
     secondaryHref: "/sell",
   },
   {
-    title: "Furniture buying and selling, made safer.",
+    title: "Your space deserves something special.",
     description:
-      "Buy with escrow protection, sell with confidence, and refresh your home without the usual marketplace stress.",
+      "From brand-new finds to pre-loved treasures, discover furniture you'll love, with protected payments and convenient delivery.",
     image: "/hero2.jpg",
     primaryText: "Shop now",
     primaryHref: "/shop",
@@ -41,9 +41,9 @@ const heroSlides = [
     secondaryHref: "#how-it-works",
   },
   {
-    title: "Turn unused furniture into money.",
+    title: "Have great furniture? There's a buyer for it.",
     description:
-      "List your pre-loved pieces in minutes and connect with serious buyers across Nigeria.",
+      "Turn your furniture into an opportunity. List your pieces, connect with buyers, and sell with confidence on Refurnish.",
     image: "/hero3.jpg",
     primaryText: "List an item",
     primaryHref: "/sell",
@@ -334,10 +334,9 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-sm sm:text-base text-[#211000]/70 font-medium leading-relaxed">
             <strong className="text-[#211000] font-bold">Refurnish </strong> is
-            Nigeria&apos;s online marketplace for buying and selling pre-loved
-            furniture. Sellers list quality secondhand pieces, and buyers shop
-            with confidence through secure, escrow-protected payments — funds
-            are only released once delivery is confirmed.
+            Nigeria&apos;s online marketplace for buying and selling quality furniture. 
+            Discover carefully verified listings, explore furniture that suits your taste and budget, and shop with confidence. 
+            With protected payments and convenient delivery support, furnishing your space has never been easier.
           </p>
         </div>
       </section>
@@ -525,18 +524,19 @@ export default function HomePage() {
             A better way to furnish in Nigeria.
           </h2>
           <p className="mt-6 text-base sm:text-lg text-[#211000]/65 leading-relaxed font-medium">
-            A trusted marketplace for furniture and décor — built for everyday
-            Nigerians, reshaping how we buy and sell with quality,
-            affordability, and protection at the core.
+            A smarter marketplace for quality furniture — 
+            bringing buyers and sellers together through verified listings, affordable options, protected payments, and convenient delivery. 
+            Whether you're furnishing a new home or giving your furniture a new home, 
+            Refurnish makes the experience easier.
           </p>
 
           <div className="mt-10 grid sm:grid-cols-2 gap-4 text-left">
             {[
-              "Your money stays safe with escrow protection.",
-              "Pocket-friendly prices and better value.",
-              "Professional delivery support, zero wahala.",
-              "Verified listings, safer deals, better homes.",
-            ].map((item) => (
+  "Your payments stay protected until delivery is confirmed.",
+  "Quality furniture for different tastes and budgets.",
+  "Convenient doorstep delivery through our logistics partner.",
+  "Verified listings, confident purchases, happier homes.",
+].map((item) => (
               <div
                 key={item}
                 className="rounded-2xl bg-white/70 border border-[#211000]/6 p-4 flex gap-3"
@@ -548,6 +548,90 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ================= LOGISTICS PARTNERSHIP ================= */}
+<section className="px-4 sm:px-8 lg:px-16 py-20 sm:py-28 bg-white/60">
+  <div className="max-w-7xl mx-auto">
+    <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#B66B44] mb-4">
+          We've got delivery covered
+        </p>
+
+        <h2 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight leading-tight">
+          Your furniture, delivered right to your doorstep.
+        </h2>
+
+        <p className="mt-6 text-base sm:text-lg text-[#211000]/65 leading-relaxed font-medium">
+          Getting your furniture home just got easier! We've partnered with a
+          logistics company to make getting your orders delivered more
+          convenient. Shop for what you love, place your order, and let our
+          delivery partner help bring it right to your doorstep.
+        </p>
+
+        <div className="mt-8 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="size-10 rounded-full bg-[#E8CEB0]/50 flex items-center justify-center shrink-0">
+              <Truck className="size-5 text-[#B66B44]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">Convenient delivery</h3>
+              <p className="text-sm text-[#211000]/55 mt-1">
+                Get your furniture delivered without the stress of arranging
+                everything yourself.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="size-10 rounded-full bg-[#E8CEB0]/50 flex items-center justify-center shrink-0">
+              <ShieldCheck className="size-5 text-[#B66B44]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">Protected payments</h3>
+              <p className="text-sm text-[#211000]/55 mt-1">
+                Your payment stays protected until you confirm that your
+                order has been delivered.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Link
+          href="/shop"
+          className="mt-9 inline-flex items-center justify-center gap-2 rounded-full bg-[#B66B44] hover:bg-[#a05934] text-white px-7 py-4 text-xs font-bold uppercase tracking-wider transition-colors"
+        >
+          Find your furniture
+          <ArrowRight className="size-4" />
+        </Link>
+      </div>
+
+      <div className="relative">
+        <div className="aspect-[4/5] sm:aspect-[5/4] lg:aspect-[4/5] rounded-[2rem] overflow-hidden bg-[#E8CEB0]/30">
+          <img
+            src="/hero-bg3.png"
+            alt="Furniture ready for delivery to its new home"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-[#FAF4EC]/95 backdrop-blur-sm p-5 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="size-11 rounded-full bg-[#E8CEB0]/60 flex items-center justify-center">
+              <Truck className="size-5 text-[#B66B44]" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">From our marketplace to your home.</p>
+              <p className="text-xs text-[#211000]/55 mt-1">
+                Convenient delivery, less hassle.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
       {/* ================= HOW IT WORKS ================= */}
       <section
@@ -567,25 +651,25 @@ export default function HomePage() {
           <div className="grid md:grid-cols-4 gap-5">
             {[
               {
-                icon: Store,
-                title: "Shop",
-                text: "Find verified pre-loved pieces from local sellers.",
-              },
-              {
-                icon: CreditCard,
-                title: "Pay",
-                text: "Pay securely through Refurnish escrow.",
-              },
-              {
-                icon: Truck,
-                title: "Deliver",
-                text: "Choose home delivery or self-pickup from seller.",
-              },
-              {
-                icon: ShieldCheck,
-                title: "Confirm",
-                text: "Only release payment after you receive the item.",
-              },
+  icon: Store,
+  title: "Discover",
+  text: "Explore quality, verified furniture from sellers across Nigeria.",
+},
+{
+  icon: CreditCard,
+  title: "Pay securely",
+  text: "Your payment stays protected until you confirm delivery.",
+},
+{
+  icon: Truck,
+  title: "Get it delivered",
+  text: "Enjoy convenient delivery to your doorstep through our logistics partner, or arrange self-pickup.",
+},
+{
+  icon: ShieldCheck,
+  title: "Confirm",
+  text: "Once your furniture arrives and you're satisfied, confirm delivery to release payment.",
+},
             ].map((step, index) => {
               const Icon = step.icon;
 

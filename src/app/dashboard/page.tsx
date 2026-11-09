@@ -60,7 +60,7 @@ const MOCK_NOTIFICATIONS = [
   {
     id: "notif-2",
     type: "escrow",
-    title: "Payment held in escrow",
+    title: "Protected payments till after delivery",
     message:
       "₦285,000 is now securely held until you confirm delivery of Beni Linen Sofa.",
     time: "1 hour ago",
@@ -608,7 +608,7 @@ export default function DashboardOverviewPage() {
             <div className="flex items-center gap-2">
               <ShieldCheck className="size-5 text-[#E8CEB0]" />
               <h3 className="font-serif text-base font-medium text-white">
-                Escrow protection
+                Protected payments till after delivery
               </h3>
             </div>
             <p className="text-xs md:text-sm text-neutral-400 leading-relaxed">

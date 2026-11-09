@@ -95,10 +95,10 @@ function getSupportAuthHeaders(includeJson = false): HeadersInit {
 const SUPPORT_TOPICS = [
   {
     id: "escrow",
-    title: "Escrow protection",
-    desc: "Payment release, received item, seller payout",
-    icon: ShieldCheck,
-  },
+    title: "Protected Payments",
+  desc: "Payment security, delivery confirmation, and seller payouts",
+  icon: ShieldCheck,
+},
   {
     id: "refund",
     title: "Refund / dispute",
@@ -268,7 +268,7 @@ localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
             {
               id: makeId("msg"),
               role: "agent",
-              text: "Hi, welcome to Refurnish Support. I can help with escrow, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
+              text: "Hi, welcome to Refurnish Support. I can help with protected payments, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
               createdAt: new Date().toISOString(),
             },
           ]);
@@ -278,7 +278,7 @@ localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
           {
             id: makeId("msg"),
             role: "agent",
-            text: "Hi, welcome to Refurnish Support. I can help with escrow, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
+            text: "Hi, welcome to Refurnish Support. I can help with protected payments, refunds, payment verification, delivery, pickup, and order issues. What would you like help with today?",
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -618,7 +618,7 @@ localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
 
     // Greetings should receive a friendly bot response, never an agent-waiting message.
     if (/^(hi|hello|hey|good morning|good afternoon|good evening|hiya|hey there)(\s|$)/i.test(q)) {
-      return "Hi there! 👋 Welcome to Refurnish Support. I'm here to help with escrow protection, refunds and disputes, payment issues, delivery or pickup, and orders. What can I help you with today? You can describe the issue in your own words or choose a support topic.";
+      return "Hi there! 👋 Welcome to Refurnish Support. I'm here to help with payment protection, refunds and disputes, payment issues, delivery or pickup, and orders. What can I help you with today? You can describe the issue in your own words or choose a support topic.";
     }
     if (/^(thanks|thank you|thank u|thx)(\s|$)/i.test(q)) {
       return "You're very welcome! 😊 Is there anything else about your Refurnish order or account that I can help with?";
@@ -649,7 +649,7 @@ localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
     if (topicId === "payment") return FAQS[3].a;
     if (topicId === "delivery") return "For delivery or pickup concerns, check your order status and make sure your contact and pickup details are correct. If you still need help, I can connect you with our support team.";
     if (topicId === "order") return "You can check your order status in your Refurnish account and attach the relevant order using the order selector on this page. If you need an update or something looks wrong, I can connect you with an agent.";
-    return "Thanks for contacting Refurnish Support. I can help with escrow protection, refunds and disputes, payment verification, delivery or pickup, and order questions. Please share a little more detail so I can point you in the right direction.";
+    return "Thanks for contacting Refurnish Support. I can help with payment protection, refunds and disputes, payment verification, delivery or pickup, and order questions. Please share a little more detail so I can point you in the right direction.";
   };
 
   const sendMessage = async (overrideText?: string, overrideTopic?: string) => {
@@ -948,7 +948,7 @@ localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
                 We&apos;re here to help.
               </h1>
               <p className="text-sm text-[#211000]/55 font-medium mt-2 max-w-xl">
-                Chat with Refurnish support for escrow, refunds, delivery,
+                Chat with Refurnish support for protected payments, refunds, delivery,
                 pickup, payment verification, and order issues.
               </p>
             </div>
@@ -1219,12 +1219,12 @@ localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
               </div>
             </div>
 
-            {/* Escrow protection card */}
+            {/* Payment protection card */}
             <div className="rounded-3xl bg-[#211000] text-[#FAF4EC] shadow-sm p-5">
               <div className="flex items-center gap-2 mb-3">
                 <ShieldCheck className="size-5 text-[#E8CEB0]" />
                 <h3 className="font-serif text-xl font-medium">
-                  Escrow protection
+                  Payment protection
                 </h3>
               </div>
 
@@ -1245,11 +1245,11 @@ localStorage.setItem(MESSAGES_KEY, JSON.stringify(displayMessages));
 
               <button
                 onClick={() =>
-                  sendMessage("Please explain how escrow protection works.")
+                  sendMessage("Please explain how payment protection works.")
                 }
                 className="mt-5 w-full rounded-full bg-[#FAF4EC]/10 hover:bg-[#FAF4EC]/15 border border-[#FAF4EC]/15 py-3 text-xs font-bold transition-colors"
               >
-                Ask about escrow
+                Ask about payment protection
               </button>
             </div>
 
