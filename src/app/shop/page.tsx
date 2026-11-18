@@ -58,6 +58,23 @@ const CATEGORIES = [
   { id: "decor", label: "Decor & Art", icon: ImageIcon },
 ];
 
+const ROOM_LABELS: Record<string, string> = {
+  "living-room": "Living Room",
+  "living room": "Living Room",
+  bedroom: "Bedroom",
+  dining: "Dining",
+  office: "Office",
+  kitchen: "Kitchen",
+  outdoor: "Outdoor",
+  lighting: "Lighting",
+  decor: "Decor & Art",
+  "decor & art": "Decor & Art",
+};
+
+function getRoomLabel(room: string) {
+  return ROOM_LABELS[room?.trim().toLowerCase()] || "Furniture";
+}
+
 const SORT_OPTIONS = [
   { id: "newest", label: "Newest first" },
   { id: "price-low", label: "Price: Low to High" },
@@ -899,7 +916,7 @@ function ProductCard({
           </button>
 
           <span className="absolute bottom-3 left-3 bg-[#E8CEB0] text-[#211000] text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
-            {product.conditionLabel}
+            {getRoomLabel(product.room)}
           </span>
 
           <button
