@@ -163,6 +163,12 @@ export default function HomePage() {
   const [liked, setLiked] = useState<Array<string | number>>([]);
   const [topPicks, setTopPicks] = useState<PublicListing[]>([]);
   const [topPicksLoading, setTopPicksLoading] = useState(true);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterMessage, setNewsletterMessage] = useState("");
+  const [newsletterMessageType, setNewsletterMessageType] = useState<
+    "success" | "error" | ""
+  >("");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -235,6 +241,53 @@ export default function HomePage() {
     setLiked((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  const handleNewsletterSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+
+    if (!newsletterEmail.trim()) {
+      setNewsletterMessage("Please enter your email address.");
+      setNewsletterMessageType("error");
+      return;
+    }
+
+    setNewsletterLoading(true);
+    setNewsletterMessage("");
+    setNewsletterMessageType("");
+
+    try {
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: newsletterEmail }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Subscription failed. Please try again.");
+      }
+
+      setNewsletterMessage(
+        "Thank you for subscribing! Welcome to RefurnishNG."
+      );
+      setNewsletterMessageType("success");
+      setNewsletterEmail("");
+    } catch (error) {
+      setNewsletterMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
+      setNewsletterMessageType("error");
+    } finally {
+      setNewsletterLoading(false);
+    }
   };
 
   return (
@@ -850,22 +903,49 @@ export default function HomePage() {
             </p>
           </div>
 
-          <form
-            onSubmit={(e) => e.preventDefault()}
-            className="w-full lg:w-auto flex max-w-md"
-          >
-            <input
-              type="email"
-              placeholder="Enter email address"
-              className="flex-1 rounded-l-full bg-white border border-[#211000]/8 px-5 py-4 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44]"
-            />
-            <button
-              type="submit"
-              className="rounded-r-full bg-[#B66B44] hover:bg-[#a05934] text-white px-5 py-4 transition-colors"
+          <div className="w-full lg:w-auto max-w-md">
+            <form
+              onSubmit={handleNewsletterSubmit}
+              className="w-full flex"
             >
-              <ArrowRight className="size-5" />
-            </button>
-          </form>
+              <input
+                type="email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="Enter email address"
+                required
+                disabled={newsletterLoading}
+                className="min-w-0 flex-1 rounded-l-full bg-white border border-[#211000]/8 px-5 py-4 text-sm font-medium placeholder:text-[#211000]/35 focus:outline-none focus:border-[#B66B44] disabled:opacity-60"
+              />
+
+              <button
+                type="submit"
+                disabled={newsletterLoading}
+                aria-label="Subscribe to newsletter"
+                className="rounded-r-full bg-[#B66B44] hover:bg-[#a05934] disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-4 transition-colors"
+              >
+                {newsletterLoading ? (
+                  <span className="text-sm font-semibold">...</span>
+                ) : (
+                  <ArrowRight className="size-5" />
+                )}
+              </button>
+            </form>
+
+            {newsletterMessage && (
+              <p
+                role="status"
+                aria-live="polite"
+                className={`mt-3 text-sm font-semibold ${
+                  newsletterMessageType === "success"
+                    ? "text-[#426348]"
+                    : "text-red-700"
+                }`}
+              >
+                {newsletterMessage}
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
